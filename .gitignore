@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+.env.local
+*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+
+# Build artifacts
+dist/
+build/
+.next/
+out/
+
+# OS files
+.DS_Store
+Thumbs.db
