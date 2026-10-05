@@ -2,7 +2,7 @@
   "name": "switchboard",
   "version": "0.1.0",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -14,9 +14,11 @@
     "dev": "npm run dev --workspace @switchboard/web",
     "build": "npm run build --workspace @switchboard/web",
     "lint": "eslint .",
-    "typecheck": "tsc -b apps/web packages/core",
+    "typecheck": "tsc -b apps/web packages/core packages/db",
     "test": "vitest run",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "db:generate": "npm run generate --workspace @switchboard/db",
+    "db:migrate": "npm run migrate --workspace @switchboard/db"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
