@@ -19,6 +19,10 @@ dist/
 build/
 .next/
 out/
+*.tsbuildinfo
+
+# Generated (Next.js)
+next-env.d.ts
 
 # OS files
 .DS_Store

@@ -1,0 +1,93 @@
+/**
+ * Switchboard design tokens — the single source of truth consumed by every
+ * surface. See docs/design.md for the rules these encode.
+ */
+
+:root {
+  /* Color — neutral ramps (oklch) */
+  --sb-gray-50: oklch(0.985 0.002 84);
+  --sb-gray-100: oklch(0.962 0.004 84);
+  --sb-gray-200: oklch(0.915 0.006 84);
+  --sb-gray-300: oklch(0.855 0.008 84);
+  --sb-gray-400: oklch(0.72 0.012 84);
+  --sb-gray-500: oklch(0.58 0.015 84);
+  --sb-gray-600: oklch(0.47 0.016 84);
+  --sb-gray-700: oklch(0.38 0.015 84);
+  --sb-gray-800: oklch(0.27 0.014 84);
+  --sb-gray-900: oklch(0.19 0.012 84);
+  --sb-gray-950: oklch(0.14 0.01 84);
+
+  /* Color — accent (signal orange: speed is the product) */
+  --sb-accent: oklch(0.62 0.19 40);
+  --sb-accent-strong: oklch(0.55 0.2 40);
+  --sb-accent-soft: oklch(0.93 0.05 50);
+
+  /* Color — semantic */
+  --sb-success: oklch(0.62 0.15 150);
+  --sb-warning: oklch(0.75 0.15 85);
+  --sb-danger: oklch(0.58 0.2 27);
+  --sb-info: oklch(0.62 0.13 240);
+
+  /* Surface + text */
+  --sb-bg: var(--sb-gray-50);
+  --sb-surface: oklch(1 0 0);
+  --sb-text: var(--sb-gray-900);
+  --sb-text-muted: var(--sb-gray-600);
+  --sb-border: var(--sb-gray-200);
+
+  /* Spacing — 8px grid */
+  --sb-space-1: 0.25rem;
+  --sb-space-2: 0.5rem;
+  --sb-space-3: 0.75rem;
+  --sb-space-4: 1rem;
+  --sb-space-6: 1.5rem;
+  --sb-space-8: 2rem;
+  --sb-space-12: 3rem;
+  --sb-space-16: 4rem;
+
+  /* Radii */
+  --sb-radius-sm: 0.375rem;
+  --sb-radius-md: 0.5rem;
+  --sb-radius-lg: 0.75rem;
+  --sb-radius-full: 9999px;
+
+  /* Elevation — one shadow, used only on overlays */
+  --sb-shadow-overlay: 0 4px 24px oklch(0 0 0 / 0.12);
+
+  /* Type */
+  --sb-font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --sb-font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --sb-text-sm: 0.875rem;
+  --sb-text-base: 1rem;
+  --sb-text-lg: 1.125rem;
+  --sb-text-xl: 1.25rem;
+  --sb-text-2xl: 1.5rem;
+  --sb-text-3xl: 2rem;
+  --sb-text-4xl: 2.75rem;
+
+  /* Motion */
+  --sb-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --sb-duration-fast: 120ms;
+  --sb-duration-base: 200ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sb-bg: var(--sb-gray-950);
+    --sb-surface: var(--sb-gray-900);
+    --sb-text: var(--sb-gray-100);
+    --sb-text-muted: var(--sb-gray-400);
+    --sb-border: var(--sb-gray-800);
+    --sb-accent-soft: oklch(0.32 0.07 40);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sb-duration-fast: 0ms;
+    --sb-duration-base: 0ms;
+  }
+}

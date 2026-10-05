@@ -1,0 +1,31 @@
+{
+  "name": "switchboard",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @switchboard/web",
+    "build": "npm run build --workspace @switchboard/web",
+    "lint": "eslint .",
+    "typecheck": "tsc -b apps/web packages/core packages/db",
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "db:generate": "npm run generate --workspace @switchboard/db",
+    "db:migrate": "npm run migrate --workspace @switchboard/db"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8"
+  }
+}
