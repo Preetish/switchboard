@@ -90,22 +90,8 @@ double-booking guard), and `integrations` (encrypted OAuth token blobs).
 
 ## CI
 
-CI runs lint, typecheck, tests, and the web build. The workflow file is
-inlined in `docs/decisions.md` because of a GitHub App permission limitation —
-move it to `.github/workflows/ci.yml` when the permission is available.
-
-### CI workflow file — what needs to happen
-
-GitHub rejects pushes that create or update files under
-`.github/workflows/` unless the account pushing them has the `workflows`
-permission. The Buildful GitHub App does not have it, so the workflow file
-cannot be committed from here. One of these unblocks CI:
-
-1. **A human committer copies the YAML** from `docs/decisions.md` into
-   `.github/workflows/ci.yml` and commits it — no other setup needed, or
-2. **An org admin grants the Buildful App the `workflows` permission**
-   (org Settings → GitHub Apps → Buildful → Permissions), after which the
-   agent can commit the file in a normal PR.
+CI runs lint, typecheck, tests, and the web build on every push to `main` and
+every pull request (`.github/workflows/ci.yml`, Node 22).
 
 ## Configuration
 

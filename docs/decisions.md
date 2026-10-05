@@ -23,38 +23,12 @@ Short-lived log of architectural choices. Newest at the bottom.
 - **`team_members` has no direct `org_id`** — it cascades via `team`; avoids redundant columns and keeps one ownership path.
 - **License: Apache-2.0** (approved in session). Permissive with an explicit patent grant, standard for self-hostable OSS; `LICENSE` file added.
 
-## 2026-10-05 — CI without a committed workflow file
+## 2026-10-05 — CI workflow file lands (unblocks earlier workaround)
 
-The Buildful GitHub App lacks the `workflows` permission, so GitHub rejects any
-push containing files under `.github/workflows/`. To keep pushes green, the CI
-definition lives here instead. Once the app gains the permission (or a
-human committer adds it), move this to `.github/workflows/ci.yml` verbatim (see README → "CI workflow file"):
-
-```yaml
-name: CI
-on:
-  push:
-    branches: [main]
-  pull_request:
-
-jobs:
-  ci:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build --workspace @switchboard/web
-```
-
-Equivalents of these steps run locally and pass; see the PR description for
-the current run.
+CI now runs from `.github/workflows/ci.yml` (lint, typecheck, tests, web build
+on Node 22). It was previously inlined here because the Buildful GitHub App
+lacked the `workflows` permission; an org admin granted it, so the file is
+committed normally now.
 
 ## 2026-10-05 — Rules engine (task 3)
 
