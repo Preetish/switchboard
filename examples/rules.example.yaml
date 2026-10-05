@@ -1,0 +1,39 @@
+# Sample rule set for Switchboard.
+#
+# Rules apply top to bottom; the first match wins. If nothing matches, the
+# `fallback` route fires. `crm.*` conditions are resolved from HubSpot before
+# evaluation; `form.*` keys come straight from the submission.
+#
+# Bare scalars are `eq` shorthand, and the bare word `exists` means
+# `{ exists: true }`.
+
+rules:
+  - name: Existing owner wins
+    when:
+      crm.contact.owner: exists
+    route:
+      to: crm.contact.owner
+
+  - name: Enterprise
+    when:
+      form.company_size: { gte: 500 }
+    route:
+      team: enterprise
+      strategy: round_robin
+
+  - name: Personal email goes self-serve
+    when:
+      form.email_domain: { in: [gmail.com, outlook.com, yahoo.com] }
+    route:
+      action: self_serve_link
+
+  - name: DACH region
+    when:
+      form.country: { in: [DE, AT, CH] }
+    route:
+      team: dach
+      strategy: round_robin
+
+fallback:
+  team: default
+  strategy: round_robin

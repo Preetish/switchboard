@@ -55,3 +55,30 @@ jobs:
 
 Equivalents of these steps run locally and pass; see the PR description for
 the current run.
+
+## 2026-10-05 — Rules engine (task 3)
+
+- **Pure, synchronous `evaluate(ruleSet, inputs)`**: rules evaluate against a
+  flat input map the caller builds (`form.*` from the submission, `crm.*`
+  prefetched lookups). CRM calls are I/O; keeping them out of the engine means
+  it stays a pure function, trivially testable, and the caller controls the
+  ~2s CRM timeout. `crmPathsIn(ruleSet)` tells the caller exactly which
+  lookups to prefetch.
+- **`zod` + `yaml`** are the only new dependencies: `yaml` parses the
+  git-friendly rule files (dependency-free), `zod` (planned in the stack)
+  validates rule sets with readable per-path errors before they reach the DB.
+- **Rule authoring sugar**: bare scalars are `eq` shorthand and the bare word
+  `exists` means `{ exists: true }`, so the brief's
+  `when: { crm.contact.owner: exists }` validates verbatim.
+- **Missing data never routes**: every condition on an absent value fails;
+  only the explicit `exists` operator can reason about absence. This avoids
+  silently routing leads with half-parsed form data.
+- **Loose numeric comparison**: string form values coerce for `gt/gte/lt/lte`
+  and cross-type `eq`/`in`/`nin` (forms submit strings), so `"500"` matches
+  `{ gte: 500 }`. Empty strings never coerce.
+- **Trace on every evaluation**: `evaluate` returns which rules were tried
+  and the first failing `when` path for each — this feeds the routing log
+  (task 10) so decisions are debuggable, per the brief's "headline feature".
+- **Strategies stay out of the engine**: `route: { team, strategy }` returns
+  the declared action; resolving round-robin/weights/capacity against roster
+  and availability lands with task 6 on top of this output.

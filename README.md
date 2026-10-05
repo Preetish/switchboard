@@ -6,9 +6,46 @@ in seconds. Self-hostable.
 
 ## Status
 
-Task 2 of the roadmap (database schema and migrations) landed on top of the
-task 1 scaffold. The rules engine, calendar, CRM, and booking UI land in
+Task 3 of the roadmap (rules engine) landed on top of the task 1 scaffold and
+task 2 database schema. The hosted form, calendar, CRM, and booking UI land in
 subsequent PRs.
+
+## Rules engine
+
+Rule sets live in `packages/core` as pure functions over a validated,
+git-friendly YAML format (see `examples/rules.example.yaml`):
+
+```yaml
+rules:
+  - name: Existing owner wins
+    when: { crm.contact.owner: exists }
+    route: { to: crm.contact.owner }
+  - name: Enterprise
+    when: { form.company_size: { gte: 500 } }
+    route: { team: enterprise, strategy: round_robin }
+  - name: Personal email
+    when: { form.email_domain: { in: [gmail.com, outlook.com] } }
+    route: { action: self_serve_link }
+fallback: { team: default, strategy: round_robin }
+```
+
+- Rules apply top to bottom; the first match wins, otherwise `fallback` fires.
+- `form.*` keys come from the submission, `crm.*` keys from CRM lookups that
+  the caller prefetches (see `crmPathsIn`) before evaluation.
+- Bare scalars are `eq` shorthand and the bare word `exists` means
+  `{ exists: true }`.
+- Operators: `eq`, `neq`, `in`, `nin`, `gt`, `gte`, `lt`, `lte`, `exists`,
+  `contains`, `matches` (regex), plus `freeEmail` / `workEmail` sugar for
+  free-vs-work email conditions.
+- Any condition on a missing value fails (data absence never routes a lead);
+  only `exists` can reason about absence.
+- Numeric comparisons coerce string form values, so `"500"` matches
+  `{ gte: 500 }`.
+
+Load a file with `loadRuleSetYaml(text)` (or `validateRuleSet(parsed)` for
+already-parsed JSON), evaluate with `evaluate(ruleSet, inputs)`, and inspect
+`evaluation.trace` — the routing log UI (later task) persists inputs, the
+matched rule, and the outcome.
 
 ## Quick start
 
