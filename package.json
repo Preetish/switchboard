@@ -18,7 +18,8 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "db:generate": "npm run generate --workspace @switchboard/db",
-    "db:migrate": "npm run migrate --workspace @switchboard/db"
+    "db:migrate": "npm run migrate --workspace @switchboard/db",
+    "db:seed": "node packages/db/scripts/seed.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

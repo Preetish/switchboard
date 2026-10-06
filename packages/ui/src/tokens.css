@@ -21,6 +21,7 @@
   --sb-accent: oklch(0.62 0.19 40);
   --sb-accent-strong: oklch(0.55 0.2 40);
   --sb-accent-soft: oklch(0.93 0.05 50);
+  --sb-text-on-accent: oklch(1 0 0);
 
   /* Color — semantic */
   --sb-success: oklch(0.62 0.15 150);

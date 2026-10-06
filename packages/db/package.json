@@ -16,6 +16,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@switchboard/core": "*",
     "drizzle-orm": "^0.38.4",
     "pg": "^8.13.1"
   },

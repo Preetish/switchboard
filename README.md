@@ -6,9 +6,29 @@ in seconds. Self-hostable.
 
 ## Status
 
-Task 3 of the roadmap (rules engine) landed on top of the task 1 scaffold and
-task 2 database schema. The hosted form, calendar, CRM, and booking UI land in
-subsequent PRs.
+Task 4 of the roadmap (form schema + hosted form page) landed on top of the
+rules engine, database schema, and scaffold. Inline booking calendars, CRM
+write-back, and the routing log UI land in subsequent PRs.
+
+## Hosted forms
+
+Every form gets a hosted page at `/f/<slug>` (slugs are globally unique —
+they are the public key of a form link or embed):
+
+- Field definitions are validated with `validateFormFields` before storage and
+  `validateSubmission` on submit (required fields, email format, select
+  options, numeric values, max lengths). A `consent` field type renders a
+  required checkbox for GDPR/CASL consent.
+- `POST /api/f/<slug>/submit` validates the payload, evaluates the form's rule
+  set, and stores a `submissions` row plus a `routing_decisions` row (inputs,
+  matched rule, outcome, latency in ms). Retries with the same
+  `idempotencyKey` return the original decision instead of creating a second
+  submission.
+- `POST /api/f/<slug>/delete` is the GDPR data-deletion endpoint: it erases
+  every submission (and, by cascade, every routing decision) for the given
+  email. The hosted page includes a "Delete your data" section wired to it.
+- Rules read submitted values as `form.<key>` paths (`crm.*` lookups arrive
+  with the HubSpot task).
 
 ## Rules engine
 
@@ -54,21 +74,23 @@ npm install
 docker compose up -d   # Postgres 16
 cp .env.example .env
 npm run db:migrate     # create tables from packages/db/migrations
+npm run db:seed        # optional: demo org + form at /f/book-a-demo
 npm run dev            # web app on http://localhost:3000
 ```
 
 ## Scripts
 
-| Script                 | What it does                                       |
-| ---------------------- | -------------------------------------------------- |
-| `npm run dev`          | Next.js dev server (`apps/web`)                    |
-| `npm run build`        | Production build                                   |
-| `npm run lint`         | ESLint across all workspaces                       |
-| `npm run typecheck`    | TypeScript across all workspaces                   |
-| `npm test`             | Vitest across all workspaces                       |
-| `npm run format`       | Prettier                                           |
-| `npm run db:generate`  | Generate SQL migrations from the Drizzle schema    |
-| `npm run db:migrate`   | Apply migrations to `DATABASE_URL`                 |
+| Script                | What it does                                    |
+| --------------------- | ----------------------------------------------- |
+| `npm run dev`         | Next.js dev server (`apps/web`)                 |
+| `npm run build`       | Production build                                |
+| `npm run lint`        | ESLint across all workspaces                    |
+| `npm run typecheck`   | TypeScript across all workspaces                |
+| `npm test`            | Vitest across all workspaces                    |
+| `npm run format`      | Prettier                                        |
+| `npm run db:generate` | Generate SQL migrations from the Drizzle schema |
+| `npm run db:migrate`  | Apply migrations to `DATABASE_URL`              |
+| `npm run db:seed`     | Idempotent demo data (org, rules, teams, form)  |
 
 ## Layout
 
