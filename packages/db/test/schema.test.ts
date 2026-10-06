@@ -9,6 +9,10 @@ const migration = readFileSync(
   `${migrationDir}/0000_mysterious_wrecking_crew.sql`,
   "utf8",
 );
+const migration0002 = readFileSync(
+  `${migrationDir}/0002_busy_nightmare.sql`,
+  "utf8",
+);
 
 describe("generated migration", () => {
   it("creates every v0.1 table", () => {
@@ -31,6 +35,12 @@ describe("generated migration", () => {
   it("constrains a rep to one booking per start time", () => {
     expect(migration).toContain(
       'CREATE UNIQUE INDEX "bookings_user_start_uq" ON "bookings" USING btree ("user_id","start_at")',
+    );
+  });
+
+  it("makes bookings idempotent per key", () => {
+    expect(migration0002).toContain(
+      'CREATE UNIQUE INDEX "bookings_idempotency_uq" ON "bookings" USING btree ("idempotency_key")',
     );
   });
 
@@ -73,6 +83,7 @@ describe("schema definition", () => {
       "status",
       "calendarEventId",
       "meetLink",
+      "idempotencyKey",
       "createdAt",
     ]);
   });

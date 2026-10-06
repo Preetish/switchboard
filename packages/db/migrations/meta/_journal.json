@@ -15,6 +15,13 @@
       "when": 1791244184837,
       "tag": "0001_clever_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791260183650,
+      "tag": "0002_busy_nightmare",
+      "breakpoints": true
     }
   ]
 }

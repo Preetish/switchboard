@@ -154,5 +154,47 @@ committed normally now.
 - **Single-org mode via `ORG_SLUG`** (default: the seed org `acme`) — v0.1 is
   self-hosted single-org; the multi-tenant question is a declared non-goal.
 - **`WorkingHours` moved to `@switchboard/core`** (type-only change in the DB
-  package): the slot engine, the DB schema, and future booking flows must
-  agree on one shape, mirroring the `FormField` decision from task 4.
+  package): the slot engine, the DB schema, and future booking flows must agree
+  on one shape, mirroring the `FormField` decision from task 4.
+
+## 2026-10-06 — Booking creation (task 7)
+
+- **Two-phase booking with a `hold` status**: the slot is claimed by inserting
+  a `bookings` row with `status = 'hold'` — the unique index on
+  `(user_id, start_at)` makes the claim atomic — and confirmed by a follow-up
+  update once the calendar event exists. The hold is *committed before* the
+  network call on purpose: a DB transaction held open across the ~2s Google
+  call would roll back on a crash and free a slot a lead may have seen as
+  booked; a committed hold survives the crash and lazy cleanup releases it
+  after ~5 minutes. Cleanup runs on read paths (availability, booking) so no
+  background job or extra service is needed.
+- **`hold` required no migration**: the `status` column is plain `text` with a
+  type-level union (no DB constraint), so adding a state is a schema-type
+  change only. The idempotency key *is* a migration (`0002`,
+  `bookings.idempotency_key` + unique index).
+- **Booking idempotency = the slot claim**: retries with the same
+  `idempotencyKey` return the original row (pre-select + on-conflict
+  re-select); keyless retries for the same slot hit the unique index and get
+  `409 slot_taken`. Either way a retry never creates a second booking.
+- **Live free/busy re-check before event creation**: the availability the UI
+  used may be stale by minutes; a fresh free/busy fetch for the slot window
+  catches a clash and releases the hold with `409`. A free/busy *failure*
+  degrades and proceeds — an outage must not make booking impossible, matching
+  the availability degradation from task 5.
+- **Calendar event failure confirms locally**: per the brief, the booking is
+  not lost when Google fails; the failure is logged, surfaced as
+  `calendarError`, and the confirmation email carries a plain booking link
+  (`FALLBACK_BOOKING_URL`, optional) instead of a Meet link. Rep email is the
+  contact in every confirmation email.
+- **Email is best-effort with BYO SMTP**: `SMTP_URL` (nodemailer) — the only
+  new dependency (justification: the maintained standard SMTP client; Node has
+  no built-in SMTP and a hand-rolled client is not a good idea). Without
+  `SMTP_URL` the email is skipped with a warning; a failed send logs and the
+  booking stands. Meeting time is rendered in the rep's time zone (`Intl`,
+  honoring DST) and labeled with it.
+- **One Google integration per org** (from task 5) means free/busy and events
+  run against the connected calendar; per-rep calendars land with per-rep
+  OAuth (admin auth milestone).
+- **Slot window validation** on the server: duration clamped to 15–240
+  minutes, slot start in the future, `endAt = startAt + duration` — the API
+  trusts nothing the client computed.

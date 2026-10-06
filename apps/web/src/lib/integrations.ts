@@ -10,7 +10,7 @@ import {
   type GoogleOAuthConfig,
   type GoogleTokenSet,
 } from "@switchboard/calendar-google";
-import { and, eq, gt, lt } from "drizzle-orm";
+import { and, eq, gt, lt, or } from "drizzle-orm";
 import {
   bookings,
   integrations,
@@ -20,6 +20,7 @@ import {
   type WorkingHours,
 } from "@switchboard/db";
 import { decryptJson, encryptJson, getEncryptionKey, secretsMatch } from "@/lib/crypto";
+import { releaseExpiredHolds } from "./holds";
 
 /**
  * Google Calendar integration plumbing: configuration from env, the OAuth
@@ -244,13 +245,16 @@ export async function getAvailability(
   const to = new Date(now + days * 24 * 60 * MINUTE_MS);
   const workingHours = rep.workingHours ?? undefined;
 
+  // Expired holds release lazily; remaining holds and confirmed bookings both
+  // block their slots.
+  await releaseExpiredHolds(db);
   const localBusy = await db
     .select({ start: bookings.startAt, end: bookings.endAt })
     .from(bookings)
     .where(
       and(
         eq(bookings.userId, userId),
-        eq(bookings.status, "confirmed"),
+        or(eq(bookings.status, "confirmed"), eq(bookings.status, "hold")),
         lt(bookings.startAt, to),
         gt(bookings.endAt, from),
       ),

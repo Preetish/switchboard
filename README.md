@@ -6,11 +6,11 @@ in seconds. Self-hostable.
 
 ## Status
 
-Task 5 of the roadmap (Google Calendar OAuth, free/busy lookup, slot
-calculation with working hours, time zones, and DST) landed on top of team
-strategies, hosted forms, the rules engine, the database schema, and the
-scaffold. The inline booking UI, CRM write-back, and the routing log UI land
-in subsequent PRs.
+Task 7 of the roadmap (booking creation: slot hold, Google Calendar event with
+a Meet link, BYO-SMTP confirmation email) landed on top of Google availability,
+team strategies, hosted forms, the rules engine, the database schema, and the
+scaffold. The inline booking UI, CRM write-back, and the routing log UI land in
+subsequent PRs.
 
 ## Hosted forms
 
@@ -112,6 +112,44 @@ connected — Google Calendar free/busy:
 - **API**: `GET /api/availability/<repUserId>?duration=30&days=14` returns the
   slots (UTC ISO times) the instant-booking UI (task 9) will render.
 
+## Bookings
+
+`POST /api/bookings` turns a slot into a confirmed meeting:
+
+```json
+{
+  "userId": "<rep uuid>",
+  "startAt": "2026-10-07T13:00:00Z",
+  "durationMinutes": 30,
+  "submissionId": "<optional submission uuid>",
+  "idempotencyKey": "<optional retry key>"
+}
+```
+
+- **Double-booking guard**: the slot is claimed atomically by a `hold` booking
+  row against the unique index on `user_id + start_at`; a second claim for the
+  same slot gets `409 slot_taken`. Before the event is created the slot is
+  re-checked against live Google free/busy, so a stale slot list cannot
+  double-book either.
+- **Slot hold**: the hold row is committed first and confirmed when the
+  calendar event exists. If the process dies in between, the slot stays
+  reserved and lazy cleanup releases it after ~5 minutes (availability and
+  booking requests run the cleanup — no background job).
+- **Calendar failure fallback**: every Google call times out after ~2s. If
+  event creation fails, the booking is still confirmed locally, the failure is
+  logged and surfaced in the response as `calendarError`, and the confirmation
+  email carries a plain booking link (`FALLBACK_BOOKING_URL`, optional) instead
+  of a Meet link.
+- **Confirmation email** (bring-your-own SMTP): sent to the lead from the
+  linked submission with the meeting time in the rep's time zone, the Meet
+  link, and the rep as contact. Configure `SMTP_URL`
+  (`smtps://user:pass@smtp.example.com:465`) and optionally `SMTP_FROM`. Email
+  is best-effort: a failure is logged and the booking stands. Without
+  `SMTP_URL` no email is attempted.
+- **Idempotent**: retries with the same `idempotencyKey` return the original
+  booking instead of creating a second one; keyless retries for the same slot
+  are deduped by the unique index itself.
+
 ## Quick start
 
 ```bash
@@ -141,7 +179,7 @@ npm run dev            # web app on http://localhost:3000
 
 - `apps/web` — Next.js app (forms, booking UI, admin)
 - `packages/core` — rules engine, calendar slot math, pure functions
-- `packages/calendar-google` — Google OAuth + free/busy client (fetch-only)
+- `packages/calendar-google` — Google OAuth + free/busy + event creation (fetch-only)
 - `packages/db` — Drizzle schema + committed SQL migrations
 - `packages/ui` — design tokens (see `docs/design.md`)
 - `docs/decisions.md` — architectural decision log
@@ -154,7 +192,8 @@ weekly capacity, active flag), `forms` (field schema, linked rule set),
 `rule_sets` (versioned rule JSON), `submissions` (idempotent per
 `form_id + idempotency_key`), `routing_decisions` (inputs, matched rule,
 outcome, latency), `bookings` (unique on `user_id + start_at` — the
-double-booking guard), and `integrations` (encrypted OAuth token blobs).
+double-booking guard — plus an idempotency key and `hold`/`confirmed`
+statuses), and `integrations` (encrypted OAuth token blobs).
 
 ## CI
 
