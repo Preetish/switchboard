@@ -1,4 +1,15 @@
 export { domainFromEmail } from "./domain-from-email.js";
+export { DEFAULT_WORKING_HOURS, computeSlots } from "./calendar/slots.js";
+export {
+  addDaysUtc,
+  diffDaysUtc,
+  isValidTimeZone,
+  tzOffsetMs,
+  wallTimeToUtc,
+  zonedParts,
+} from "./calendar/tz.js";
+export type { CalendarDate, ZonedParts } from "./calendar/tz.js";
+export type { BusyInterval, WorkingHours } from "./calendar/types.js";
 export type { FormField, FormFieldType } from "./forms/types.js";
 export {
   MAX_FIELDS,
@@ -6,10 +17,7 @@ export {
   validateFormFields,
   validateSubmission,
 } from "./forms/validate.js";
-export {
-  FREE_EMAIL_DOMAINS,
-  isFreeEmail,
-} from "./rules/free-email.js";
+export { FREE_EMAIL_DOMAINS, isFreeEmail } from "./rules/free-email.js";
 export { crmPathsIn } from "./rules/crm-lookups.js";
 export {
   actionKind,
@@ -22,6 +30,8 @@ export {
 export { loadRuleSetYaml, parseRuleSetYaml } from "./rules/parse-yaml.js";
 export { draftOutcome } from "./rules/outcome.js";
 export type { OutcomeDraft, OutcomeKind } from "./rules/outcome.js";
+export { selectRep } from "./strategies/select-rep.js";
+export type { RepCandidate, RepSelection } from "./strategies/select-rep.js";
 export { validateRuleSet } from "./rules/validate.js";
 export type {
   Condition,

@@ -14,7 +14,7 @@
     "dev": "npm run dev --workspace @switchboard/web",
     "build": "npm run build --workspace @switchboard/web",
     "lint": "eslint .",
-    "typecheck": "tsc -b apps/web packages/core packages/db",
+    "typecheck": "tsc -b apps/web packages/core packages/db packages/calendar-google",
     "test": "vitest run",
     "format": "prettier --write .",
     "db:generate": "npm run generate --workspace @switchboard/db",

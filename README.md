@@ -6,9 +6,11 @@ in seconds. Self-hostable.
 
 ## Status
 
-Task 4 of the roadmap (form schema + hosted form page) landed on top of the
-rules engine, database schema, and scaffold. Inline booking calendars, CRM
-write-back, and the routing log UI land in subsequent PRs.
+Task 5 of the roadmap (Google Calendar OAuth, free/busy lookup, slot
+calculation with working hours, time zones, and DST) landed on top of team
+strategies, hosted forms, the rules engine, the database schema, and the
+scaffold. The inline booking UI, CRM write-back, and the routing log UI land
+in subsequent PRs.
 
 ## Hosted forms
 
@@ -67,6 +69,49 @@ already-parsed JSON), evaluate with `evaluate(ruleSet, inputs)`, and inspect
 `evaluation.trace` — the routing log UI (later task) persists inputs, the
 matched rule, and the outcome.
 
+## Strategies
+
+When a rule routes to a team, the strategy picks the rep (`selectRep` in
+`packages/core`, pure and deterministic — the app supplies each member's load
+counters and availability):
+
+- **`round_robin`** — smooth weighted round robin: the eligible rep with the
+  lowest `assignments / weight` is next, so `weight: 2` gets roughly twice the
+  turns. Assignment counts come from past `routing_decisions` rows.
+- **`existing_owner`** — the CRM owner gets the lead when they are on the team
+  and eligible; otherwise the team falls back to round robin so a missing or
+  busy owner never drops a lead. (Owner resolution activates with the HubSpot
+  task.)
+- **Eligibility** — a rep is skipped when their membership is inactive (OOO or
+  offboarding) or when `weekly_capacity` is set and their confirmed bookings in
+  the current week (Monday 00:00 UTC) have reached it; `weekly_capacity: 0`
+  means unlimited.
+- If nobody on the team is eligible, the decision honestly records the reason
+  and the lead goes to the fallback queue — never dropped silently.
+
+## Calendar & availability
+
+Availability is computed per rep from three inputs: their working hours
+(local to their IANA time zone), confirmed local bookings, and — when
+connected — Google Calendar free/busy:
+
+- **Connect**: `/integrations` starts the OAuth handshake (guarded by
+  `ADMIN_SETUP_KEY` until admin auth lands). Tokens are stored AES-256-GCM
+  encrypted (`TOKEN_ENCRYPTION_KEY`), never in plaintext, and refreshed
+  lazily before expiry. Self-hosters bring their own Google OAuth client
+  (Google requires app verification for calendar scopes on public apps) with
+  redirect URI `<base-url>/api/integrations/google/callback`.
+- **Slots**: `computeSlots()` in `packages/core` is pure — it cuts a rep's
+  working hours into slots in their zone, converts to UTC (DST-correct, half
+  -hour offsets supported), and drops slots overlapping busy intervals or the
+  lead-time window. Adjacent busy intervals do not conflict.
+- **Degradation**: every Google call times out after ~2 seconds. If Google is
+  unreachable or errors, availability falls back to local bookings only and
+  the response flags `source: "local"` with a `calendarError` — the rep is
+  never shown as unavailable because of an outage.
+- **API**: `GET /api/availability/<repUserId>?duration=30&days=14` returns the
+  slots (UTC ISO times) the instant-booking UI (task 9) will render.
+
 ## Quick start
 
 ```bash
@@ -95,7 +140,8 @@ npm run dev            # web app on http://localhost:3000
 ## Layout
 
 - `apps/web` — Next.js app (forms, booking UI, admin)
-- `packages/core` — rules engine, pure functions
+- `packages/core` — rules engine, calendar slot math, pure functions
+- `packages/calendar-google` — Google OAuth + free/busy client (fetch-only)
 - `packages/db` — Drizzle schema + committed SQL migrations
 - `packages/ui` — design tokens (see `docs/design.md`)
 - `docs/decisions.md` — architectural decision log
@@ -118,4 +164,5 @@ every pull request (`.github/workflows/ci.yml`, Node 22).
 ## Configuration
 
 All configuration is via environment variables; see `.env.example`. Never
-commit secrets. Stored OAuth tokens will be encrypted at rest.
+commit secrets. Stored OAuth tokens are encrypted at rest with
+`TOKEN_ENCRYPTION_KEY` (AES-256-GCM).

@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source, not build output.
-  transpilePackages: ["@switchboard/core", "@switchboard/db"],
+  transpilePackages: ["@switchboard/core", "@switchboard/db", "@switchboard/calendar-google"],
   webpack: (config) => {
     // packages use NodeNext-style "./x.js" imports that map to "./x.ts".
     config.resolve.extensionAlias = {

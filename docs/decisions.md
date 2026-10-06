@@ -91,3 +91,68 @@ committed normally now.
 - **Seed script is a plain `.mjs`** with raw SQL (`npm run db:seed`): no new
   TS tooling dependency, idempotent upserts, uses the example rule file so
   demo data and docs stay in sync.
+
+## 2026-10-06 — Team strategies (task 6)
+
+- **`selectRep` is pure in `packages/core`** like the rest of the engine: the
+  web app supplies each member's load counters (assignment history,
+  bookings-this-week) and availability, the function only picks. This keeps
+  strategy selection unit-testable without a database and lets future
+  callers (embed, API) reuse it.
+- **Round robin is deterministic, not random**: smooth weighted round robin —
+  the eligible rep with the lowest `assignments / weight` wins, ties go to the
+  first member in caller order (members are sorted by email). Rotation state is
+  the count of past `route_team` decisions per rep, so it survives restarts and
+  needs no extra table or Redis.
+- **Weekly capacity uses Monday 00:00 UTC** as the window for every rep.
+  Rep-local weeks (time-zone aware) would need per-member window bounds; the
+  simplification is acceptable until the calendar task lands per-slot
+  availability, and is documented here rather than hidden.
+- **`existing_owner` falls back to round robin** when the CRM owner is absent,
+  inactive, or at capacity — owner-wins must never drop a lead. Owner
+  resolution itself activates with the HubSpot task (the seam already accepts
+  an owner user id).
+- **No eligible rep ⇒ fallback queue, recorded honestly**: the decision outcome
+  carries the reason ("capacity or availability"), so the routing log shows why
+  a lead was queued instead of routed.
+- **Calendar free/busy is folded into `available`** for now (membership active
+  flag); the Google task narrows it with real availability rather than
+  changing the strategy interface.
+
+## 2026-10-06 — Google Calendar OAuth + availability (task 5)
+
+- **Slot math is pure in `packages/core` on `Intl`** (zero new dependencies):
+  Node and browsers ship the full IANA time-zone database, so wall-time →
+  UTC conversion needs no date-fn-tz/moment. A two-pass conversion lands on
+  the offset actually in effect, which makes DST transitions correct;
+  ambiguous fall-back times resolve to their first occurrence, and the
+  (nonexistent) spring-forward gap times never occur in working hours, so the
+  engine never relies on their arbitrary resolution.
+- **`packages/calendar-google` is fetch-only** (zero new dependencies): the
+  OAuth endpoints are two URLs and form posts; an SDK would add surface, not
+  capability. Every call takes a ~2s timeout (per the routing brief) via
+  `AbortSignal.timeout` and raises typed errors (`GoogleAuthError`,
+  `GoogleApiError`) instead of hanging.
+- **Availability degrades, never fails**: if Google is unreachable or errors,
+  `GET /api/availability/<rep>` still returns slots computed from local
+  confirmed bookings and flags `source: "local"` with a `calendarError`. The
+  email-a-plain-booking-link fallback for booking creation itself lands with
+  task 7.
+- **Tokens are encrypted at rest**: `integrations.token_cipher` is
+  AES-256-GCM (`base64(iv | tag | ciphertext)`) with `TOKEN_ENCRYPTION_KEY`
+  (32-byte hex). Tokens are decrypted only in memory, refreshed lazily 60s
+  before expiry, and the stored refresh token is carried forward when Google
+  omits it in refresh responses. An unreadable blob (rotated/lost key) counts
+  as not connected — the admin reconnects and overwrites the row.
+- **Google scopes at connect**: `calendar.freebusy` (availability now) and
+  `calendar.events` (event + Meet-link creation in task 7) so one consent
+  covers the whole v0.1 calendar scope.
+- **`ADMIN_SETUP_KEY` guards the OAuth handshake** as an interim until
+  Auth.js (task 13): only a key holder can start the connect that stores an
+  org integration. CSRF state round-trips via a signed httpOnly cookie
+  compared in the callback.
+- **Single-org mode via `ORG_SLUG`** (default: the seed org `acme`) — v0.1 is
+  self-hosted single-org; the multi-tenant question is a declared non-goal.
+- **`WorkingHours` moved to `@switchboard/core`** (type-only change in the DB
+  package): the slot engine, the DB schema, and future booking flows must
+  agree on one shape, mirroring the `FormField` decision from task 4.

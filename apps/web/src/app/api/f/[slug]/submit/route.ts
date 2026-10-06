@@ -13,9 +13,13 @@ export async function POST(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ errors: { _form: "Expected a JSON body." } }, { status: 400 });
+    return NextResponse.json(
+      { errors: { _form: "Expected a JSON body." } },
+      { status: 400 },
+    );
   }
-  const payload = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const payload =
+    body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   const idempotencyKey =
     typeof payload.idempotencyKey === "string" && payload.idempotencyKey.length <= 128
       ? payload.idempotencyKey
@@ -30,13 +34,18 @@ export async function POST(
       return NextResponse.json({ errors: result.errors }, { status: 400 });
     case "created":
       return NextResponse.json(
-        { submissionId: result.submissionId, decision: result.decision },
+        {
+          submissionId: result.submissionId,
+          decision: result.decision,
+          repName: result.repName,
+        },
         { status: 201 },
       );
     case "duplicate":
       return NextResponse.json({
         submissionId: result.submissionId,
         decision: result.decision,
+        repName: result.repName,
         duplicate: true,
       });
   }
