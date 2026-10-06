@@ -1,0 +1,195 @@
+/* Hosted form page — tokens only, per docs/design.md. */
+
+.card {
+  width: 100%;
+  max-width: 34rem;
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-lg);
+  padding: var(--sb-space-8);
+}
+
+.cardTitle {
+  font-size: var(--sb-text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.cardBody {
+  margin-top: var(--sb-space-2);
+  color: var(--sb-text-muted);
+}
+
+.reference {
+  margin-top: var(--sb-space-3);
+  font-family: var(--sb-font-mono);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-text-muted);
+}
+
+.org {
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+  color: var(--sb-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.title {
+  font-size: var(--sb-text-3xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: var(--sb-space-1) 0 var(--sb-space-6);
+}
+
+.alert {
+  border: 1px solid var(--sb-danger);
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  margin-bottom: var(--sb-space-4);
+  color: var(--sb-danger);
+  font-size: var(--sb-text-sm);
+}
+
+.field {
+  margin-bottom: var(--sb-space-4);
+}
+
+.label {
+  display: block;
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+  margin-bottom: var(--sb-space-1);
+}
+
+.input {
+  width: 100%;
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-sm);
+  background: var(--sb-surface);
+  color: var(--sb-text);
+  font: inherit;
+  transition: border-color var(--sb-duration-fast) var(--sb-ease-out);
+}
+
+.input:hover {
+  border-color: var(--sb-gray-400);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 1px;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--sb-danger);
+}
+
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sb-space-2);
+  font-size: var(--sb-text-sm);
+  cursor: pointer;
+}
+
+.consent input {
+  margin-top: var(--sb-space-1);
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--sb-accent);
+}
+
+.consent:focus-within {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 2px;
+  border-radius: var(--sb-radius-sm);
+}
+
+.help {
+  margin-top: var(--sb-space-1);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-text-muted);
+}
+
+.error {
+  margin-top: var(--sb-space-1);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-danger);
+}
+
+.button {
+  width: 100%;
+  margin-top: var(--sb-space-2);
+  padding: var(--sb-space-3) var(--sb-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-accent-strong);
+  color: var(--sb-text-on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sb-duration-base) var(--sb-ease-out);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--sb-accent);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--sb-text);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.delete {
+  margin-top: var(--sb-space-6);
+  padding-top: var(--sb-space-4);
+  border-top: 1px solid var(--sb-border);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-text-muted);
+}
+
+.delete summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.delete summary:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 2px;
+}
+
+.deleteRow {
+  display: flex;
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-2);
+}
+
+.deleteButton {
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-text);
+  font: inherit;
+  font-size: var(--sb-text-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--sb-duration-fast) var(--sb-ease-out);
+}
+
+.deleteButton:hover:not(:disabled) {
+  border-color: var(--sb-danger);
+  color: var(--sb-danger);
+}
+
+.deleteButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

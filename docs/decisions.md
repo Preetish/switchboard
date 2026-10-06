@@ -56,3 +56,38 @@ committed normally now.
 - **Strategies stay out of the engine**: `route: { team, strategy }` returns
   the declared action; resolving round-robin/weights/capacity against roster
   and availability lands with task 6 on top of this output.
+
+## 2026-10-06 — Form schema + hosted form page (task 4)
+
+- **Form field type lives in `packages/core`** (not the DB package): the
+  rules engine, the DB schema, and the hosted page must agree on one shape;
+  `@switchboard/db` imports it type-only.
+- **`consent` is a field type**, not a separate table column: forms collect
+  personal data, so the brief's consent requirement is part of the definition
+  a form author controls. Validators enforce that consent fields are always
+  `required`.
+- **`forms.slug` is globally unique** (new migration `0001`): the slug is the
+  public key of a hosted page and an embed snippet, so `/f/<slug>` must be
+  unambiguous; the org-scoped unique index stays for fast per-org lookups.
+- **Submission payload validation rejects unknown fields** rather than
+  silently dropping them — silent drops would hide misconfigured embeds; the
+  rules engine also never sees data the form does not declare.
+- **Duplicate submission handling**: `onConflictDoNothing` + re-select keyed
+  on `(form_id, idempotency_key)` returns the original decision, so retries
+  are read-only. Calls without an idempotency key are not deduped — the
+  embed and hosted page always send one; the hosted page reuses the key for
+  in-page retries.
+- **Broken stored rule sets fail safe**: if `rule_sets.rules` no longer
+  validates, the submission still records with the empty rule set (fallback
+  queue) — a bad rule deploy never drops a lead.
+- **`draftOutcome` in core, `finalizeOutcome` in web**: the engine stays
+  I/O-free; the web app attaches `teamId`/`userId` from the database. An
+  unmatched team falls back to the queue; an unmatched rep target is recorded
+  as pending (owner mapping arrives with HubSpot).
+- **GDPR deletion endpoint** (`POST /api/f/<slug>/delete`): deletes
+  `submissions` by form + email; `routing_decisions` (which contain the
+  inputs) cascade. A "Delete your data" section on the hosted page wires it
+  to the lead directly.
+- **Seed script is a plain `.mjs`** with raw SQL (`npm run db:seed`): no new
+  TS tooling dependency, idempotent upserts, uses the example rule file so
+  demo data and docs stay in sync.

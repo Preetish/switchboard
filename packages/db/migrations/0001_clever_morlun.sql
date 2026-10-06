@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "forms_slug_key_uq" ON "forms" USING btree ("slug");

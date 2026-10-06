@@ -11,6 +11,9 @@ import {
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import type { FormField } from "@switchboard/core";
+
+export type { FormField };
 
 /** Rep working hours; times are local to the rep's timezone. */
 export type WorkingHours = {
@@ -19,14 +22,6 @@ export type WorkingHours = {
   /** Minutes since midnight, local time. */
   startMinute: number;
   endMinute: number;
-};
-
-export type FormField = {
-  key: string;
-  label: string;
-  type: "text" | "email" | "select" | "number" | "textarea";
-  required: boolean;
-  options?: string[];
 };
 
 export type DecisionOutcome = {
@@ -124,7 +119,12 @@ export const forms = pgTable(
     }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("forms_org_slug_uq").on(t.orgId, t.slug)],
+  // Slug is the public key of a hosted/embedded form (`/f/:slug`), so it is
+  // globally unique; the org-scoped index keeps per-org lookups fast.
+  (t) => [
+    uniqueIndex("forms_slug_key_uq").on(t.slug),
+    uniqueIndex("forms_org_slug_uq").on(t.orgId, t.slug),
+  ],
 );
 
 export const submissions = pgTable(

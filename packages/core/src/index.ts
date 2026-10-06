@@ -1,4 +1,11 @@
 export { domainFromEmail } from "./domain-from-email.js";
+export type { FormField, FormFieldType } from "./forms/types.js";
+export {
+  MAX_FIELDS,
+  emailFieldKey,
+  validateFormFields,
+  validateSubmission,
+} from "./forms/validate.js";
 export {
   FREE_EMAIL_DOMAINS,
   isFreeEmail,
@@ -13,6 +20,8 @@ export {
   resolvePath,
 } from "./rules/evaluate.js";
 export { loadRuleSetYaml, parseRuleSetYaml } from "./rules/parse-yaml.js";
+export { draftOutcome } from "./rules/outcome.js";
+export type { OutcomeDraft, OutcomeKind } from "./rules/outcome.js";
 export { validateRuleSet } from "./rules/validate.js";
 export type {
   Condition,
