@@ -25,6 +25,30 @@ export function smtpConfigured(): boolean {
   return Boolean(process.env.SMTP_URL);
 }
 
+/** Operational safety net so a slow SMTP server can't hang the request. */
+const SMTP_TIMEOUTS = {
+  connectionTimeout: 10_000,
+  greetingTimeout: 10_000,
+  socketTimeout: 15_000,
+};
+
+/**
+ * nodemailer merges `SMTP_URL` query params OVER the transport options, so a
+ * bad `?connectionTimeout=abc` would silently disable the timeouts above.
+ * Strip them from the URL and pin them in code instead.
+ */
+function smtpUrlWithPinnedTimeouts(url: string): string {
+  try {
+    const parsed = new URL(url);
+    for (const key of Object.keys(SMTP_TIMEOUTS)) {
+      parsed.searchParams.delete(key);
+    }
+    return parsed.toString();
+  } catch {
+    return url; // unparseable: nodemailer reports its own clear error
+  }
+}
+
 const SUBJECT_OPTIONS: Intl.DateTimeFormatOptions = {
   weekday: "short",
   month: "short",
@@ -92,10 +116,8 @@ export async function sendConfirmationEmail(
   }
   try {
     const transport = createTransport({
-      url,
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 15_000,
+      url: smtpUrlWithPinnedTimeouts(url),
+      ...SMTP_TIMEOUTS,
     });
     const message = buildConfirmationEmail(input);
     await transport.sendMail({

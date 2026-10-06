@@ -75,6 +75,27 @@ describe("sendConfirmationEmail", () => {
     expect(mail?.text).toContain("https://meet.google.com/x");
   });
 
+  it("pins the timeouts even when SMTP_URL query params override them", async () => {
+    vi.stubEnv(
+      "SMTP_URL",
+      "smtps://u:p@smtp.gmail.com:465?connectionTimeout=abc&socketTimeout=xyz",
+    );
+    const createTransport = vi.fn((_options: unknown) => ({
+      sendMail: vi.fn(async () => undefined),
+    }));
+    vi.doMock("nodemailer", () => ({ createTransport }));
+    const { sendConfirmationEmail: send } = await import("../src/lib/email.js");
+    await send({ ...base, meetLink: null, fallbackUrl: null });
+    const options = createTransport.mock.calls[0]?.[0] as {
+      url: string;
+      connectionTimeout: number;
+      socketTimeout: number;
+    };
+    expect(options.url).toBe("smtps://u:p@smtp.gmail.com:465");
+    expect(options.connectionTimeout).toBe(10_000);
+    expect(options.socketTimeout).toBe(15_000);
+  });
+
   it("returns false and logs when SMTP fails", async () => {
     vi.stubEnv("SMTP_URL", "smtp://localhost:2525");
     vi.doMock("nodemailer", () => ({
