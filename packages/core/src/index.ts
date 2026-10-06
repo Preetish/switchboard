@@ -1,4 +1,15 @@
 export { domainFromEmail } from "./domain-from-email.js";
+export { DEFAULT_WORKING_HOURS, computeSlots } from "./calendar/slots.js";
+export {
+  addDaysUtc,
+  diffDaysUtc,
+  isValidTimeZone,
+  tzOffsetMs,
+  wallTimeToUtc,
+  zonedParts,
+} from "./calendar/tz.js";
+export type { CalendarDate, ZonedParts } from "./calendar/tz.js";
+export type { BusyInterval, WorkingHours } from "./calendar/types.js";
 export type { FormField, FormFieldType } from "./forms/types.js";
 export {
   MAX_FIELDS,

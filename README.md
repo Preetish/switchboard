@@ -6,10 +6,11 @@ in seconds. Self-hostable.
 
 ## Status
 
-Task 6 of the roadmap (strategies: round robin with weights, weekly capacity,
-existing owner) landed on top of the hosted forms, rules engine, database
-schema, and scaffold. Inline booking calendars, CRM write-back, and the routing
-log UI land in subsequent PRs.
+Task 5 of the roadmap (Google Calendar OAuth, free/busy lookup, slot
+calculation with working hours, time zones, and DST) landed on top of team
+strategies, hosted forms, the rules engine, the database schema, and the
+scaffold. The inline booking UI, CRM write-back, and the routing log UI land
+in subsequent PRs.
 
 ## Hosted forms
 
@@ -88,6 +89,29 @@ counters and availability):
 - If nobody on the team is eligible, the decision honestly records the reason
   and the lead goes to the fallback queue — never dropped silently.
 
+## Calendar & availability
+
+Availability is computed per rep from three inputs: their working hours
+(local to their IANA time zone), confirmed local bookings, and — when
+connected — Google Calendar free/busy:
+
+- **Connect**: `/integrations` starts the OAuth handshake (guarded by
+  `ADMIN_SETUP_KEY` until admin auth lands). Tokens are stored AES-256-GCM
+  encrypted (`TOKEN_ENCRYPTION_KEY`), never in plaintext, and refreshed
+  lazily before expiry. Self-hosters bring their own Google OAuth client
+  (Google requires app verification for calendar scopes on public apps) with
+  redirect URI `<base-url>/api/integrations/google/callback`.
+- **Slots**: `computeSlots()` in `packages/core` is pure — it cuts a rep's
+  working hours into slots in their zone, converts to UTC (DST-correct, half
+  -hour offsets supported), and drops slots overlapping busy intervals or the
+  lead-time window. Adjacent busy intervals do not conflict.
+- **Degradation**: every Google call times out after ~2 seconds. If Google is
+  unreachable or errors, availability falls back to local bookings only and
+  the response flags `source: "local"` with a `calendarError` — the rep is
+  never shown as unavailable because of an outage.
+- **API**: `GET /api/availability/<repUserId>?duration=30&days=14` returns the
+  slots (UTC ISO times) the instant-booking UI (task 9) will render.
+
 ## Quick start
 
 ```bash
@@ -116,7 +140,8 @@ npm run dev            # web app on http://localhost:3000
 ## Layout
 
 - `apps/web` — Next.js app (forms, booking UI, admin)
-- `packages/core` — rules engine, pure functions
+- `packages/core` — rules engine, calendar slot math, pure functions
+- `packages/calendar-google` — Google OAuth + free/busy client (fetch-only)
 - `packages/db` — Drizzle schema + committed SQL migrations
 - `packages/ui` — design tokens (see `docs/design.md`)
 - `docs/decisions.md` — architectural decision log
@@ -139,4 +164,5 @@ every pull request (`.github/workflows/ci.yml`, Node 22).
 ## Configuration
 
 All configuration is via environment variables; see `.env.example`. Never
-commit secrets. Stored OAuth tokens will be encrypted at rest.
+commit secrets. Stored OAuth tokens are encrypted at rest with
+`TOKEN_ENCRYPTION_KEY` (AES-256-GCM).

@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@switchboard/calendar-google": "*",
     "@switchboard/core": "*",
     "@switchboard/ui": "*",
     "next": "^15.1.0",

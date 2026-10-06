@@ -11,18 +11,9 @@ import {
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import type { FormField } from "@switchboard/core";
+import type { FormField, WorkingHours } from "@switchboard/core";
 
-export type { FormField };
-
-/** Rep working hours; times are local to the rep's timezone. */
-export type WorkingHours = {
-  /** 0 = Sunday … 6 = Saturday */
-  days: number[];
-  /** Minutes since midnight, local time. */
-  startMinute: number;
-  endMinute: number;
-};
+export type { FormField, WorkingHours };
 
 export type DecisionOutcome = {
   kind: "route_user" | "route_team" | "self_serve_link" | "fallback_queue";
