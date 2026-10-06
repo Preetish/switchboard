@@ -35,6 +35,7 @@ export default function FormView({
   const [result, setResult] = useState<{
     submissionId: string | null;
     decision: DecisionOutcome | null;
+    repName: string | null;
   } | null>(null);
   // Stable per page load, so retries reuse the same key (idempotent submits).
   const idempotencyKey = useRef<string>(crypto.randomUUID());
@@ -57,6 +58,7 @@ export default function FormView({
       setResult({
         submissionId: body.submissionId ?? null,
         decision: body.decision ?? null,
+        repName: typeof body.repName === "string" ? body.repName : null,
       });
     } catch {
       setErrors({ _form: "Network error. Please try again." });
@@ -70,9 +72,11 @@ export default function FormView({
       <section className={styles.card}>
         <h1 className={styles.cardTitle}>Request received</h1>
         <p className={styles.cardBody}>
-          {result.decision
-            ? CONFIRMATIONS[result.decision.kind]
-            : "Thanks — we received your request."}
+          {result.repName
+            ? `Thanks — your request was routed to ${result.repName}, who will reach out shortly.`
+            : result.decision
+              ? CONFIRMATIONS[result.decision.kind]
+              : "Thanks — we received your request."}
         </p>
         {result.submissionId ? (
           <p className={styles.reference}>

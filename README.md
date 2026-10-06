@@ -6,9 +6,10 @@ in seconds. Self-hostable.
 
 ## Status
 
-Task 4 of the roadmap (form schema + hosted form page) landed on top of the
-rules engine, database schema, and scaffold. Inline booking calendars, CRM
-write-back, and the routing log UI land in subsequent PRs.
+Task 6 of the roadmap (strategies: round robin with weights, weekly capacity,
+existing owner) landed on top of the hosted forms, rules engine, database
+schema, and scaffold. Inline booking calendars, CRM write-back, and the routing
+log UI land in subsequent PRs.
 
 ## Hosted forms
 
@@ -66,6 +67,26 @@ Load a file with `loadRuleSetYaml(text)` (or `validateRuleSet(parsed)` for
 already-parsed JSON), evaluate with `evaluate(ruleSet, inputs)`, and inspect
 `evaluation.trace` — the routing log UI (later task) persists inputs, the
 matched rule, and the outcome.
+
+## Strategies
+
+When a rule routes to a team, the strategy picks the rep (`selectRep` in
+`packages/core`, pure and deterministic — the app supplies each member's load
+counters and availability):
+
+- **`round_robin`** — smooth weighted round robin: the eligible rep with the
+  lowest `assignments / weight` is next, so `weight: 2` gets roughly twice the
+  turns. Assignment counts come from past `routing_decisions` rows.
+- **`existing_owner`** — the CRM owner gets the lead when they are on the team
+  and eligible; otherwise the team falls back to round robin so a missing or
+  busy owner never drops a lead. (Owner resolution activates with the HubSpot
+  task.)
+- **Eligibility** — a rep is skipped when their membership is inactive (OOO or
+  offboarding) or when `weekly_capacity` is set and their confirmed bookings in
+  the current week (Monday 00:00 UTC) have reached it; `weekly_capacity: 0`
+  means unlimited.
+- If nobody on the team is eligible, the decision honestly records the reason
+  and the lead goes to the fallback queue — never dropped silently.
 
 ## Quick start
 

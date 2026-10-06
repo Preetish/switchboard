@@ -8,17 +8,23 @@ import {
 } from "@switchboard/core";
 import type { Database, DecisionOutcome, RoutingDecision } from "@switchboard/db";
 import { and, desc, eq } from "drizzle-orm";
-import { forms, routingDecisions, submissions, ruleSets } from "@switchboard/db";
+import { forms, routingDecisions, submissions, ruleSets, users } from "@switchboard/db";
 import { finalizeOutcome } from "./routing";
 
 export type SubmitOutcome =
   | { status: "not_found" }
   | { status: "invalid"; errors: Record<string, string> }
-  | { status: "created"; submissionId: string; decision: DecisionOutcome }
+  | {
+      status: "created";
+      submissionId: string;
+      decision: DecisionOutcome;
+      repName: string | null;
+    }
   | {
       status: "duplicate";
       submissionId: string | null;
       decision: DecisionOutcome | null;
+      repName: string | null;
     };
 
 /** Empty rule set so a broken stored rule file can never drop a lead. */
@@ -78,6 +84,9 @@ export async function handleSubmission(
       status: "duplicate",
       submissionId: existing?.id ?? null,
       decision: decision?.outcome ?? null,
+      repName: decision?.outcome.userId
+        ? await repName(db, decision.outcome.userId)
+        : null,
     };
   }
 
@@ -110,7 +119,17 @@ export async function handleSubmission(
     status: "created",
     submissionId: inserted.id,
     decision: insertedDecision[0]?.outcome ?? outcome,
+    repName: outcome.userId ? await repName(db, outcome.userId) : null,
   };
+}
+
+async function repName(db: Database, userId: string): Promise<string | null> {
+  const [user] = await db
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return user?.name ?? null;
 }
 
 async function latestDecision(
