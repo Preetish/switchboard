@@ -9,6 +9,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import { bookings, orgs, submissions, users, type Database } from "@switchboard/db";
 import { getValidAccessToken } from "./integrations";
+import { logCrmMeeting } from "./crm";
 import { releaseExpiredHolds } from "./holds";
 import { sendConfirmationEmail } from "./email";
 
@@ -279,6 +280,19 @@ export async function createBooking(
         fallbackUrl: calendar.meetLink ? null : fallbackBookingUrl(),
       })
     : false;
+
+  // Write the meeting back to HubSpot (idempotent via bookings.crm_meeting_id);
+  // best-effort, like the email — a CRM failure never unbooks the meeting.
+  await logCrmMeeting(db, rep.orgId, {
+    id: row.id,
+    crmMeetingId: row.crmMeetingId,
+    startAt: input.startAt,
+    endAt,
+    leadEmail,
+    leadName,
+    repName: rep.name,
+    meetLink: calendar.meetLink,
+  });
 
   return {
     status: "created",

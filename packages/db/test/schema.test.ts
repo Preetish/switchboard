@@ -13,6 +13,10 @@ const migration0002 = readFileSync(
   `${migrationDir}/0002_busy_nightmare.sql`,
   "utf8",
 );
+const migration0003 = readFileSync(
+  `${migrationDir}/0003_simple_celestials.sql`,
+  "utf8",
+);
 
 describe("generated migration", () => {
   it("creates every v0.1 table", () => {
@@ -41,6 +45,12 @@ describe("generated migration", () => {
   it("makes bookings idempotent per key", () => {
     expect(migration0002).toContain(
       'CREATE UNIQUE INDEX "bookings_idempotency_uq" ON "bookings" USING btree ("idempotency_key")',
+    );
+  });
+
+  it("tracks the HubSpot meeting write-back on the booking", () => {
+    expect(migration0003).toContain(
+      'ALTER TABLE "bookings" ADD COLUMN "crm_meeting_id" text',
     );
   });
 
@@ -83,6 +93,7 @@ describe("schema definition", () => {
       "status",
       "calendarEventId",
       "meetLink",
+      "crmMeetingId",
       "idempotencyKey",
       "createdAt",
     ]);

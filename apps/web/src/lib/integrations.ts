@@ -34,6 +34,9 @@ export const DEFAULT_ORG_SLUG = process.env.ORG_SLUG ?? "acme";
 /** OAuth state cookie: random value compared in the callback (CSRF guard). */
 export const OAUTH_STATE_COOKIE = "sb_oauth_state";
 
+/** Provider-scoped so both OAuth flows can be in flight without colliding. */
+export const OAUTH_STATE_COOKIE_HUBSPOT = "sb_oauth_state_hubspot";
+
 export function appBaseUrl(): string {
   return (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 }

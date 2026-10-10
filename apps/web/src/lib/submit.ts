@@ -1,4 +1,5 @@
 import {
+  crmPathsIn,
   draftOutcome,
   emailFieldKey,
   evaluate,
@@ -9,6 +10,7 @@ import {
 import type { Database, DecisionOutcome, RoutingDecision } from "@switchboard/db";
 import { and, desc, eq } from "drizzle-orm";
 import { forms, routingDecisions, submissions, ruleSets, users } from "@switchboard/db";
+import { fetchCrmContext, upsertCrmContact, type CrmContext } from "./crm";
 import { finalizeOutcome } from "./routing";
 
 export type SubmitOutcome =
@@ -50,10 +52,8 @@ export async function handleSubmission(
 
   const emailKey = emailFieldKey(form.fields);
   const email = emailKey ? (validated.data[emailKey] ?? null) : null;
-  // Rules read `form.*` paths; `crm.*` lookups join with the HubSpot task.
-  const inputs: Record<string, unknown> = { form: validated.data, crm: {} };
 
-  const [inserted] = await db
+  const inserted = await db
     .insert(submissions)
     .values({
       orgId: form.orgId,
@@ -65,7 +65,7 @@ export async function handleSubmission(
     .onConflictDoNothing({ target: [submissions.formId, submissions.idempotencyKey] })
     .returning({ id: submissions.id });
 
-  if (!inserted) {
+  if (!inserted[0]) {
     // Only reachable with an idempotency key: NULL keys are distinct under the
     // unique index, so keyless inserts always succeed (and are never deduped).
     const [existing] = await db
@@ -95,19 +95,32 @@ export async function handleSubmission(
   const parsed = row.ruleSet
     ? validateRuleSet(row.ruleSet.rules)
     : { ok: true as const, ruleSet: EMPTY_RULE_SET };
-  const evaluation = evaluate(parsed.ok ? parsed.ruleSet : EMPTY_RULE_SET, inputs);
+  const ruleSet = parsed.ok ? parsed.ruleSet : EMPTY_RULE_SET;
+
+  // CRM lookups happen before evaluation and only for the paths the rule set
+  // actually reads; a HubSpot outage or slow portal yields no CRM data and the
+  // non-CRM rules still route the lead (never dropped, failure logged).
+  const needsCrm = crmPathsIn(ruleSet).length > 0;
+  const crm: CrmContext | null =
+    needsCrm && email ? await fetchCrmContext(db, form.orgId, email) : null;
+  const inputs: Record<string, unknown> = { form: validated.data, crm: crm ?? {} };
+
+  const evaluation = evaluate(ruleSet, inputs);
   const latencyMs = Math.max(1, Math.round(performance.now() - startedAt));
+  const owner = crm?.contact.owner ?? null;
   const outcome = await finalizeOutcome(
     db,
     form.orgId,
     draftOutcome(evaluation.action, inputs),
+    { ownerEmail: owner },
   );
 
+  const submissionId = inserted[0]!.id;
   const insertedDecision = await db
     .insert(routingDecisions)
     .values({
       orgId: form.orgId,
-      submissionId: inserted.id,
+      submissionId,
       inputs,
       matchedRule: evaluation.matchedRule,
       outcome,
@@ -115,9 +128,14 @@ export async function handleSubmission(
     })
     .returning({ outcome: routingDecisions.outcome });
 
+  // Write the lead back to HubSpot so the CRM always has the contact. The
+  // routing decision is already durable, so a CRM failure cannot lose it;
+  // upsertCrmContact is idempotent (per submission) and logs its own errors.
+  await upsertCrmContact(db, form.orgId, { id: submissionId, email, data: validated.data });
+
   return {
     status: "created",
-    submissionId: inserted.id,
+    submissionId,
     decision: insertedDecision[0]?.outcome ?? outcome,
     repName: outcome.userId ? await repName(db, outcome.userId) : null,
   };

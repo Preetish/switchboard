@@ -191,6 +191,12 @@ export const bookings = pgTable(
       .default("confirmed"),
     calendarEventId: text("calendar_event_id"),
     meetLink: text("meet_link"),
+    /**
+     * HubSpot meeting id for the write-back ("logged meeting"); when set the
+     * meeting is already on the contact's timeline and the log is skipped,
+     * keeping CRM write-back idempotent.
+     */
+    crmMeetingId: text("crm_meeting_id"),
     /** Client key so booking retries return the original instead of duplicating. */
     idempotencyKey: text("idempotency_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

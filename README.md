@@ -29,8 +29,8 @@ they are the public key of a form link or embed):
 - `POST /api/f/<slug>/delete` is the GDPR data-deletion endpoint: it erases
   every submission (and, by cascade, every routing decision) for the given
   email. The hosted page includes a "Delete your data" section wired to it.
-- Rules read submitted values as `form.<key>` paths (`crm.*` lookups arrive
-  with the HubSpot task).
+- Rules read submitted values as `form.<key>` paths; `crm.<path>` conditions
+  resolve from HubSpot when connected (see "HubSpot CRM" below).
 
 ## Rules engine
 
@@ -80,8 +80,8 @@ counters and availability):
   turns. Assignment counts come from past `routing_decisions` rows.
 - **`existing_owner`** — the CRM owner gets the lead when they are on the team
   and eligible; otherwise the team falls back to round robin so a missing or
-  busy owner never drops a lead. (Owner resolution activates with the HubSpot
-  task.)
+  busy owner never drops a lead. The owner comes from the HubSpot lookup (see
+  "HubSpot CRM" below); without HubSpot data it behaves like round robin.
 - **Eligibility** — a rep is skipped when their membership is inactive (OOO or
   offboarding) or when `weekly_capacity` is set and their confirmed bookings in
   the current week (Monday 00:00 UTC) have reached it; `weekly_capacity: 0`
@@ -170,6 +170,39 @@ The lead books before leaving the page; no calendar embed, no email tag.
   booking instead of creating a second one; keyless retries for the same slot
   are deduped by the unique index itself.
 
+## HubSpot CRM
+
+Connecting HubSpot (`/integrations`, same admin-key guard as Google) activates
+the CRM-aware half of the routing brief:
+
+- **Owner lookup before routing**: when a rule set reads `crm.*` paths (e.g.
+  `when: { crm.contact.owner: exists }`), the submission's email is looked up
+  in HubSpot before evaluation. The owner's email lands at
+  `crm.contact.owner`, so `route: { to: crm.contact.owner }` sends the lead to
+  the matching Switchboard rep, and a `route: { team: …, strategy:
+  existing_owner }` route wins with that owner when they are on the team and
+  eligible (round robin otherwise).
+- **Rep matching is by email**: the rep's Switchboard email must equal their
+  HubSpot owner email. An owner without a matching rep degrades to the
+  documented fallback, never an error.
+- **Contact upsert**: every submission with an email is upserted into HubSpot
+  idempotently (per-submission idempotency key), so retries never create
+  duplicate CRM records.
+- **Logged meeting**: a confirmed booking is logged on the contact's timeline
+  as a HubSpot meeting (associated to the contact), with the Meet link when
+  Google created one. Idempotent via `bookings.crm_meeting_id` — already
+  logged bookings skip the API. Best-effort like the confirmation email: a
+  HubSpot failure is logged and the booking stands.
+- **Degradation**: lookups and write-backs time out after ~2 seconds and are
+  wrapped in an overall budget (~3s) so form submits stay fast. A HubSpot
+  outage simply removes the `crm.*` inputs — non-CRM rules still route, and
+  the failure is logged.
+- **Setup**: self-hosters create their own HubSpot app (scopes
+  `crm.objects.contacts.read`, `crm.objects.contacts.write`,
+  `crm.objects.owners.read`) with redirect URI
+  `<base-url>/api/integrations/hubspot/callback`, then set `HUBSPOT_CLIENT_ID`
+  and `HUBSPOT_CLIENT_SECRET`.
+
 ## Quick start
 
 ```bash
@@ -200,6 +233,7 @@ npm run dev            # web app on http://localhost:3000
 - `apps/web` — Next.js app (forms, booking UI, admin)
 - `packages/core` — rules engine, calendar slot math, pure functions
 - `packages/calendar-google` — Google OAuth + free/busy + event creation (fetch-only)
+- `packages/crm-hubspot` — HubSpot OAuth + contact/owner/meeting write-back (fetch-only)
 - `packages/db` — Drizzle schema + committed SQL migrations
 - `packages/ui` — design tokens (see `docs/design.md`)
 - `docs/decisions.md` — architectural decision log

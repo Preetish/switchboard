@@ -221,3 +221,47 @@ committed normally now.
   message with a retry button (the routing outcome is already durable);
   an empty calendar says so and promises email follow-up; a Google outage
   renders local-only slots with a note.
+
+## HubSpot OAuth + CRM-aware routing + write-back (task 8)
+
+- **Mirror of `calendar-google`, no SDK**: `packages/crm-hubspot` speaks
+  HubSpot OAuth (authorization code + refresh) and the CRM v3 API over plain
+  `fetch` with ~2s timeouts, exactly like the Google package. The HubSpot SDK
+  would add dependency surface without adding capability.
+- **Owner lookup feeds the existing seam**: the rules engine stays pure —
+  `crmPathsIn()` already declared which `crm.*` paths a rule set reads, so the
+  web app prefetches exactly those (only when the lead has an email) before
+  evaluation. The owner's *email* is stored at `crm.contact.owner`, which
+  makes both rule shapes work with no engine changes: a
+  `route: { to: crm.contact.owner }` resolves to an email that
+  `finalizeOutcome` matches against local reps, and
+  `strategy: existing_owner` passes the owner's user id into `selectRep`
+  (already implemented and unit-tested in task 6).
+- **Rep matching is by email**: a HubSpot owner routes to the Switchboard rep
+  with the same email. This is the simplest mapping that survives HubSpot's
+  owner-id churn (owner ids differ between portals/apps) and is documented in
+  the README. An owner without a matching rep degrades to the existing
+  fallbacks (pending rep matching / round robin), never an error.
+- **Write-backs are best-effort and idempotent**: the contact upsert uses
+  HubSpot's `POST /crm/v3/objects/contacts/batch/upsert` endpoint keyed on
+  `idProperty=email` (verified against the live API — the
+  `idempotent-upsert` route does not exist and returns 405), so a retry
+  updates the same contact instead of creating a duplicate CRM record. The
+  logged meeting is created once and its HubSpot id stored on
+  `bookings.crm_meeting_id` (migration `0003`); repeat booking calls skip the
+  API when it is set. Both fire after the durable state (routing decision /
+  confirmed booking) is committed, so a HubSpot failure is logged and
+  degrades — it never blocks routing or unbooks a meeting, mirroring the
+  confirmation-email policy.
+- **Only known form fields map to HubSpot properties**: `name` splits into
+  `firstname`/`lastname`, `company` maps 1:1. Sending arbitrary org-defined
+  form keys would 400 on unknown HubSpot properties, so the whitelist is
+  deliberate; the full submission stays in `routing_decisions.inputs`.
+- **Overall CRM budget (~3s)**: a context lookup can span two calls (contact +
+  owner), so the prefetch races a deadline; a late result is discarded and
+  logged, keeping form submits fast even when HubSpot is slow. Per-call
+  timeouts remain ~2s each.
+- **Meetings carry the owner id when known** (`hubspot_owner_id` from the
+  contact), so the meeting lands on the right rep's calendar/timeline in
+  HubSpot; association uses the HubSpot-defined "Meeting → contact" type
+  (id 199).

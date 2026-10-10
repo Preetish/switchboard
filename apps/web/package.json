@@ -11,6 +11,7 @@
   "dependencies": {
     "@switchboard/calendar-google": "*",
     "@switchboard/core": "*",
+    "@switchboard/crm-hubspot": "*",
     "@switchboard/ui": "*",
     "next": "^15.1.0",
     "nodemailer": "^10.0.15",
