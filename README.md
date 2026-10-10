@@ -110,7 +110,27 @@ connected — Google Calendar free/busy:
   the response flags `source: "local"` with a `calendarError` — the rep is
   never shown as unavailable because of an outage.
 - **API**: `GET /api/availability/<repUserId>?duration=30&days=14` returns the
-  slots (UTC ISO times) the instant-booking UI (task 9) will render.
+  slots (UTC ISO times) that the instant-booking UI renders.
+
+## Instant booking
+
+The headline flow lives on the hosted form page (`/f/<slug>`): the moment a
+submission is routed to a rep, their calendar renders inline on the same
+page — day tabs in the lead's time zone, 30-minute slots, a one-tap confirm.
+The lead books before leaving the page; no calendar embed, no email tag.
+
+- Slots are grouped into the **lead's local days** (`groupSlotsByDay` in
+  `packages/core`, DST-correct) and labeled in the lead's zone; the rep's zone
+  is shown alongside for honesty.
+- Confirming calls `POST /api/bookings` with the submission reference, so the
+  booking, the routing decision, and the confirmation email all tie back to
+  the same lead. A slot that was taken while the lead was choosing returns a
+  clear error and the calendar refreshes.
+- When routing has no concrete rep (pending owner match, self-serve link,
+  fallback queue), the page shows the routed confirmation instead — the flow
+  degrades, never lies.
+- Failed calendar loads and empty calendars are honest states with a retry,
+  not dead ends.
 
 ## Bookings
 

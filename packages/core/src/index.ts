@@ -1,5 +1,7 @@
 export { domainFromEmail } from "./domain-from-email.js";
 export { DEFAULT_WORKING_HOURS, computeSlots } from "./calendar/slots.js";
+export { groupSlotsByDay } from "./calendar/group-slots.js";
+export type { SlotGroup, SlotInterval } from "./calendar/group-slots.js";
 export {
   addDaysUtc,
   diffDaysUtc,

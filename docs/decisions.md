@@ -198,3 +198,26 @@ committed normally now.
 - **Slot window validation** on the server: duration clamped to 15–240
   minutes, slot start in the future, `endAt = startAt + duration` — the API
   trusts nothing the client computed.
+
+## Instant-booking inline UI (task 9)
+
+- **Slots render in the lead's time zone**: the lead chooses a time, so their
+  local calendar view is primary; `groupSlotsByDay` (pure, in core) buckets
+  the rep's UTC slots into the lead's local days, DST-correct. The rep's zone
+  is displayed alongside, never hidden — a 9:00 booking is the *rep's* 9:00
+  nowhere; the label states which zone is which.
+- **30-minute meetings, 14-day window, fixed for now**: the availability API
+  already parameterizes both, but the form UI pins them; surfacing a picker is
+  deferred until a real deployment shows the demand.
+- **Two-step confirm (slot, then confirm bar)**: one tap selects, a second
+  books. Prevents fat-finger bookings on mobile and gives the lead the exact
+  range before committing.
+- **Booking idempotency key is per page load**: a retried confirm (double
+  click, flaky network) returns the original booking instead of erroring.
+- **`409 slot_taken` refreshes the calendar**: the slot list is a snapshot;
+  after a race the UI reloads availability and clears the selection rather
+  than letting the lead keep pressing a dead slot.
+- **Degradation is explicit**: load failure keeps the "routed to <rep>"
+  message with a retry button (the routing outcome is already durable);
+  an empty calendar says so and promises email follow-up; a Google outage
+  renders local-only slots with a note.
