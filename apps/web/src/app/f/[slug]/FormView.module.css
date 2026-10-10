@@ -193,3 +193,118 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Inline booking calendar (task 9). */
+
+.dayTabs {
+  display: flex;
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-4);
+  overflow-x: auto;
+  padding-bottom: var(--sb-space-1);
+}
+
+.dayTab {
+  flex-shrink: 0;
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-text);
+  font: inherit;
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--sb-duration-fast) var(--sb-ease-out),
+    background var(--sb-duration-fast) var(--sb-ease-out);
+}
+
+.dayTab:hover {
+  border-color: var(--sb-gray-400);
+}
+
+.dayTab:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 2px;
+}
+
+.dayTabActive,
+.dayTabActive:hover {
+  border-color: var(--sb-accent-strong);
+  background: var(--sb-accent-soft);
+}
+
+.slotGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-3);
+}
+
+.slot {
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-text);
+  font: inherit;
+  font-size: var(--sb-text-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--sb-duration-fast) var(--sb-ease-out),
+    background var(--sb-duration-fast) var(--sb-ease-out);
+}
+
+.slot:hover {
+  border-color: var(--sb-accent);
+}
+
+.slot:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 2px;
+}
+
+.slotActive,
+.slotActive:hover {
+  border-color: var(--sb-accent-strong);
+  background: var(--sb-accent-soft);
+  font-weight: 600;
+}
+
+.confirmBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--sb-space-4);
+  padding: var(--sb-space-3) var(--sb-space-4);
+  border: 1px solid var(--sb-accent-strong);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-accent-soft);
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+}
+
+.confirmBar .button {
+  width: auto;
+  margin-top: 0;
+  font-size: var(--sb-text-sm);
+}
+
+.meetLink {
+  margin-top: var(--sb-space-3);
+  font-size: var(--sb-text-base);
+  font-weight: 600;
+}
+
+.meetLink a {
+  color: var(--sb-accent-strong);
+}
+
+.meetLink a:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 2px;
+}

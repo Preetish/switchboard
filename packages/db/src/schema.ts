@@ -182,15 +182,24 @@ export const bookings = pgTable(
     }),
     startAt: timestamp("start_at", { withTimezone: true }).notNull(),
     endAt: timestamp("end_at", { withTimezone: true }).notNull(),
-    status: text("status", { enum: ["confirmed", "cancelled"] })
+    /**
+     * `hold` claims a slot while the calendar event is created (released by
+     * lazy cleanup after ~5 minutes, e.g. when the process dies mid-flow).
+     */
+    status: text("status", { enum: ["hold", "confirmed", "cancelled"] })
       .notNull()
       .default("confirmed"),
     calendarEventId: text("calendar_event_id"),
     meetLink: text("meet_link"),
+    /** Client key so booking retries return the original instead of duplicating. */
+    idempotencyKey: text("idempotency_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   // Double-booking guard: a rep can hold exactly one booking per start time.
-  (t) => [uniqueIndex("bookings_user_start_uq").on(t.userId, t.startAt)],
+  (t) => [
+    uniqueIndex("bookings_user_start_uq").on(t.userId, t.startAt),
+    uniqueIndex("bookings_idempotency_uq").on(t.idempotencyKey),
+  ],
 );
 
 export const integrations = pgTable(
