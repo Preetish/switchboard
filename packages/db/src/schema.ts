@@ -175,7 +175,10 @@ export const bookings = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     submissionId: uuid("submission_id").references(() => submissions.id, {
-      onDelete: "set null",
+      // A booking is derived from the lead's submission: when the lead
+      // erases their data (GDPR delete), the booking must not outlive it —
+      // it would keep blocking the rep's slot with no lead behind it.
+      onDelete: "cascade",
     }),
     decisionId: uuid("decision_id").references(() => routingDecisions.id, {
       onDelete: "set null",

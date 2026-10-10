@@ -30,10 +30,16 @@ export async function generateMetadata({
 
 export default async function FormPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ embed?: string }>;
 }) {
   const { slug } = await params;
+  const { embed } = await searchParams;
+  // The embed loader (packages/embed) renders this page in an iframe and
+  // relies on the height postMessage; see docs/embed.md.
+  const embedded = embed === "1";
   const db = getDb();
   const [row] = await db
     .select({ form: forms, orgName: orgs.name })
@@ -46,7 +52,7 @@ export default async function FormPage({
   const fields = validateFormFields(row.form.fields);
   if (!fields.ok) {
     return (
-      <main style={mainStyle}>
+      <main style={embedded ? embedMainStyle : mainStyle}>
         <div
           style={{
             background: "var(--sb-surface)",
@@ -69,12 +75,13 @@ export default async function FormPage({
   }
 
   return (
-    <main style={mainStyle}>
+    <main style={embedded ? embedMainStyle : mainStyle}>
       <FormView
         slug={slug}
         orgName={row.orgName}
         formName={row.form.name}
         fields={fields.fields}
+        embedded={embedded}
       />
     </main>
   );
@@ -87,4 +94,15 @@ const mainStyle = {
   alignItems: "center",
   justifyContent: "center",
   padding: "var(--sb-space-6)",
+} as const;
+
+/**
+ * Embed mode: no page chrome of its own — the iframe content height is
+ * reported to the host page, so a min-height or 100vh padding would feed the
+ * resize loop. The card keeps its own surface, border, and max-width.
+ */
+const embedMainStyle = {
+  display: "flex",
+  justifyContent: "center",
+  padding: 0,
 } as const;

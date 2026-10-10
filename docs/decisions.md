@@ -294,3 +294,36 @@ committed normally now.
 - **Access uses the interim `ADMIN_SETUP_KEY` guard** like `/integrations`,
   until admin auth (Auth.js, task 13) replaces it: the log holds lead PII, so
   it must not be public.
+
+## 2026-10-10 — Embed snippet (task 11)
+
+- **iframe loader, not DOM injection**: v0.1 draft injected the whole form UI
+  from a standalone script; minified it was ~14 KB (over the brief's 10 KB
+  budget) and duplicated validation, availability grouping, booking, and the
+  delete flow that the hosted page already owns. Shipped instead is a ~1 KB
+  loader that injects an iframe of `/f/<slug>?embed=1`. One implementation of
+  the flow, zero drift, complete style isolation from host pages; the
+  cross-origin DOM-injection approach would also have required CORS on every
+  lead-facing route (deliberately not shipped).
+- **Embed mode** (`?embed=1`) removes the page's own padding and makes the
+  body transparent, and the page **reports its height via postMessage**
+  (`switchboard:resize`) on a ResizeObserver. The loader accepts a message
+  only when `event.origin` is the deployment origin **and** `event.source` is
+  the widget's own `contentWindow`, clamps the height to 200–4000 px, so a
+  rogue host message cannot shrink or blow up the widget; the payload is a
+  number, never HTML.
+- **The target origin comes from the message's own referrer** when available,
+  falling back to `*` (harmless: the payload is a height and the loader
+  validates origin+source on its side; a strict referrer policy must not
+  break resizing).
+- **Committed minified artifact**: `apps/web/public/embed.js` is built from
+  `packages/embed/embed.js` with esbuild (`npm run build -w
+  @switchboard/embed`). A guard test pins the artifact under 10 KB,
+  byte-identical to a fresh minify, and asserts the safety properties (no
+  eval/innerHTML/document.write, validated postMessage). New devDependency:
+  `esbuild` in `@switchboard/embed` only — the minifier for the committed
+  artifact (it was already present transitively via vite/drizzle-kit; now
+  pinned where it is used).
+- **Multiple widgets per page** are supported; each placeholder mounts its
+  own iframe, guarded by `node.__sbEmbed` against double-mounting when the
+  script is loaded twice.

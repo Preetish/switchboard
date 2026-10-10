@@ -47,11 +47,13 @@ export default function FormView({
   orgName,
   formName,
   fields,
+  embedded = false,
 }: {
   slug: string;
   orgName: string;
   formName: string;
   fields: FormField[];
+  embedded?: boolean;
 }) {
   const [values, setValues] = useState<Values>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,6 +65,42 @@ export default function FormView({
   } | null>(null);
   // Stable per page load, so retries reuse the same key (idempotent submits).
   const idempotencyKey = useRef<string>(crypto.randomUUID());
+
+  // Embed mode (packages/embed): make the iframe blend into the host page and
+  // report the content height so the host can resize with no scrollbars. The
+  // host loader validates the message's origin and source; the payload is
+  // only a height number.
+  useEffect(() => {
+    if (!embedded) return;
+    document.body.style.background = "transparent";
+    document.documentElement.style.background = "transparent";
+    const inIframe = window.parent !== window;
+    let target: string = "*";
+    try {
+      target = new URL(document.referrer).origin;
+    } catch {
+      // Referrer blocked (e.g. a strict referrer policy); the loader still
+      // validates origin and source, and the payload is a height number.
+    }
+    const post = () => {
+      if (!inIframe) return;
+      // The body's own height, not documentElement.scrollHeight: inside an
+      // iframe scrollHeight is floored by the viewport, so the iframe could
+      // grow but never shrink back.
+      window.parent.postMessage(
+        { type: "switchboard:resize", height: document.body.getBoundingClientRect().height },
+        target,
+      );
+    };
+    post();
+    const observer = new ResizeObserver(post);
+    observer.observe(document.body);
+    return () => {
+      observer.disconnect();
+      document.body.style.background = "";
+      document.documentElement.style.background = "";
+    };
+  }, [embedded]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();

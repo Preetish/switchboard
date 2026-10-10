@@ -17,6 +17,10 @@ const migration0003 = readFileSync(
   `${migrationDir}/0003_simple_celestials.sql`,
   "utf8",
 );
+const migration0004 = readFileSync(
+  `${migrationDir}/0004_glamorous_salo.sql`,
+  "utf8",
+);
 
 describe("generated migration", () => {
   it("creates every v0.1 table", () => {
@@ -77,6 +81,15 @@ describe("generated migration", () => {
     // bookings/integrations cascade directly; team_members cascades via team.
     const cascadeFks = migration.match(/_org_id_orgs_id_fk.*ON DELETE cascade/g) ?? [];
     expect(cascadeFks.length).toBe(8);
+  });
+
+  it("deletes a booking when its lead's submission is erased (GDPR)", () => {
+    // The booking is derived from the submission; a set-null orphan would
+    // keep blocking the rep's slot with no lead behind it. Migration 0004
+    // replaces 0000's set-null FK with a cascading one.
+    expect(migration0004).toContain(
+      'ALTER TABLE "bookings" ADD CONSTRAINT "bookings_submission_id_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "public"."submissions"("id") ON DELETE cascade ON UPDATE no action',
+    );
   });
 });
 

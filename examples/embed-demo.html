@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Your site — example host page</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 4rem 1rem;
+        background: #f5f3f0;
+        color: #1f1c19;
+      }
+      main {
+        max-width: 40rem;
+        margin: 0 auto;
+      }
+      h1 {
+        letter-spacing: -0.02em;
+      }
+      p {
+        color: #565049;
+        margin-bottom: 2.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Your product</h1>
+      <p>
+        This is an example host page: everything below the divider is the
+        Switchboard embed running on a different origin than the Switchboard
+        deployment.
+      </p>
+      <hr />
+      <!-- Replace the host and slug with your own; see docs/embed.md -->
+      <div data-switchboard-form="book-a-demo"></div>
+      <script src="http://localhost:3000/embed.js" defer></script>
+    </main>
+  </body>
+</html>

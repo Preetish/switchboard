@@ -1,0 +1,13 @@
+{
+  "name": "@switchboard/embed",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Embed loader: the hosted form page (submit to booked meeting) inlined on any site via iframe.",
+  "scripts": {
+    "build": "esbuild embed.js --minify --target=es2017 --outfile=../../apps/web/public/embed.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5"
+  }
+}

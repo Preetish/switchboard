@@ -8,8 +8,8 @@ in seconds. Self-hostable.
 
 The core loop is complete: hosted forms, the rules engine, CRM-aware routing
 with team strategies, Google Calendar availability, booking creation, the
-inline instant-booking UI, HubSpot write-back, and the searchable routing log
-with CSV export. Remaining for v0.1: the embeddable snippet, speed-to-lead
+inline instant-booking UI, the embeddable snippet, HubSpot write-back, and the
+searchable routing log with CSV export. Remaining for v0.1: speed-to-lead
 alerts, admin auth with abuse protection, and launch hardening (one-command
 setup, self-hosting docs, release).
 
@@ -171,6 +171,27 @@ The lead books before leaving the page; no calendar embed, no email tag.
   booking instead of creating a second one; keyless retries for the same slot
   are deduped by the unique index itself.
 
+## Embed
+
+Put the whole flow — form, routing, and instant booking — on your own site with
+two tags:
+
+```html
+<div data-switchboard-form="book-a-demo"></div>
+<script src="https://your-switchboard.example.com/embed.js" defer></script>
+```
+
+The loader (about 1 KB minified, vanilla JS, no dependencies) finds every
+`data-switchboard-form` placeholder and injects an iframe of the hosted form
+page in embed mode. The hosted page owns the entire flow — validation, the
+inline calendar, the confirmation, the GDPR delete section — so the embed can
+never drift from the product, and its styles cannot collide with your site's.
+The iframe auto-resizes via a validated `postMessage` height protocol.
+
+Full integration guide: `docs/embed.md`. The source lives in
+`packages/embed`; `npm run build -w @switchboard/embed` rebuilds the minified
+`apps/web/public/embed.js` (a test keeps it under 10 KB and in sync).
+
 ## HubSpot CRM
 
 Connecting HubSpot (`/integrations`, same admin-key guard as Google) activates
@@ -252,6 +273,7 @@ npm run dev            # web app on http://localhost:3000
 - `packages/core` — rules engine, calendar slot math, pure functions
 - `packages/calendar-google` — Google OAuth + free/busy + event creation (fetch-only)
 - `packages/crm-hubspot` — HubSpot OAuth + contact/owner/meeting write-back (fetch-only)
+- `packages/embed` — the embed loader source (minified into `apps/web/public/embed.js`)
 - `packages/db` — Drizzle schema + committed SQL migrations
 - `packages/ui` — design tokens (see `docs/design.md`)
 - `docs/decisions.md` — architectural decision log
