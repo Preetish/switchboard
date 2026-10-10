@@ -6,11 +6,12 @@ in seconds. Self-hostable.
 
 ## Status
 
-Task 7 of the roadmap (booking creation: slot hold, Google Calendar event with
-a Meet link, BYO-SMTP confirmation email) landed on top of Google availability,
-team strategies, hosted forms, the rules engine, the database schema, and the
-scaffold. The inline booking UI, CRM write-back, and the routing log UI land in
-subsequent PRs.
+The core loop is complete: hosted forms, the rules engine, CRM-aware routing
+with team strategies, Google Calendar availability, booking creation, the
+inline instant-booking UI, HubSpot write-back, and the searchable routing log
+with CSV export. Remaining for v0.1: the embeddable snippet, speed-to-lead
+alerts, admin auth with abuse protection, and launch hardening (one-command
+setup, self-hosting docs, release).
 
 ## Hosted forms
 
@@ -202,6 +203,23 @@ the CRM-aware half of the routing brief:
   `crm.objects.owners.read`) with redirect URI
   `<base-url>/api/integrations/hubspot/callback`, then set `HUBSPOT_CLIENT_ID`
   and `HUBSPOT_CLIENT_SECRET`.
+
+## Routing log
+
+`/routing-log` (guarded by the admin key until admin auth lands) shows every
+routing decision with its inputs, the matched rule, the outcome, and the
+evaluation latency:
+
+- **Search** filters case-insensitively across the lead's email, the matched
+  rule name, and the outcome reason (`?q=`).
+- **Inputs** expand per row — the full `{ form, crm }` payload the engine
+  evaluated, exactly as stored in `routing_decisions.inputs`.
+- **CSV export** (`GET /api/decisions/export?key=…&q=…`) downloads the current
+  search as flat, machine-readable rows (CRLF, RFC 4180): `decided_at,
+  lead_email, form, matched_rule, outcome, rep, team, latency_ms, reason`. A
+  null matched rule renders as `fallback`, cells that could be read as
+  formulas by spreadsheet apps (`=`, `+`, `-`, `@` prefixes) are neutralized,
+  and the export is capped at 5,000 rows.
 
 ## Quick start
 

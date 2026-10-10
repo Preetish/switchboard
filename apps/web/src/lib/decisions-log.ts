@@ -1,0 +1,216 @@
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import {
+  forms,
+  routingDecisions,
+  submissions,
+  teams,
+  users,
+  type Database,
+  type DecisionOutcome,
+} from "@switchboard/db";
+
+/**
+ * The routing log: read-side helpers for /routing-log and the CSV export.
+ * Every decision already stores its inputs, the matched rule, the outcome,
+ * and its latency (see submit.ts); this module turns those rows into a
+ * searchable page and a flat CSV.
+ */
+
+export type DecisionLogEntry = {
+  id: string;
+  createdAt: Date;
+  leadEmail: string | null;
+  /** Full evaluation inputs ({ form, crm }) as stored on the decision. */
+  inputs: Record<string, unknown>;
+  /** Rule that fired; null when only the fallback matched. */
+  matchedRule: string | null;
+  outcome: DecisionOutcome;
+  latencyMs: number;
+  formSlug: string | null;
+  repName: string | null;
+  teamName: string | null;
+};
+
+export type DecisionLogOptions = {
+  /** Case-insensitive substring match on lead email, rule name, or outcome reason. */
+  q?: string;
+  limit?: number;
+};
+
+/** Guard so a malformed outcome id can never be compared to a uuid column. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Escape LIKE wildcards so a search for "50%" matches "50%", not "50" + anything. */
+export function escapeLikePattern(q: string): string {
+  return q.replace(/[\\%_]/g, "\\$&");
+}
+
+/** The newest decisions for an org, newest first, with rep/team names resolved. */
+export async function fetchDecisionLog(
+  db: Database,
+  orgId: string,
+  options: DecisionLogOptions = {},
+): Promise<DecisionLogEntry[]> {
+  const limit = Math.min(Math.max(1, options.limit ?? 100), 10_000);
+  const search = options.q?.trim()
+    ? `%${escapeLikePattern(options.q.trim())}%`
+    : null;
+
+  const rows = await db
+    .select({
+      id: routingDecisions.id,
+      createdAt: routingDecisions.createdAt,
+      inputs: routingDecisions.inputs,
+      matchedRule: routingDecisions.matchedRule,
+      outcome: routingDecisions.outcome,
+      latencyMs: routingDecisions.latencyMs,
+      leadEmail: submissions.email,
+      formSlug: forms.slug,
+    })
+    .from(routingDecisions)
+    .innerJoin(submissions, eq(routingDecisions.submissionId, submissions.id))
+    .leftJoin(forms, eq(submissions.formId, forms.id))
+    .where(
+      search
+        ? and(
+            eq(routingDecisions.orgId, orgId),
+            or(
+              ilike(submissions.email, search),
+              ilike(routingDecisions.matchedRule, search),
+              sql`${routingDecisions.outcome} ->> 'reason' ilike ${search}`,
+            ),
+          )
+        : eq(routingDecisions.orgId, orgId),
+    )
+    .orderBy(desc(routingDecisions.createdAt))
+    .limit(limit);
+
+  // Names resolve in two small queries for just the ids on this page.
+  const userIds = [
+    ...new Set(
+      rows
+        .map((row) => row.outcome.userId)
+        .filter((id): id is string => !!id && UUID_RE.test(id)),
+    ),
+  ];
+  const teamIds = [
+    ...new Set(
+      rows
+        .map((row) => row.outcome.teamId)
+        .filter((id): id is string => !!id && UUID_RE.test(id)),
+    ),
+  ];
+
+  const [userRows, teamRows] = await Promise.all([
+    userIds.length
+      ? db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, userIds))
+      : Promise.resolve([]),
+    teamIds.length
+      ? db.select({ id: teams.id, name: teams.name }).from(teams).where(inArray(teams.id, teamIds))
+      : Promise.resolve([]),
+  ]);
+  const userNames = new Map(userRows.map((user) => [user.id, user.name] as const));
+  const teamNames = new Map(teamRows.map((team) => [team.id, team.name] as const));
+
+  return rows.map((row) => ({
+    id: row.id,
+    createdAt: row.createdAt,
+    leadEmail: row.leadEmail,
+    inputs: row.inputs,
+    matchedRule: row.matchedRule,
+    outcome: row.outcome,
+    latencyMs: row.latencyMs,
+    formSlug: row.formSlug,
+    repName: row.outcome.userId ? (userNames.get(row.outcome.userId) ?? null) : null,
+    teamName: row.outcome.teamId ? (teamNames.get(row.outcome.teamId) ?? null) : null,
+  }));
+}
+
+export function outcomeLabel(kind: DecisionOutcome["kind"]): string {
+  switch (kind) {
+    case "route_user":
+      return "Routed to rep";
+    case "route_team":
+      return "Routed to team";
+    case "self_serve_link":
+      return "Self-serve link";
+    case "fallback_queue":
+      return "Fallback queue";
+  }
+}
+
+/**
+ * One RFC 4180 cell: quote when the value contains a comma, quote, or
+ * newline, and neutralize formula injection for spreadsheet apps by
+ * prefixing a `'` to string cells that open with = + - or @ (OWASP).
+ */
+export function csvCell(value: string | number): string {
+  let cell = String(value);
+  if (typeof value === "string" && /^[=+@-]/.test(cell)) cell = `'${cell}`;
+  if (/[",\r\n]/.test(cell)) cell = `"${cell.replace(/"/g, '""')}"`;
+  return cell;
+}
+
+export function csvRow(cells: (string | number)[]): string {
+  return cells.map(csvCell).join(",");
+}
+
+export const DECISION_CSV_COLUMNS = [
+  "decided_at",
+  "lead_email",
+  "form",
+  "matched_rule",
+  "outcome",
+  "rep",
+  "team",
+  "latency_ms",
+  "reason",
+] as const;
+
+export type DecisionCsvRow = {
+  decidedAt: Date;
+  leadEmail: string | null;
+  formSlug: string | null;
+  matchedRule: string | null;
+  outcomeKind: DecisionOutcome["kind"];
+  repName: string | null;
+  teamName: string | null;
+  latencyMs: number;
+  reason: string;
+};
+
+export function decisionToCsvRow(entry: DecisionLogEntry): DecisionCsvRow {
+  return {
+    decidedAt: entry.createdAt,
+    leadEmail: entry.leadEmail,
+    formSlug: entry.formSlug,
+    matchedRule: entry.matchedRule,
+    outcomeKind: entry.outcome.kind,
+    repName: entry.repName,
+    teamName: entry.teamName,
+    latencyMs: entry.latencyMs,
+    reason: entry.outcome.reason,
+  };
+}
+
+/** Flat machine-readable CSV (CRLF line endings per RFC 4180). */
+export function decisionRowsToCsv(rows: DecisionCsvRow[]): string {
+  const lines: string[] = [csvRow([...DECISION_CSV_COLUMNS])];
+  for (const row of rows) {
+    lines.push(
+      csvRow([
+        row.decidedAt.toISOString(),
+        row.leadEmail ?? "",
+        row.formSlug ?? "",
+        // A null matched_rule means only the fallback fired.
+        row.matchedRule ?? "fallback",
+        row.outcomeKind,
+        row.repName ?? "",
+        row.teamName ?? "",
+        row.latencyMs,
+        row.reason,
+      ]),
+    );
+  }
+  return lines.join("\r\n") + "\r\n";
+}

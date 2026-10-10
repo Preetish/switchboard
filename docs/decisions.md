@@ -265,3 +265,32 @@ committed normally now.
   contact), so the meeting lands on the right rep's calendar/timeline in
   HubSpot; association uses the HubSpot-defined "Meeting → contact" type
   (id 199).
+
+## Routing log UI + CSV export (task 10)
+
+- **Read-side lives in the web app, not core**: the log is a DB concern
+  (joins, search), while the pure parts (CSV serialization, LIKE escaping,
+  outcome labels) are unit-tested helpers in `apps/web/src/lib/decisions-log.ts`.
+  Core stays I/O-free domain logic.
+- **Search matches email, rule name, and outcome reason** via case-insensitive
+  `ILIKE` over `submissions.email`, `routing_decisions.matched_rule`, and the
+  outcome's `reason` key. LIKE wildcards in the query (`%`, `_`, `\`) are
+  escaped so searching `50%` finds `50%`, not `50` followed by anything.
+- **Rep/team names resolve in two small `inArray` queries** for just the ids on
+  the page instead of joining on `outcome->>'userId'` in SQL: joining on a
+  jsonb key requires a uuid cast, and a malformed id would 500 the page (the
+  same class of bug fixed in task 4's `finalizeOutcome`). Ids are filtered to
+  UUID shape before querying — defensive, since `finalizeOutcome` only ever
+  stores real ids.
+- **CSV is RFC 4180 with CRLF endings**, flat columns (`decided_at, lead_email,
+  form, matched_rule, outcome, rep, team, latency_ms, reason`). A null
+  `matched_rule` renders as `fallback` (only the fallback fired — the column
+  is machine-filterable). Cells opening with `=`, `+`, `-`, `@` are prefixed
+  with `'` per the OWASP CSV-injection guidance, because lead-controlled form
+  data flows into reason cells and admins open this file in spreadsheets.
+- **Export is capped at 5,000 rows** (the page shows the latest 100) so a long
+  log cannot produce an unbounded download; the same `q` search applies to
+  both, and the export link carries it, so "what I see is what I export".
+- **Access uses the interim `ADMIN_SETUP_KEY` guard** like `/integrations`,
+  until admin auth (Auth.js, task 13) replaces it: the log holds lead PII, so
+  it must not be public.

@@ -98,7 +98,10 @@ export default async function IntegrationsPage({
         <h1 style={{ fontSize: "var(--sb-text-2xl)", fontWeight: 600 }}>Integrations</h1>
         {org ? (
           <p style={{ color: "var(--sb-text-muted)", marginTop: "var(--sb-space-1)" }}>
-            Connections for <strong>{org.name}</strong>.
+            Connections for <strong>{org.name}</strong>.{" "}
+            <a href="/routing-log" style={{ color: "var(--sb-info)" }}>
+              Routing log →
+            </a>
           </p>
         ) : (
           <p style={{ color: "var(--sb-text-muted)", marginTop: "var(--sb-space-1)" }}>
