@@ -21,6 +21,10 @@ const migration0004 = readFileSync(
   `${migrationDir}/0004_glamorous_salo.sql`,
   "utf8",
 );
+const migration0005 = readFileSync(
+  `${migrationDir}/0005_cheerful_purifiers.sql`,
+  "utf8",
+);
 
 describe("generated migration", () => {
   it("creates every v0.1 table", () => {
@@ -89,6 +93,12 @@ describe("generated migration", () => {
     // replaces 0000's set-null FK with a cascading one.
     expect(migration0004).toContain(
       'ALTER TABLE "bookings" ADD CONSTRAINT "bookings_submission_id_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "public"."submissions"("id") ON DELETE cascade ON UPDATE no action',
+    );
+  });
+
+  it("marks submissions with the speed-to-lead alert timestamp", () => {
+    expect(migration0005).toContain(
+      'ALTER TABLE "submissions" ADD COLUMN "alerted_at" timestamp with time zone',
     );
   });
 });

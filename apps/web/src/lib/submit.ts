@@ -11,6 +11,7 @@ import type { Database, DecisionOutcome, RoutingDecision } from "@switchboard/db
 import { and, desc, eq } from "drizzle-orm";
 import { forms, routingDecisions, submissions, ruleSets, users } from "@switchboard/db";
 import { fetchCrmContext, upsertCrmContact, type CrmContext } from "./crm";
+import { scheduleSpeedToLeadAlert } from "./queue";
 import { finalizeOutcome } from "./routing";
 
 export type SubmitOutcome =
@@ -127,6 +128,11 @@ export async function handleSubmission(
       latencyMs,
     })
     .returning({ outcome: routingDecisions.outcome });
+
+  // Schedule the speed-to-lead alert: if this lead has not booked within the
+  // configured window, the routed rep is notified (the job re-checks bookings
+  // at fire time). Best-effort — a queue failure never loses the lead.
+  if (outcome.userId) await scheduleSpeedToLeadAlert(submissionId);
 
   // Write the lead back to HubSpot so the CRM always has the contact. The
   // routing decision is already durable, so a CRM failure cannot lose it;

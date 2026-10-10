@@ -109,9 +109,23 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): {
 export async function sendConfirmationEmail(
   input: ConfirmationEmailInput,
 ): Promise<boolean> {
+  const message = buildConfirmationEmail(input);
+  return sendEmail(
+    { to: input.to, subject: message.subject, text: message.text },
+    { context: "confirmation email" },
+  );
+}
+
+/** A short label used in the skip/failure logs, e.g. "confirmation email". */
+export type EmailContext = { context: string };
+
+export async function sendEmail(
+  message: { to: string; subject: string; text: string },
+  { context }: EmailContext,
+): Promise<boolean> {
   const url = process.env.SMTP_URL;
   if (!url) {
-    console.warn("SMTP_URL is not set — confirmation email skipped.");
+    console.warn(`SMTP_URL is not set — ${context} skipped.`);
     return false;
   }
   try {
@@ -119,17 +133,16 @@ export async function sendConfirmationEmail(
       url: smtpUrlWithPinnedTimeouts(url),
       ...SMTP_TIMEOUTS,
     });
-    const message = buildConfirmationEmail(input);
     await transport.sendMail({
       from: process.env.SMTP_FROM ?? "Switchboard <no-reply@switchboard.local>",
-      to: input.to,
+      to: message.to,
       subject: message.subject,
       text: message.text,
     });
     return true;
   } catch (cause) {
     console.error(
-      `Confirmation email to ${input.to} failed: ${
+      `Email to ${message.to} failed: ${
         cause instanceof Error ? cause.message : String(cause)
       }`,
     );

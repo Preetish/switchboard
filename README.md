@@ -8,9 +8,9 @@ in seconds. Self-hostable.
 
 The core loop is complete: hosted forms, the rules engine, CRM-aware routing
 with team strategies, Google Calendar availability, booking creation, the
-inline instant-booking UI, the embeddable snippet, HubSpot write-back, and the
-searchable routing log with CSV export. Remaining for v0.1: speed-to-lead
-alerts, admin auth with abuse protection, and launch hardening (one-command
+inline instant-booking UI, the embeddable snippet, HubSpot write-back, the
+searchable routing log with CSV export, and speed-to-lead alerts. Remaining
+for v0.1: admin auth with abuse protection, and launch hardening (one-command
 setup, self-hosting docs, release).
 
 ## Hosted forms
@@ -241,6 +241,22 @@ evaluation latency:
   null matched rule renders as `fallback`, cells that could be read as
   formulas by spreadsheet apps (`=`, `+`, `-`, `@` prefixes) are neutralized,
   and the export is capped at 5,000 rows.
+
+## Speed-to-lead alerts
+
+When a lead is routed to a rep but does not book within
+`SPEED_TO_LEAD_MINUTES` (default 5), the rep is notified — over the
+`SLACK_WEBHOOK_URL` webhook if configured, otherwise by email to the rep's
+address over `SMTP_URL`. The alert names the lead, the form, how long they
+have been waiting, and the submission reference.
+
+- Alerts are driven by a Postgres-backed queue (pg-boss — no Redis). The
+  worker starts with the app and the queue schema lives in the same database.
+- The job re-checks bookings when it fires: a lead who booked within the
+  window (or holds a slot) never triggers a notice.
+- At most one alert per lead, even across queue retries.
+- If neither Slack nor SMTP is configured, routing is unaffected and the
+  alert is skipped with a logged reason.
 
 ## Quick start
 

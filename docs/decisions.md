@@ -327,3 +327,36 @@ committed normally now.
 - **Multiple widgets per page** are supported; each placeholder mounts its
   own iframe, guarded by `node.__sbEmbed` against double-mounting when the
   script is loaded twice.
+
+## 2026-10-10 — Speed-to-lead alerts (task 12)
+
+- **pg-boss on the same Postgres** (per the brief: Postgres-backed queue, no
+  Redis). The boss installs and migrates its own `pgboss` schema on start and
+  shares `DATABASE_URL`; `docker compose up` needs no extra services. The
+  worker runs **in-process via `instrumentation.ts`** — a self-hoster gets
+  alerts from `npm run dev`/`next start` with no second process. Scaling to
+  multiple app instances is safe (pg-boss competing consumers) and documented.
+- **Alert scheduling is best-effort**: when a submission routes to a concrete
+  rep, the job is scheduled with a `startAfter` of `SPEED_TO_LEAD_MINUTES`
+  (default 5, invalid values fall back, sub-minute floors to 1). A queue that
+  cannot start never fails the submission — the alert is skipped with a logged
+  reason. Leads routed to a team without a resolved rep, self-serve links, or
+  the fallback queue schedule nothing (there is no rep to notify yet).
+- **The job re-checks reality at fire time**: expired holds are released, then
+  a confirmed booking or live hold for the submission suppresses the alert
+  ("booked in time"), and the rep is looked up fresh (no stale payload).
+- **At-most-once delivery** via an `alerted_at` claim on `submissions`
+  (conditional `UPDATE … WHERE alerted_at IS NULL`): only the attempt that
+  flips the column may notify, so pg-boss retries cannot double-alert. The
+  column dies with the submission under the GDPR delete cascade.
+- **Slack first, email as fallback**: the `SLACK_WEBHOOK_URL` incoming
+  webhook posts to a channel naming the rep (DM-per-rep needs a Slack app +
+  per-user tokens — deferred); without Slack, or when it fails, the alert goes
+  by email to the rep over `SMTP_URL` (shared, timeout-pinned sender). With
+  neither configured the alert is skipped honestly and logged.
+- **pg-boss v12 requires explicit queues**: the alert queue is created
+  idempotently (`createQueue`, ON CONFLICT DO NOTHING) before `send` and
+  `work`; v12 is ESM-only Node ≥22, so `pg-boss` is listed in
+  `serverExternalPackages` and the instrumentation import sits inside the
+  `NEXT_RUNTIME === "nodejs"` check so the Node-only graph is never bundled
+  for the edge runtime.

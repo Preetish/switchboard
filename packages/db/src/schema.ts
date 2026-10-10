@@ -132,6 +132,8 @@ export const submissions = pgTable(
     email: text("email"),
     /** Client-provided key for idempotent retries; unique per form. */
     idempotencyKey: text("idempotency_key"),
+    /** Set when the speed-to-lead alert for this lead was sent (at-most-once marker). */
+    alertedAt: timestamp("alerted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
