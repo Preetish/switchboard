@@ -132,6 +132,8 @@ export const submissions = pgTable(
     email: text("email"),
     /** Client-provided key for idempotent retries; unique per form. */
     idempotencyKey: text("idempotency_key"),
+    /** Set when the speed-to-lead alert for this lead was sent (at-most-once marker). */
+    alertedAt: timestamp("alerted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -175,7 +177,10 @@ export const bookings = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     submissionId: uuid("submission_id").references(() => submissions.id, {
-      onDelete: "set null",
+      // A booking is derived from the lead's submission: when the lead
+      // erases their data (GDPR delete), the booking must not outlive it —
+      // it would keep blocking the rep's slot with no lead behind it.
+      onDelete: "cascade",
     }),
     decisionId: uuid("decision_id").references(() => routingDecisions.id, {
       onDelete: "set null",
@@ -191,6 +196,12 @@ export const bookings = pgTable(
       .default("confirmed"),
     calendarEventId: text("calendar_event_id"),
     meetLink: text("meet_link"),
+    /**
+     * HubSpot meeting id for the write-back ("logged meeting"); when set the
+     * meeting is already on the contact's timeline and the log is skipped,
+     * keeping CRM write-back idempotent.
+     */
+    crmMeetingId: text("crm_meeting_id"),
     /** Client key so booking retries return the original instead of duplicating. */
     idempotencyKey: text("idempotency_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

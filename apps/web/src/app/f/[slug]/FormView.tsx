@@ -47,11 +47,13 @@ export default function FormView({
   orgName,
   formName,
   fields,
+  embedded = false,
 }: {
   slug: string;
   orgName: string;
   formName: string;
   fields: FormField[];
+  embedded?: boolean;
 }) {
   const [values, setValues] = useState<Values>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,15 +66,56 @@ export default function FormView({
   // Stable per page load, so retries reuse the same key (idempotent submits).
   const idempotencyKey = useRef<string>(crypto.randomUUID());
 
-  async function onSubmit(event: FormEvent) {
+  // Embed mode (packages/embed): make the iframe blend into the host page and
+  // report the content height so the host can resize with no scrollbars. The
+  // host loader validates the message's origin and source; the payload is
+  // only a height number.
+  useEffect(() => {
+    if (!embedded) return;
+    document.body.style.background = "transparent";
+    document.documentElement.style.background = "transparent";
+    const inIframe = window.parent !== window;
+    let target: string = "*";
+    try {
+      target = new URL(document.referrer).origin;
+    } catch {
+      // Referrer blocked (e.g. a strict referrer policy); the loader still
+      // validates origin and source, and the payload is a height number.
+    }
+    const post = () => {
+      if (!inIframe) return;
+      // The body's own height, not documentElement.scrollHeight: inside an
+      // iframe scrollHeight is floored by the viewport, so the iframe could
+      // grow but never shrink back.
+      window.parent.postMessage(
+        { type: "switchboard:resize", height: document.body.getBoundingClientRect().height },
+        target,
+      );
+    };
+    post();
+    const observer = new ResizeObserver(post);
+    observer.observe(document.body);
+    return () => {
+      observer.disconnect();
+      document.body.style.background = "";
+      document.documentElement.style.background = "";
+    };
+  }, [embedded]);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setErrors({});
     try {
+      const honeypot = new FormData(event.currentTarget).get("sb_website");
       const response = await fetch(`/api/f/${encodeURIComponent(slug)}/submit`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ data: values, idempotencyKey: idempotencyKey.current }),
+        body: JSON.stringify({
+          data: values,
+          honeypot: typeof honeypot === "string" ? honeypot : "",
+          idempotencyKey: idempotencyKey.current,
+        }),
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) {
@@ -139,6 +182,17 @@ export default function FormView({
         </div>
       ) : null}
       <form onSubmit={onSubmit} noValidate>
+        <div className={styles.honeypot} aria-hidden="true">
+          <label htmlFor="sb_website">Leave this field empty</label>
+          <input
+            id="sb_website"
+            name="sb_website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            defaultValue=""
+          />
+        </div>
         {fields.map((field) => (
           <div className={styles.field} key={field.key}>
             {field.type === "consent" ? (

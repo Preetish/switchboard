@@ -1,0 +1,1 @@
+ALTER TABLE "bookings" ADD COLUMN "crm_meeting_id" text;

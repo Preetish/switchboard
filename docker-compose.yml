@@ -1,3 +1,7 @@
+# One-command setup: `docker compose up` starts Postgres, applies migrations,
+# seeds demo data (a form at /f/book-a-demo), and serves the app on
+# http://localhost:3000. Values in .env (see .env.example) override the demo
+# defaults below — set real ones before real use.
 services:
   db:
     image: postgres:16-alpine
@@ -14,6 +18,38 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://switchboard:switchboard@db:5432/switchboard
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      # Demo admin credentials — override in .env before real use.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin1234}
+      AUTH_SECRET: ${AUTH_SECRET:-dev-only-demo-secret-change-me}
+      # No demo default on purpose: real OAuth tokens must not be encrypted
+      # with a key published in this file. Connecting Google/HubSpot without
+      # setting TOKEN_ENCRYPTION_KEY fails with a clear message.
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      ORG_SLUG: ${ORG_SLUG:-acme}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      HUBSPOT_CLIENT_ID: ${HUBSPOT_CLIENT_ID:-}
+      HUBSPOT_CLIENT_SECRET: ${HUBSPOT_CLIENT_SECRET:-}
+      SMTP_URL: ${SMTP_URL:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      FALLBACK_BOOKING_URL: ${FALLBACK_BOOKING_URL:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SPEED_TO_LEAD_MINUTES: ${SPEED_TO_LEAD_MINUTES:-5}
+      ADMIN_SETUP_KEY: ${ADMIN_SETUP_KEY:-}
+      ENRICHMENT_WEBHOOK_URL: ${ENRICHMENT_WEBHOOK_URL:-}
 
 volumes:
   pgdata:

@@ -4,13 +4,23 @@ Open-source inbound lead routing and instant booking. Qualify a form
 submission, route it to the right rep using your CRM data, and book the meeting
 in seconds. Self-hostable.
 
+<p align="center">
+  <img alt="Switchboard demo: form submission routes to a rep and books inline" src="docs/demo.gif" width="720">
+</p>
+
 ## Status
 
-Task 7 of the roadmap (booking creation: slot hold, Google Calendar event with
-a Meet link, BYO-SMTP confirmation email) landed on top of Google availability,
-team strategies, hosted forms, the rules engine, the database schema, and the
-scaffold. The inline booking UI, CRM write-back, and the routing log UI land in
-subsequent PRs.
+The core loop is complete: hosted forms, the rules engine, CRM-aware routing
+with team strategies, Google Calendar availability, booking creation, the
+inline instant-booking UI, the embeddable snippet, HubSpot write-back, the
+searchable routing log with CSV export, speed-to-lead alerts, admin auth, and
+abuse protection — plus a one-command `docker compose up` setup. Remaining for
+v0.1: the tagged release and a live demo deployment.
+
+**Docs:** [Self-hosting guide](docs/self-hosting.md) (configuration, your own
+Google/HubSpot OAuth apps, email, HTTPS) ·
+[Embed integration](docs/embed.md) ·
+[Design decisions](docs/decisions.md)
 
 ## Hosted forms
 
@@ -29,8 +39,8 @@ they are the public key of a form link or embed):
 - `POST /api/f/<slug>/delete` is the GDPR data-deletion endpoint: it erases
   every submission (and, by cascade, every routing decision) for the given
   email. The hosted page includes a "Delete your data" section wired to it.
-- Rules read submitted values as `form.<key>` paths (`crm.*` lookups arrive
-  with the HubSpot task).
+- Rules read submitted values as `form.<key>` paths; `crm.<path>` conditions
+  resolve from HubSpot when connected (see "HubSpot CRM" below).
 
 ## Rules engine
 
@@ -66,8 +76,19 @@ fallback: { team: default, strategy: round_robin }
 
 Load a file with `loadRuleSetYaml(text)` (or `validateRuleSet(parsed)` for
 already-parsed JSON), evaluate with `evaluate(ruleSet, inputs)`, and inspect
-`evaluation.trace` — the routing log UI (later task) persists inputs, the
-matched rule, and the outcome.
+`evaluation.trace` — the routing log persists inputs, the matched rule, and
+the outcome.
+
+**Sample rule sets** live in `examples/`:
+
+- [`rules.example.yaml`](examples/rules.example.yaml) — the brief's starter:
+  existing owner, enterprise by size, personal-email self-serve, DACH team.
+- [`rules.saas.yaml`](examples/rules.saas.yaml) — a realistic B2B SaaS flow:
+  CRM owner first, free-email self-serve gate, weighted enterprise rotation,
+  a region team, and CRM-owner routing for explicit demo requests.
+
+Both are kept valid by a test (`npm test`), so they can't rot as the format
+evolves; the rules engine has its own suite covering every operator.
 
 ## Strategies
 
@@ -80,8 +101,8 @@ counters and availability):
   turns. Assignment counts come from past `routing_decisions` rows.
 - **`existing_owner`** — the CRM owner gets the lead when they are on the team
   and eligible; otherwise the team falls back to round robin so a missing or
-  busy owner never drops a lead. (Owner resolution activates with the HubSpot
-  task.)
+  busy owner never drops a lead. The owner comes from the HubSpot lookup (see
+  "HubSpot CRM" below); without HubSpot data it behaves like round robin.
 - **Eligibility** — a rep is skipped when their membership is inactive (OOO or
   offboarding) or when `weekly_capacity` is set and their confirmed bookings in
   the current week (Monday 00:00 UTC) have reached it; `weekly_capacity: 0`
@@ -95,12 +116,14 @@ Availability is computed per rep from three inputs: their working hours
 (local to their IANA time zone), confirmed local bookings, and — when
 connected — Google Calendar free/busy:
 
-- **Connect**: `/integrations` starts the OAuth handshake (guarded by
-  `ADMIN_SETUP_KEY` until admin auth lands). Tokens are stored AES-256-GCM
+- **Connect**: `/integrations` starts the OAuth handshake (requires the admin
+  login — see "Admin & security"). Tokens are stored AES-256-GCM
   encrypted (`TOKEN_ENCRYPTION_KEY`), never in plaintext, and refreshed
   lazily before expiry. Self-hosters bring their own Google OAuth client
-  (Google requires app verification for calendar scopes on public apps) with
-  redirect URI `<base-url>/api/integrations/google/callback`.
+  (Google requires app verification for calendar scopes on public apps) — the
+  [step-by-step walkthrough](docs/self-hosting.md#bring-your-own-google-oauth-client)
+  covers the console setup, scopes, and redirect URI
+  `<base-url>/api/integrations/google/callback`.
 - **Slots**: `computeSlots()` in `packages/core` is pure — it cuts a rep's
   working hours into slots in their zone, converts to UTC (DST-correct, half
   -hour offsets supported), and drops slots overlapping busy intervals or the
@@ -170,15 +193,140 @@ The lead books before leaving the page; no calendar embed, no email tag.
   booking instead of creating a second one; keyless retries for the same slot
   are deduped by the unique index itself.
 
+## Embed
+
+Put the whole flow — form, routing, and instant booking — on your own site with
+two tags:
+
+```html
+<div data-switchboard-form="book-a-demo"></div>
+<script src="https://your-switchboard.example.com/embed.js" defer></script>
+```
+
+The loader (about 1 KB minified, vanilla JS, no dependencies) finds every
+`data-switchboard-form` placeholder and injects an iframe of the hosted form
+page in embed mode. The hosted page owns the entire flow — validation, the
+inline calendar, the confirmation, the GDPR delete section — so the embed can
+never drift from the product, and its styles cannot collide with your site's.
+The iframe auto-resizes via a validated `postMessage` height protocol.
+
+Full integration guide: `docs/embed.md`. The source lives in
+`packages/embed`; `npm run build -w @switchboard/embed` rebuilds the minified
+`apps/web/public/embed.js` (a test keeps it under 10 KB and in sync).
+
+## HubSpot CRM
+
+Connecting HubSpot (`/integrations`, admin login required, same as Google)
+activates the CRM-aware half of the routing brief:
+
+- **Owner lookup before routing**: when a rule set reads `crm.*` paths (e.g.
+  `when: { crm.contact.owner: exists }`), the submission's email is looked up
+  in HubSpot before evaluation. The owner's email lands at
+  `crm.contact.owner`, so `route: { to: crm.contact.owner }` sends the lead to
+  the matching Switchboard rep, and a `route: { team: …, strategy:
+  existing_owner }` route wins with that owner when they are on the team and
+  eligible (round robin otherwise).
+- **Rep matching is by email**: the rep's Switchboard email must equal their
+  HubSpot owner email. An owner without a matching rep degrades to the
+  documented fallback, never an error.
+- **Contact upsert**: every submission with an email is upserted into HubSpot
+  idempotently (per-submission idempotency key), so retries never create
+  duplicate CRM records.
+- **Logged meeting**: a confirmed booking is logged on the contact's timeline
+  as a HubSpot meeting (associated to the contact), with the Meet link when
+  Google created one. Idempotent via `bookings.crm_meeting_id` — already
+  logged bookings skip the API. Best-effort like the confirmation email: a
+  HubSpot failure is logged and the booking stands.
+- **Degradation**: lookups and write-backs time out after ~2 seconds and are
+  wrapped in an overall budget (~3s) so form submits stay fast. A HubSpot
+  outage simply removes the `crm.*` inputs — non-CRM rules still route, and
+  the failure is logged.
+- **Setup**: self-hosters create their own HubSpot app (scopes
+  `crm.objects.contacts.read`, `crm.objects.contacts.write`,
+  `crm.objects.owners.read`) with redirect URI
+  `<base-url>/api/integrations/hubspot/callback`, then set `HUBSPOT_CLIENT_ID`
+  and `HUBSPOT_CLIENT_SECRET`.
+
+## Routing log
+
+`/routing-log` (requires the admin login) shows every routing decision with
+its inputs, the matched rule, the outcome, and the evaluation latency:
+
+- **Search** filters case-insensitively across the lead's email, the matched
+  rule name, and the outcome reason (`?q=`).
+- **Inputs** expand per row — the full `{ form, crm }` payload the engine
+  evaluated, exactly as stored in `routing_decisions.inputs`.
+- **CSV export** (`GET /api/decisions/export?q=…`) downloads the current
+  search as flat, machine-readable rows (CRLF, RFC 4180): `decided_at,
+  lead_email, form, matched_rule, outcome, rep, team, latency_ms, reason`. A
+  null matched rule renders as `fallback`, cells that could be read as
+  formulas by spreadsheet apps (`=`, `+`, `-`, `@` prefixes) are neutralized,
+  and the export is capped at 5,000 rows. Scripted exports (cron, curl) can
+  authenticate with `ADMIN_SETUP_KEY` instead of a session cookie.
+
+## Admin & security
+
+- **Admin auth** (Auth.js): the admin account comes from the environment —
+  set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `AUTH_SECRET`
+  (`openssl rand -hex 32`). `/login` issues a JWT session cookie; the
+  integrations and routing-log pages, the OAuth handshakes, and the CSV
+  export all require it. Login attempts are rate-limited per IP.
+- **Abuse protection** on the public lead-facing surfaces (submit, delete,
+  booking, availability): an off-screen honeypot field that bots fill and
+  humans never see (a filled value is rejected), a disposable-email check on
+  the form's email field (static list in `packages/core`), and a per-IP
+  sliding-window rate limiter (in-memory, per instance — see
+  `docs/decisions.md`). Over-limit requests get `429` with `Retry-After`.
+
+## Speed-to-lead alerts
+
+When a lead is routed to a rep but does not book within
+`SPEED_TO_LEAD_MINUTES` (default 5), the rep is notified — over the
+`SLACK_WEBHOOK_URL` webhook if configured, otherwise by email to the rep's
+address over `SMTP_URL`. The alert names the lead, the form, how long they
+have been waiting, and the submission reference.
+
+- Alerts are driven by a Postgres-backed queue (pg-boss — no Redis). The
+  worker starts with the app and the queue schema lives in the same database.
+- The job re-checks bookings when it fires: a lead who booked within the
+  window (or holds a slot) never triggers a notice.
+- At most one alert per lead, even across queue retries.
+- If neither Slack nor SMTP is configured, routing is unaffected and the
+  alert is skipped with a logged reason.
+
 ## Quick start
 
 ```bash
+docker compose up
+```
+
+That single command starts Postgres 16, applies all migrations, seeds demo
+data, and serves the app at **http://localhost:3000** with the demo form at
+[`/f/book-a-demo`](http://localhost:3000/f/book-a-demo) — submit it and book a
+meeting inline. The demo admin login is `admin@example.com` / `admin1234`
+(used at `/routing-log` and `/integrations`); the entrypoint warns while the
+default password is in effect.
+
+> **Before real use:** create a `.env` (compose reads it automatically) with
+> `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `AUTH_SECRET`, and `TOKEN_ENCRYPTION_KEY`
+> (`openssl rand -hex 32` for both secrets), and set `SEED_DEMO_DATA=false` to
+> skip the demo data. OAuth tokens are encrypted with
+> `TOKEN_ENCRYPTION_KEY` — connecting Google/HubSpot without it fails with a
+> clear error rather than using a published demo key.
+>
+> The full walkthrough — configuration reference, connecting your own
+> Google/HubSpot OAuth apps, SMTP, HTTPS — is in the
+> [self-hosting guide](docs/self-hosting.md).
+
+### Manual setup (development)
+
+```bash
 npm install
-docker compose up -d   # Postgres 16
-cp .env.example .env
-npm run db:migrate     # create tables from packages/db/migrations
-npm run db:seed        # optional: demo org + form at /f/book-a-demo
-npm run dev            # web app on http://localhost:3000
+docker compose up -d db  # Postgres 16 only
+cp .env.example .env     # set ADMIN_EMAIL, ADMIN_PASSWORD, AUTH_SECRET
+npm run db:migrate       # create tables from packages/db/migrations
+npm run db:seed          # optional: demo org + form at /f/book-a-demo
+npm run dev              # web app on http://localhost:3000
 ```
 
 ## Scripts
@@ -200,9 +348,12 @@ npm run dev            # web app on http://localhost:3000
 - `apps/web` — Next.js app (forms, booking UI, admin)
 - `packages/core` — rules engine, calendar slot math, pure functions
 - `packages/calendar-google` — Google OAuth + free/busy + event creation (fetch-only)
+- `packages/crm-hubspot` — HubSpot OAuth + contact/owner/meeting write-back (fetch-only)
+- `packages/embed` — the embed loader source (minified into `apps/web/public/embed.js`)
 - `packages/db` — Drizzle schema + committed SQL migrations
 - `packages/ui` — design tokens (see `docs/design.md`)
 - `docs/decisions.md` — architectural decision log
+- `docs/self-hosting.md` — self-hosting guide (config, OAuth apps, email, HTTPS)
 
 ## Schema overview
 
@@ -222,6 +373,7 @@ every pull request (`.github/workflows/ci.yml`, Node 22).
 
 ## Configuration
 
-All configuration is via environment variables; see `.env.example`. Never
+All configuration is via environment variables; see `.env.example` and the
+[configuration reference](docs/self-hosting.md#configuration-reference). Never
 commit secrets. Stored OAuth tokens are encrypted at rest with
 `TOKEN_ENCRYPTION_KEY` (AES-256-GCM).

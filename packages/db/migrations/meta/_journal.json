@@ -22,6 +22,27 @@
       "when": 1791260183650,
       "tag": "0002_busy_nightmare",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791656315791,
+      "tag": "0003_simple_celestials",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791667061340,
+      "tag": "0004_glamorous_salo",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791668799904,
+      "tag": "0005_cheerful_purifiers",
+      "breakpoints": true
     }
   ]
 }

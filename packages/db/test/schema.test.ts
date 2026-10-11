@@ -13,6 +13,18 @@ const migration0002 = readFileSync(
   `${migrationDir}/0002_busy_nightmare.sql`,
   "utf8",
 );
+const migration0003 = readFileSync(
+  `${migrationDir}/0003_simple_celestials.sql`,
+  "utf8",
+);
+const migration0004 = readFileSync(
+  `${migrationDir}/0004_glamorous_salo.sql`,
+  "utf8",
+);
+const migration0005 = readFileSync(
+  `${migrationDir}/0005_cheerful_purifiers.sql`,
+  "utf8",
+);
 
 describe("generated migration", () => {
   it("creates every v0.1 table", () => {
@@ -44,6 +56,12 @@ describe("generated migration", () => {
     );
   });
 
+  it("tracks the HubSpot meeting write-back on the booking", () => {
+    expect(migration0003).toContain(
+      'ALTER TABLE "bookings" ADD COLUMN "crm_meeting_id" text',
+    );
+  });
+
   it("makes submissions idempotent per form and key", () => {
     expect(migration).toContain(
       'CREATE UNIQUE INDEX "submissions_form_idempotency_uq" ON "submissions" USING btree ("form_id","idempotency_key")',
@@ -68,6 +86,21 @@ describe("generated migration", () => {
     const cascadeFks = migration.match(/_org_id_orgs_id_fk.*ON DELETE cascade/g) ?? [];
     expect(cascadeFks.length).toBe(8);
   });
+
+  it("deletes a booking when its lead's submission is erased (GDPR)", () => {
+    // The booking is derived from the submission; a set-null orphan would
+    // keep blocking the rep's slot with no lead behind it. Migration 0004
+    // replaces 0000's set-null FK with a cascading one.
+    expect(migration0004).toContain(
+      'ALTER TABLE "bookings" ADD CONSTRAINT "bookings_submission_id_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "public"."submissions"("id") ON DELETE cascade ON UPDATE no action',
+    );
+  });
+
+  it("marks submissions with the speed-to-lead alert timestamp", () => {
+    expect(migration0005).toContain(
+      'ALTER TABLE "submissions" ADD COLUMN "alerted_at" timestamp with time zone',
+    );
+  });
 });
 
 describe("schema definition", () => {
@@ -83,6 +116,7 @@ describe("schema definition", () => {
       "status",
       "calendarEventId",
       "meetLink",
+      "crmMeetingId",
       "idempotencyKey",
       "createdAt",
     ]);

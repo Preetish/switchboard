@@ -11,9 +11,12 @@
   "dependencies": {
     "@switchboard/calendar-google": "*",
     "@switchboard/core": "*",
+    "@switchboard/crm-hubspot": "*",
     "@switchboard/ui": "*",
     "next": "^15.1.0",
+    "next-auth": "^5.0.0-beta.32",
     "nodemailer": "^10.0.15",
+    "pg-boss": "^12.37.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

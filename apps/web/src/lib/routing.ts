@@ -19,13 +19,18 @@ function startOfWeek(now: Date): Date {
  * Attach org IDs to a rules-engine outcome draft and resolve team routes to a
  * concrete rep. A route to a team that does not exist (or no longer exists),
  * or a team where nobody is eligible, is honest in the log and falls back to
- * the queue so the lead is never dropped; an unmatched rep target is recorded
- * as routed but pending (CRM owner mapping lands with the HubSpot task).
+ * the queue so the lead is never dropped; a rep target that matches no local
+ * rep (by email or id) is recorded as routed but pending.
+ *
+ * `options.ownerEmail` is the lead's HubSpot owner email (from the CRM
+ * prefetch) and activates the `existing_owner` strategy: the owner wins when
+ * they are on the team and eligible.
  */
 export async function finalizeOutcome(
   db: Database,
   orgId: string,
   draft: OutcomeDraft,
+  options: { ownerEmail?: string | null } = {},
 ): Promise<DecisionOutcome> {
   if (draft.kind === "route_team") {
     const [team] = await db
@@ -96,7 +101,19 @@ export async function finalizeOutcome(
       available: member.active,
     }));
 
-    const pick = selectRep(draft.strategy, candidates);
+    // The owner wins only when they are a known, eligible rep on this team;
+    // otherwise selectRep falls back to round robin inside the same call.
+    let ownerUserId: string | undefined;
+    if (draft.strategy === "existing_owner" && options.ownerEmail) {
+      const [owner] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.orgId, orgId), eq(users.email, options.ownerEmail)))
+        .limit(1);
+      ownerUserId = owner?.id;
+    }
+
+    const pick = selectRep(draft.strategy, candidates, ownerUserId);
     if (!pick.userId) {
       return {
         kind: "fallback_queue",

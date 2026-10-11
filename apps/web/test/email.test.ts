@@ -18,7 +18,11 @@ afterEach(() => {
 
 describe("buildConfirmationEmail", () => {
   it("formats the meeting in the rep's time zone and includes the Meet link", () => {
-    const { subject, text } = buildConfirmationEmail({ ...base, meetLink: "https://meet.google.com/x", fallbackUrl: null });
+    const { subject, text } = buildConfirmationEmail({
+      ...base,
+      meetLink: "https://meet.google.com/x",
+      fallbackUrl: null,
+    });
     expect(subject).toContain("meeting with Alice Chen");
     // 13:00Z in October EDT is 09:00 local.
     expect(text).toContain("9:00");
@@ -29,7 +33,11 @@ describe("buildConfirmationEmail", () => {
   });
 
   it("greets the lead by name when known", () => {
-    const { text } = buildConfirmationEmail({ ...base, meetLink: null, fallbackUrl: null });
+    const { text } = buildConfirmationEmail({
+      ...base,
+      meetLink: null,
+      fallbackUrl: null,
+    });
     expect(text.startsWith("Hi Jane,")).toBe(true);
   });
 
@@ -44,7 +52,11 @@ describe("buildConfirmationEmail", () => {
   });
 
   it("still explains the failure when there is no fallback link", () => {
-    const { text } = buildConfirmationEmail({ ...base, meetLink: null, fallbackUrl: null });
+    const { text } = buildConfirmationEmail({
+      ...base,
+      meetLink: null,
+      fallbackUrl: null,
+    });
     expect(text).toContain("could not create the calendar event");
     expect(text).toContain("reply to this email");
   });
@@ -54,9 +66,15 @@ describe("sendConfirmationEmail", () => {
   it("skips without SMTP_URL and reports it honestly", async () => {
     vi.stubEnv("SMTP_URL", "");
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const sent = await sendConfirmationEmail({ ...base, meetLink: null, fallbackUrl: null });
+    const sent = await sendConfirmationEmail({
+      ...base,
+      meetLink: null,
+      fallbackUrl: null,
+    });
     expect(sent).toBe(false);
-    expect(warn).toHaveBeenCalledWith("SMTP_URL is not set — confirmation email skipped.");
+    expect(warn).toHaveBeenCalledWith(
+      "SMTP_URL is not set — confirmation email skipped.",
+    );
   });
 
   it("sends the built message over SMTP", async () => {
@@ -66,7 +84,11 @@ describe("sendConfirmationEmail", () => {
       createTransport: vi.fn(() => ({ sendMail })),
     }));
     const { sendConfirmationEmail: send } = await import("../src/lib/email.js");
-    const sent = await send({ ...base, meetLink: "https://meet.google.com/x", fallbackUrl: null });
+    const sent = await send({
+      ...base,
+      meetLink: "https://meet.google.com/x",
+      fallbackUrl: null,
+    });
     expect(sent).toBe(true);
     expect(sendMail).toHaveBeenCalledOnce();
     const mail = sendMail.mock.calls[0]?.[0] as Record<string, string> | undefined;

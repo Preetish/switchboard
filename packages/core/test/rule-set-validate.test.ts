@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { loadRuleSetYaml, parseRuleSetYaml, validateRuleSet } from "../src/rules/index.js";
 
@@ -113,17 +113,22 @@ describe("validateRuleSet", () => {
 });
 
 describe("loadRuleSetYaml", () => {
-  const examplePath = fileURLToPath(new URL("../../../examples/rules.example.yaml", import.meta.url));
+  const examplesDir = fileURLToPath(new URL("../../../examples", import.meta.url));
 
-  it("loads the shipped example rule file", () => {
-    const text = readFileSync(examplePath, "utf8");
-    const result = loadRuleSetYaml(text);
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.ruleSet.rules).toHaveLength(4);
-      expect(result.ruleSet.rules[0]?.name).toBe("Existing owner wins");
-      expect(result.ruleSet.rules[0]?.when["crm.contact.owner"]).toEqual({ exists: true });
-      expect(result.ruleSet.rules[2]?.route).toEqual({ action: "self_serve_link" });
+  it("loads every shipped example rule set", () => {
+    const files = readdirSync(examplesDir).filter((f) => /^rules\..+\.yaml$/.test(f));
+    expect(files.length).toBeGreaterThanOrEqual(2);
+    for (const file of files) {
+      const result = loadRuleSetYaml(readFileSync(`${examplesDir}/${file}`, "utf8"));
+      if (!result.ok) {
+        throw new Error(`${file} failed validation: ${result.errors.join("; ")}`);
+      }
+      expect(result.ruleSet.rules.length).toBeGreaterThan(0);
+      if (file === "rules.example.yaml") {
+        expect(result.ruleSet.rules[0]?.name).toBe("Existing owner wins");
+        expect(result.ruleSet.rules[0]?.when["crm.contact.owner"]).toEqual({ exists: true });
+        expect(result.ruleSet.rules[2]?.route).toEqual({ action: "self_serve_link" });
+      }
     }
   });
 
