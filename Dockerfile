@@ -2,7 +2,7 @@
 # your config, and this web app (see docker-compose.yml).
 
 # ---- build: full dependencies, compile the Next.js app ----
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 
 # Install dependencies first so source edits don't bust this layer.
@@ -26,7 +26,7 @@ RUN npm run build --workspace @switchboard/web \
   && npm cache clean --force
 
 # ---- runtime: production dependencies only, non-root ----
-FROM node:22-alpine
+FROM node:25-alpine
 ENV NODE_ENV=production \
     PORT=3000 \
     SWITCHBOARD_DATA_DIR=/var/lib/switchboard
