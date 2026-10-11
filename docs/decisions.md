@@ -417,3 +417,22 @@ committed normally now.
   without setting it fails with the existing clear error; and the entrypoint
   prints a warning while the demo `ADMIN_PASSWORD` default is in effect.
   `SEED_DEMO_DATA` (default `true`) gates the demo seed for clean instances.
+
+## 2026-10-11 — Docs and demo assets (task 15)
+
+- **A recorded GIF in `docs/demo.gif`** rather than a YouTube link or a
+  screenshot collage: the README's first impression must show the actual
+  submit → route → inline-book loop, self-hosters' READMEs render on GitHub
+  where external video embeds are noise, and a GIF is a committed file that
+  cannot rot into a dead link. Tradeoff accepted: the repo carries ~1–2 MB of
+  binary; if it grows, it can move to a release asset.
+- **Sample rule sets ship as files, not inline YAML in prose**: `examples/`
+  now holds the starter set plus `rules.saas.yaml` (a realistic B2B SaaS
+  flow). A Vitest pass loads **every** `examples/rules.*.yaml`, so samples
+  are enforced-valid by CI instead of drifting out of sync with the format.
+- **Self-hosting guide lives in `docs/self-hosting.md`**, keeping the README a
+  fast overview: configuration reference table, the bring-your-own Google
+  OAuth client walkthrough (Google requires verification for calendar scopes
+  on public apps, so every self-hoster registers their own), HubSpot app
+  setup, SMTP/Slack, HTTPS/proxy notes, upgrade path, and a pre-launch
+  security checklist.

@@ -1,0 +1,59 @@
+# Sample rule set for a B2B SaaS company ("Acme Cloud") with a sales-assist
+# motion. Copy it, adjust team names to yours, and load it through the
+# admin UI or the seed script (see docs/self-hosting.md).
+#
+# Rules apply top to bottom; the first match wins. If nothing matches, the
+# `fallback` route fires. `crm.*` conditions are resolved from HubSpot before
+# evaluation; `form.*` keys come straight from the submission. Bare scalars
+# are `eq` shorthand, and the bare word `exists` means `{ exists: true }`.
+
+rules:
+  # A lead HubSpot already has an owner for belongs to that rep — never
+  # re-route someone else's account. Requires the HubSpot integration.
+  - name: Existing owner wins
+    when:
+      crm.contact.owner: exists
+    route:
+      to: crm.contact.owner
+
+  # Students and hobbyists on personal addresses never reach sales; the
+  # product's own signup flow is the right destination for them.
+  - name: Personal email goes self-serve
+    when:
+      form.email: { freeEmail: true }
+    route:
+      action: self_serve_link
+
+  # Big companies get the enterprise team with weighted round robin
+  # (team_members.weight controls the share each rep receives).
+  - name: Enterprise
+    when:
+      form.company_size: { gte: 500 }
+    route:
+      team: enterprise
+      strategy: round_robin
+
+  # Mid-market leads from DACH go to the German-speaking team.
+  - name: DACH mid-market
+    when:
+      form.company_size: { gte: 50 }
+      form.country: { in: [DE, AT, CH] }
+    route:
+      team: dach
+      strategy: round_robin
+
+  # Leads who explicitly asked for a demo go to the default team with the
+  # CRM-owner strategy: returning contacts stay with their owner, new ones
+  # rotate round robin.
+  - name: Demo request
+    when:
+      form.requested_demo: { eq: "yes" }
+    route:
+      team: default
+      strategy: existing_owner
+
+# Everything that matched no rule (tiny teams, missing fields) still lands
+# somewhere a human sees it — never dropped silently.
+fallback:
+  team: default
+  strategy: round_robin

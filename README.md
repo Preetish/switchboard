@@ -4,6 +4,10 @@ Open-source inbound lead routing and instant booking. Qualify a form
 submission, route it to the right rep using your CRM data, and book the meeting
 in seconds. Self-hostable.
 
+<p align="center">
+  <img alt="Switchboard demo: form submission routes to a rep and books inline" src="docs/demo.gif" width="720">
+</p>
+
 ## Status
 
 The core loop is complete: hosted forms, the rules engine, CRM-aware routing
@@ -11,7 +15,12 @@ with team strategies, Google Calendar availability, booking creation, the
 inline instant-booking UI, the embeddable snippet, HubSpot write-back, the
 searchable routing log with CSV export, speed-to-lead alerts, admin auth, and
 abuse protection — plus a one-command `docker compose up` setup. Remaining for
-v0.1: self-hosting docs polish and the release.
+v0.1: the tagged release and a live demo deployment.
+
+**Docs:** [Self-hosting guide](docs/self-hosting.md) (configuration, your own
+Google/HubSpot OAuth apps, email, HTTPS) ·
+[Embed integration](docs/embed.md) ·
+[Design decisions](docs/decisions.md)
 
 ## Hosted forms
 
@@ -67,8 +76,19 @@ fallback: { team: default, strategy: round_robin }
 
 Load a file with `loadRuleSetYaml(text)` (or `validateRuleSet(parsed)` for
 already-parsed JSON), evaluate with `evaluate(ruleSet, inputs)`, and inspect
-`evaluation.trace` — the routing log UI (later task) persists inputs, the
-matched rule, and the outcome.
+`evaluation.trace` — the routing log persists inputs, the matched rule, and
+the outcome.
+
+**Sample rule sets** live in `examples/`:
+
+- [`rules.example.yaml`](examples/rules.example.yaml) — the brief's starter:
+  existing owner, enterprise by size, personal-email self-serve, DACH team.
+- [`rules.saas.yaml`](examples/rules.saas.yaml) — a realistic B2B SaaS flow:
+  CRM owner first, free-email self-serve gate, weighted enterprise rotation,
+  a region team, and CRM-owner routing for explicit demo requests.
+
+Both are kept valid by a test (`npm test`), so they can't rot as the format
+evolves; the rules engine has its own suite covering every operator.
 
 ## Strategies
 
@@ -100,8 +120,10 @@ connected — Google Calendar free/busy:
   login — see "Admin & security"). Tokens are stored AES-256-GCM
   encrypted (`TOKEN_ENCRYPTION_KEY`), never in plaintext, and refreshed
   lazily before expiry. Self-hosters bring their own Google OAuth client
-  (Google requires app verification for calendar scopes on public apps) with
-  redirect URI `<base-url>/api/integrations/google/callback`.
+  (Google requires app verification for calendar scopes on public apps) — the
+  [step-by-step walkthrough](docs/self-hosting.md#bring-your-own-google-oauth-client)
+  covers the console setup, scopes, and redirect URI
+  `<base-url>/api/integrations/google/callback`.
 - **Slots**: `computeSlots()` in `packages/core` is pure — it cuts a rep's
   working hours into slots in their zone, converts to UTC (DST-correct, half
   -hour offsets supported), and drops slots overlapping busy intervals or the
@@ -291,6 +313,10 @@ default password is in effect.
 > skip the demo data. OAuth tokens are encrypted with
 > `TOKEN_ENCRYPTION_KEY` — connecting Google/HubSpot without it fails with a
 > clear error rather than using a published demo key.
+>
+> The full walkthrough — configuration reference, connecting your own
+> Google/HubSpot OAuth apps, SMTP, HTTPS — is in the
+> [self-hosting guide](docs/self-hosting.md).
 
 ### Manual setup (development)
 
@@ -327,6 +353,7 @@ npm run dev              # web app on http://localhost:3000
 - `packages/db` — Drizzle schema + committed SQL migrations
 - `packages/ui` — design tokens (see `docs/design.md`)
 - `docs/decisions.md` — architectural decision log
+- `docs/self-hosting.md` — self-hosting guide (config, OAuth apps, email, HTTPS)
 
 ## Schema overview
 
@@ -346,6 +373,7 @@ every pull request (`.github/workflows/ci.yml`, Node 22).
 
 ## Configuration
 
-All configuration is via environment variables; see `.env.example`. Never
+All configuration is via environment variables; see `.env.example` and the
+[configuration reference](docs/self-hosting.md#configuration-reference). Never
 commit secrets. Stored OAuth tokens are encrypted at rest with
 `TOKEN_ENCRYPTION_KEY` (AES-256-GCM).
