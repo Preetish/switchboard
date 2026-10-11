@@ -10,8 +10,8 @@ The core loop is complete: hosted forms, the rules engine, CRM-aware routing
 with team strategies, Google Calendar availability, booking creation, the
 inline instant-booking UI, the embeddable snippet, HubSpot write-back, the
 searchable routing log with CSV export, speed-to-lead alerts, admin auth, and
-abuse protection. Remaining for v0.1: launch hardening (one-command setup,
-self-hosting docs, release).
+abuse protection — plus a one-command `docker compose up` setup. Remaining for
+v0.1: self-hosting docs polish and the release.
 
 ## Hosted forms
 
@@ -275,12 +275,32 @@ have been waiting, and the submission reference.
 ## Quick start
 
 ```bash
+docker compose up
+```
+
+That single command starts Postgres 16, applies all migrations, seeds demo
+data, and serves the app at **http://localhost:3000** with the demo form at
+[`/f/book-a-demo`](http://localhost:3000/f/book-a-demo) — submit it and book a
+meeting inline. The demo admin login is `admin@example.com` / `admin1234`
+(used at `/routing-log` and `/integrations`); the entrypoint warns while the
+default password is in effect.
+
+> **Before real use:** create a `.env` (compose reads it automatically) with
+> `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `AUTH_SECRET`, and `TOKEN_ENCRYPTION_KEY`
+> (`openssl rand -hex 32` for both secrets), and set `SEED_DEMO_DATA=false` to
+> skip the demo data. OAuth tokens are encrypted with
+> `TOKEN_ENCRYPTION_KEY` — connecting Google/HubSpot without it fails with a
+> clear error rather than using a published demo key.
+
+### Manual setup (development)
+
+```bash
 npm install
-docker compose up -d   # Postgres 16
-cp .env.example .env   # set ADMIN_EMAIL, ADMIN_PASSWORD, AUTH_SECRET
-npm run db:migrate     # create tables from packages/db/migrations
-npm run db:seed        # optional: demo org + form at /f/book-a-demo
-npm run dev            # web app on http://localhost:3000
+docker compose up -d db  # Postgres 16 only
+cp .env.example .env     # set ADMIN_EMAIL, ADMIN_PASSWORD, AUTH_SECRET
+npm run db:migrate       # create tables from packages/db/migrations
+npm run db:seed          # optional: demo org + form at /f/book-a-demo
+npm run dev              # web app on http://localhost:3000
 ```
 
 ## Scripts

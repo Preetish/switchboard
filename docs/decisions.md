@@ -394,3 +394,26 @@ committed normally now.
   that limits reset on restart and are per instance (a load-balanced
   deployment multiplies them — acceptable for v0.1 single-node self-hosting;
   revisit with a real multi-node story).
+
+## 2026-10-11 — One-command `docker compose up` (task 14)
+
+- **Full stack in compose, migrations + seed in the entrypoint**: the compose
+  file gains an `app` service built from a repo-root `Dockerfile` (Node 22
+  alpine, `npm ci`, `next build`, workspace TS-source packages compiled via
+  the existing `transpilePackages` setup). The container entrypoint
+  (`docker/app-entrypoint.sh`) runs `npm run db:migrate` then
+  `node packages/db/scripts/seed.mjs` before `next start` — compose's
+  `depends_on: condition: service_healthy` guarantees Postgres is ready, and
+  both steps are idempotent so restarts are safe. Chosen over a separate
+  migrate service or an init container: one service, one log stream, and
+  migrations re-run on every boot (drizzle-kit tracks applied migrations, so
+  re-running is a no-op).
+- **Demo defaults in compose, real values via `.env`**: `docker compose up`
+  alone yields a working demo (admin `admin@example.com` / `admin1234`, a dev
+  `AUTH_SECRET`), and compose substitutes anything set in `.env`
+  (`${VAR:-default}`). Two deliberate exceptions: `TOKEN_ENCRYPTION_KEY` has
+  **no** demo default — encrypting real OAuth tokens with a key published in
+  the repo would be a real vulnerability, so connecting Google/HubSpot
+  without setting it fails with the existing clear error; and the entrypoint
+  prints a warning while the demo `ADMIN_PASSWORD` default is in effect.
+  `SEED_DEMO_DATA` (default `true`) gates the demo seed for clean instances.
