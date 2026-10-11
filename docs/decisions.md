@@ -3,28 +3,28 @@
 Why Switchboard is built the way it is. Newest at the bottom; later entries
 note when they supersede earlier ones.
 
-## 2026-10-05 — Stack
+## 2026-10-05: Stack
 
 - **npm workspaces TypeScript monorepo** (`apps/web`, `packages/core`, `packages/ui`): matches the suggested stack; core stays pure-function and testable.
-- **Postgres 16 via docker-compose, no Redis**: queue will be pg-boss on the same database (rule 3 — no extra services without justification).
+- **Postgres 16 via docker-compose, no Redis**: queue will be pg-boss on the same database (no extra services without justification).
 - **Vitest**: fast, ESM-native, no separate test runner.
 - **ESLint 9 flat config + typescript-eslint + Prettier**: repo-wide lint in one config.
 - **Node 22 engines**: LTS with stable ESM support.
 - **plain-CSS tokens in `packages/ui`** instead of Tailwind for now: the design standard needs a token source first; Tailwind v4 can layer on tokens later if component styling needs it at speed.
 
-## 2026-10-05 — Database layer
+## 2026-10-05: Database layer
 
 - **Drizzle ORM + drizzle-kit**: SQL-first, typed schema in TypeScript, and SQL migrations committed as plain files that review well in PRs. Lighter than Prisma (no engine binary, no shadow DB).
 - **`pg` (node-postgres) driver**: pg-boss (planned job queue) is built on `pg`, so the whole stack shares one Postgres client. No Redis.
 - **Migrations are committed SQL** (`packages/db/migrations/`), generated offline with `drizzle-kit generate`; `npm run db:migrate` applies them to the Postgres 16 service in `docker-compose.yml`.
-- **Double-booking guard**: `bookings` has a unique index on `(user_id, start_at)` — the transaction + 5-minute slot hold build on this in a later milestone.
+- **Double-booking guard**: `bookings` has a unique index on `(user_id, start_at)`; the transaction + 5-minute slot hold build on this in a later milestone.
 - **Idempotency**: `submissions` has a unique index on `(form_id, idempotency_key)` so webhook/form retries cannot create duplicate routing decisions.
 - **Tokens**: `integrations.token_cipher` stores a single encrypted blob (IV + ciphertext). Encryption key management arrives with a later milestone/9; nothing is ever stored in plaintext.
-- **`team_members` has no direct `org_id`** — it cascades via `team`; avoids redundant columns and keeps one ownership path.
+- **`team_members` has no direct `org_id`**; it cascades via `team`; avoids redundant columns and keeps one ownership path.
 - **License: Apache-2.0**. Permissive with an explicit patent grant, standard for self-hostable OSS; `LICENSE` file added.
 
 
-## 2026-10-05 — Rules engine
+## 2026-10-05: Rules engine
 
 - **Pure, synchronous `evaluate(ruleSet, inputs)`**: rules evaluate against a
   flat input map the caller builds (`form.*` from the submission, `crm.*`
@@ -45,13 +45,13 @@ note when they supersede earlier ones.
   and cross-type `eq`/`in`/`nin` (forms submit strings), so `"500"` matches
   `{ gte: 500 }`. Empty strings never coerce.
 - **Trace on every evaluation**: `evaluate` returns which rules were tried
-  and the first failing `when` path for each — this feeds the routing log
+  and the first failing `when` path for each; this feeds the routing log
   so decisions are debuggable, because the log is a headline feature.
 - **Strategies stay out of the engine**: `route: { team, strategy }` returns
   the declared action; resolving round-robin/weights/capacity against roster
   and availability lands with a later milestone on top of this output.
 
-## 2026-10-06 — Form schema + hosted form page
+## 2026-10-06: Form schema + hosted form page
 
 - **Form field type lives in `packages/core`** (not the DB package): the
   rules engine, the DB schema, and the hosted page must agree on one shape;
@@ -64,16 +64,16 @@ note when they supersede earlier ones.
   public key of a hosted page and an embed snippet, so `/f/<slug>` must be
   unambiguous; the org-scoped unique index stays for fast per-org lookups.
 - **Submission payload validation rejects unknown fields** rather than
-  silently dropping them — silent drops would hide misconfigured embeds; the
+  silently dropping them; silent drops would hide misconfigured embeds; the
   rules engine also never sees data the form does not declare.
 - **Duplicate submission handling**: `onConflictDoNothing` + re-select keyed
   on `(form_id, idempotency_key)` returns the original decision, so retries
-  are read-only. Calls without an idempotency key are not deduped — the
+  are read-only. Calls without an idempotency key are not deduped; the
   embed and hosted page always send one; the hosted page reuses the key for
   in-page retries.
 - **Broken stored rule sets fail safe**: if `rule_sets.rules` no longer
   validates, the submission still records with the empty rule set (fallback
-  queue) — a bad rule deploy never drops a lead.
+  queue); a bad rule deploy never drops a lead.
 - **`draftOutcome` in core, `finalizeOutcome` in web**: the engine stays
   I/O-free; the web app attaches `teamId`/`userId` from the database. An
   unmatched team falls back to the queue; an unmatched rep target is recorded
@@ -86,14 +86,14 @@ note when they supersede earlier ones.
   TS tooling dependency, idempotent upserts, uses the example rule file so
   demo data and docs stay in sync.
 
-## 2026-10-06 — Team strategies
+## 2026-10-06: Team strategies
 
 - **`selectRep` is pure in `packages/core`** like the rest of the engine: the
   web app supplies each member's load counters (assignment history,
   bookings-this-week) and availability, the function only picks. This keeps
   strategy selection unit-testable without a database and lets future
   callers (embed, API) reuse it.
-- **Round robin is deterministic, not random**: smooth weighted round robin —
+- **Round robin is deterministic, not random**: smooth weighted round robin;
   the eligible rep with the lowest `assignments / weight` wins, ties go to the
   first member in caller order (members are sorted by email). Rotation state is
   the count of past `route_team` decisions per rep, so it survives restarts and
@@ -103,7 +103,7 @@ note when they supersede earlier ones.
   simplification is acceptable until calendar integration adds per-slot
   availability, and is documented here rather than hidden.
 - **`existing_owner` falls back to round robin** when the CRM owner is absent,
-  inactive, or at capacity — owner-wins must never drop a lead. Owner
+  inactive, or at capacity; owner-wins must never drop a lead. Owner
   resolution itself activates with the HubSpot integration (the seam already accepts
   an owner user id).
 - **No eligible rep ⇒ fallback queue, recorded honestly**: the decision outcome
@@ -113,7 +113,7 @@ note when they supersede earlier ones.
   flag); the Google integration narrows it with real availability rather than
   changing the strategy interface.
 
-## 2026-10-06 — Google Calendar OAuth + availability
+## 2026-10-06: Google Calendar OAuth + availability
 
 - **Slot math is pure in `packages/core` on `Intl`** (zero new dependencies):
   Node and browsers ship the full IANA time-zone database, so wall-time →
@@ -137,7 +137,7 @@ note when they supersede earlier ones.
   (32-byte hex). Tokens are decrypted only in memory, refreshed lazily 60s
   before expiry, and the stored refresh token is carried forward when Google
   omits it in refresh responses. An unreadable blob (rotated/lost key) counts
-  as not connected — the admin reconnects and overwrites the row.
+  as not connected; the admin reconnects and overwrites the row.
 - **Google scopes at connect**: `calendar.freebusy` (availability now) and
   `calendar.events` (event + Meet-link creation in a later milestone) so one consent
   covers the whole v0.1 calendar scope.
@@ -145,17 +145,17 @@ note when they supersede earlier ones.
   Auth.js: only a key holder can start the connect that stores an
   org integration. CSRF state round-trips via a signed httpOnly cookie
   compared in the callback.
-- **Single-org mode via `ORG_SLUG`** (default: the seed org `acme`) — v0.1 is
+- **Single-org mode via `ORG_SLUG`** (default: the seed org `acme`); v0.1 is
   self-hosted single-org; the multi-tenant question is a declared non-goal.
 - **`WorkingHours` moved to `@switchboard/core`** (type-only change in the DB
   package): the slot engine, the DB schema, and future booking flows must agree
   on one shape, mirroring the `FormField` decision from a later milestone.
 
-## 2026-10-06 — Booking creation
+## 2026-10-06: Booking creation
 
 - **Two-phase booking with a `hold` status**: the slot is claimed by inserting
-  a `bookings` row with `status = 'hold'` — the unique index on
-  `(user_id, start_at)` makes the claim atomic — and confirmed by a follow-up
+  a `bookings` row with `status = 'hold'` (the unique index on
+  `(user_id, start_at)` makes the claim atomic) and confirmed by a follow-up
   update once the calendar event exists. The hold is *committed before* the
   network call on purpose: a DB transaction held open across the ~2s Google
   call would roll back on a crash and free a slot a lead may have seen as
@@ -173,14 +173,14 @@ note when they supersede earlier ones.
 - **Live free/busy re-check before event creation**: the availability the UI
   used may be stale by minutes; a fresh free/busy fetch for the slot window
   catches a clash and releases the hold with `409`. A free/busy *failure*
-  degrades and proceeds — an outage must not make booking impossible, matching
+  degrades and proceeds; an outage must not make booking impossible, matching
   the availability degradation from a later milestone.
 - **Calendar event failure confirms locally**: by design, the booking is
   not lost when Google fails; the failure is logged, surfaced as
   `calendarError`, and the confirmation email carries a plain booking link
   (`FALLBACK_BOOKING_URL`, optional) instead of a Meet link. Rep email is the
   contact in every confirmation email.
-- **Email is best-effort with BYO SMTP**: `SMTP_URL` (nodemailer) — the only
+- **Email is best-effort with BYO SMTP**: `SMTP_URL` (nodemailer); the only
   new dependency (justification: the maintained standard SMTP client; Node has
   no built-in SMTP and a hand-rolled client is not a good idea). Without
   `SMTP_URL` the email is skipped with a warning; a failed send logs and the
@@ -189,16 +189,16 @@ note when they supersede earlier ones.
 - **One Google integration per org** (from a later milestone) means free/busy and events
   run against the connected calendar; per-rep calendars land with per-rep
   OAuth (admin auth milestone).
-- **Slot window validation** on the server: duration clamped to 15–240
-  minutes, slot start in the future, `endAt = startAt + duration` — the API
+- **Slot window validation** on the server: duration clamped to 15 to 240
+  minutes, slot start in the future, `endAt = startAt + duration`; the API
   trusts nothing the client computed.
 
-## 2026-10-07 — Instant-booking inline UI
+## 2026-10-07: Instant-booking inline UI
 
 - **Slots render in the lead's time zone**: the lead chooses a time, so their
   local calendar view is primary; `groupSlotsByDay` (pure, in core) buckets
   the rep's UTC slots into the lead's local days, DST-correct. The rep's zone
-  is displayed alongside, never hidden — a 9:00 booking is the *rep's* 9:00
+  is displayed alongside, never hidden; a 9:00 booking is the *rep's* 9:00
   nowhere; the label states which zone is which.
 - **30-minute meetings, 14-day window, fixed for now**: the availability API
   already parameterizes both, but the form UI pins them; surfacing a picker is
@@ -216,13 +216,13 @@ note when they supersede earlier ones.
   an empty calendar says so and promises email follow-up; a Google outage
   renders local-only slots with a note.
 
-## 2026-10-08 — HubSpot OAuth + CRM-aware routing + write-back
+## 2026-10-08: HubSpot OAuth + CRM-aware routing + write-back
 
 - **Mirror of `calendar-google`, no SDK**: `packages/crm-hubspot` speaks
   HubSpot OAuth (authorization code + refresh) and the CRM v3 API over plain
   `fetch` with ~2s timeouts, exactly like the Google package. The HubSpot SDK
   would add dependency surface without adding capability.
-- **Owner lookup feeds the existing seam**: the rules engine stays pure —
+- **Owner lookup feeds the existing seam**: the rules engine stays pure;
   `crmPathsIn()` already declared which `crm.*` paths a rule set reads, so the
   web app prefetches exactly those (only when the lead has an email) before
   evaluation. The owner's *email* is stored at `crm.contact.owner`, which
@@ -238,14 +238,14 @@ note when they supersede earlier ones.
   fallbacks (pending rep matching / round robin), never an error.
 - **Write-backs are best-effort and idempotent**: the contact upsert uses
   HubSpot's `POST /crm/v3/objects/contacts/batch/upsert` endpoint keyed on
-  `idProperty=email` (verified against the live API — the
+  `idProperty=email` (verified against the live API: the
   `idempotent-upsert` route does not exist and returns 405), so a retry
   updates the same contact instead of creating a duplicate CRM record. The
   logged meeting is created once and its HubSpot id stored on
   `bookings.crm_meeting_id` (migration `0003`); repeat booking calls skip the
   API when it is set. Both fire after the durable state (routing decision /
   confirmed booking) is committed, so a HubSpot failure is logged and
-  degrades — it never blocks routing or unbooks a meeting, mirroring the
+  degrades; it never blocks routing or unbooks a meeting, mirroring the
   confirmation-email policy.
 - **Only known form fields map to HubSpot properties**: `name` splits into
   `firstname`/`lastname`, `company` maps 1:1. Sending arbitrary org-defined
@@ -260,7 +260,7 @@ note when they supersede earlier ones.
   HubSpot; association uses the HubSpot-defined "Meeting → contact" type
   (id 199).
 
-## 2026-10-09 — Routing log UI + CSV export
+## 2026-10-09: Routing log UI + CSV export
 
 - **Read-side lives in the web app, not core**: the log is a DB concern
   (joins, search), while the pure parts (CSV serialization, LIKE escaping,
@@ -274,11 +274,11 @@ note when they supersede earlier ones.
   the page instead of joining on `outcome->>'userId'` in SQL: joining on a
   jsonb key requires a uuid cast, and a malformed id would 500 the page (the
   same class of bug fixed in a later milestone's `finalizeOutcome`). Ids are filtered to
-  UUID shape before querying — defensive, since `finalizeOutcome` only ever
+  UUID shape before querying; defensive, since `finalizeOutcome` only ever
   stores real ids.
 - **CSV is RFC 4180 with CRLF endings**, flat columns (`decided_at, lead_email,
   form, matched_rule, outcome, rep, team, latency_ms, reason`). A null
-  `matched_rule` renders as `fallback` (only the fallback fired — the column
+  `matched_rule` renders as `fallback` (only the fallback fired; the column
   is machine-filterable). Cells opening with `=`, `+`, `-`, `@` are prefixed
   with `'` per the OWASP CSV-injection guidance, because lead-controlled form
   data flows into reason cells and admins open this file in spreadsheets.
@@ -289,7 +289,7 @@ note when they supersede earlier ones.
   until admin auth (Auth.js, a later milestone) replaces it: the log holds lead PII, so
   it must not be public.
 
-## 2026-10-10 — Embed snippet
+## 2026-10-10: Embed snippet
 
 - **iframe loader, not DOM injection**: v0.1 draft injected the whole form UI
   from a standalone script; minified it was ~14 KB (over the 10 KB
@@ -303,7 +303,7 @@ note when they supersede earlier ones.
   body transparent, and the page **reports its height via postMessage**
   (`switchboard:resize`) on a ResizeObserver. The loader accepts a message
   only when `event.origin` is the deployment origin **and** `event.source` is
-  the widget's own `contentWindow`, clamps the height to 200–4000 px, so a
+  the widget's own `contentWindow`, clamps the height to 200 to 4000 px, so a
   rogue host message cannot shrink or blow up the widget; the payload is a
   number, never HTML.
 - **The target origin comes from the message's own referrer** when available,
@@ -315,25 +315,25 @@ note when they supersede earlier ones.
   @switchboard/embed`). A guard test pins the artifact under 10 KB,
   byte-identical to a fresh minify, and asserts the safety properties (no
   eval/innerHTML/document.write, validated postMessage). New devDependency:
-  `esbuild` in `@switchboard/embed` only — the minifier for the committed
+  `esbuild` in `@switchboard/embed` only; the minifier for the committed
   artifact (it was already present transitively via vite/drizzle-kit; now
   pinned where it is used).
 - **Multiple widgets per page** are supported; each placeholder mounts its
   own iframe, guarded by `node.__sbEmbed` against double-mounting when the
   script is loaded twice.
 
-## 2026-10-10 — Speed-to-lead alerts
+## 2026-10-10: Speed-to-lead alerts
 
 - **pg-boss on the same Postgres** (a Postgres-backed queue, no
   Redis). The boss installs and migrates its own `pgboss` schema on start and
   shares `DATABASE_URL`; `docker compose up` needs no extra services. The
-  worker runs **in-process via `instrumentation.ts`** — a self-hoster gets
+  worker runs **in-process via `instrumentation.ts`**; a self-hoster gets
   alerts from `npm run dev`/`next start` with no second process. Scaling to
   multiple app instances is safe (pg-boss competing consumers) and documented.
 - **Alert scheduling is best-effort**: when a submission routes to a concrete
   rep, the job is scheduled with a `startAfter` of `SPEED_TO_LEAD_MINUTES`
   (default 5, invalid values fall back, sub-minute floors to 1). A queue that
-  cannot start never fails the submission — the alert is skipped with a logged
+  cannot start never fails the submission; the alert is skipped with a logged
   reason. Leads routed to a team without a resolved rep, self-serve links, or
   the fallback queue schedule nothing (there is no rep to notify yet).
 - **The job re-checks reality at fire time**: expired holds are released, then
@@ -345,7 +345,7 @@ note when they supersede earlier ones.
   column dies with the submission under the GDPR delete cascade.
 - **Slack first, email as fallback**: the `SLACK_WEBHOOK_URL` incoming
   webhook posts to a channel naming the rep (DM-per-rep needs a Slack app +
-  per-user tokens — deferred); without Slack, or when it fails, the alert goes
+  per-user tokens; deferred); without Slack, or when it fails, the alert goes
   by email to the rep over `SMTP_URL` (shared, timeout-pinned sender). With
   neither configured the alert is skipped honestly and logged.
 - **pg-boss v12 requires explicit queues**: the alert queue is created
@@ -355,18 +355,18 @@ note when they supersede earlier ones.
   `NEXT_RUNTIME === "nodejs"` check so the Node-only graph is never bundled
   for the edge runtime.
 
-## 2026-10-10 — Admin auth + abuse protection
+## 2026-10-10: Admin auth + abuse protection
 
 - **Auth.js credentials, env-configured admin**: the single self-hosted admin
-  account comes from `ADMIN_EMAIL` + `ADMIN_PASSWORD` (never the database —
-  no seed secret, nothing to rotate in a UI), with a JWT session cookie
+  account comes from `ADMIN_EMAIL` + `ADMIN_PASSWORD` (never the database,
+  so there is no seed secret and nothing to rotate in a UI), with a JWT session cookie
   signed by `AUTH_SECRET`. Chosen over a hand-rolled cookie session because
   Auth.js handles the CSRF/cookie/session
   machinery; chosen over an OAuth-provider login because a self-hoster's
   admin should not depend on a third-party identity to manage their own
   instance. Guarded surfaces: `/integrations`, `/routing-log`, both OAuth
   connect routes, and the CSV export (which also accepts `ADMIN_SETUP_KEY`
-  so cron/curl exports work without a cookie jar — the key's only remaining
+  so cron/curl exports work without a cookie jar; the key's only remaining
   job). Login attempts are rate-limited per IP.
 - **Honeypot before CAPTCHA**: the hosted form renders an off-screen,
   autocomplete-off field ("leave this field empty"); a filled value means a
@@ -386,17 +386,17 @@ note when they supersede earlier ones.
   `429` + `Retry-After`. Chosen over a Postgres counter table to keep every
   public request cheap and avoid a migration; the documented tradeoff is
   that limits reset on restart and are per instance (a load-balanced
-  deployment multiplies them — acceptable for v0.1 single-node self-hosting;
+  deployment multiplies them; acceptable for v0.1 single-node self-hosting;
   revisit with a real multi-node story).
 
-## 2026-10-11 — One-command `docker compose up`
+## 2026-10-11: One-command `docker compose up`
 
 - **Full stack in compose, migrations + seed in the entrypoint**: the compose
   file gains an `app` service built from a repo-root `Dockerfile` (Node 22
   alpine, `npm ci`, `next build`, workspace TS-source packages compiled via
   the existing `transpilePackages` setup). The container entrypoint
   (`docker/app-entrypoint.sh`) runs `npm run db:migrate` then
-  `node packages/db/scripts/seed.mjs` before `next start` — compose's
+  `node packages/db/scripts/seed.mjs` before `next start`; compose's
   `depends_on: condition: service_healthy` guarantees Postgres is ready, and
   both steps are idempotent so restarts are safe. Chosen over a separate
   migrate service or an init container: one service, one log stream, and
@@ -406,19 +406,19 @@ note when they supersede earlier ones.
   alone yields a working demo (admin `admin@example.com` / `admin1234`, a dev
   `AUTH_SECRET`), and compose substitutes anything set in `.env`
   (`${VAR:-default}`). Two deliberate exceptions: `TOKEN_ENCRYPTION_KEY` has
-  **no** demo default — encrypting real OAuth tokens with a key published in
+  **no** demo default; encrypting real OAuth tokens with a key published in
   the repo would be a real vulnerability, so connecting Google/HubSpot
   without setting it fails with the existing clear error; and the entrypoint
   prints a warning while the demo `ADMIN_PASSWORD` default is in effect.
   `SEED_DEMO_DATA` (default `true`) gates the demo seed for clean instances.
 
-## 2026-10-11 — Docs and demo assets
+## 2026-10-11: Docs and demo assets
 
 - **A recorded GIF in `docs/demo.gif`** rather than a YouTube link or a
   screenshot collage: the README's first impression must show the actual
   submit → route → inline-book loop, self-hosters' READMEs render on GitHub
   where external video embeds are noise, and a GIF is a committed file that
-  cannot rot into a dead link. Tradeoff accepted: the repo carries ~1–2 MB of
+  cannot rot into a dead link. Tradeoff accepted: the repo carries about 1 to 2 MB of
   binary; if it grows, it can move to a release asset.
 - **Sample rule sets ship as files, not inline YAML in prose**: `examples/`
   now holds the starter set plus `rules.saas.yaml` (a realistic B2B SaaS
@@ -431,7 +431,7 @@ note when they supersede earlier ones.
   setup, SMTP/Slack, HTTPS/proxy notes, upgrade path, and a pre-launch
   security checklist.
 
-## 2026-10-11 — Pre-launch hardening
+## 2026-10-11: Pre-launch hardening
 
 A full audit before the first public release changed several earlier
 decisions. Each item notes what it supersedes.

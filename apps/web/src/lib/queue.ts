@@ -42,7 +42,7 @@ async function startBoss(): Promise<PgBoss | null> {
   const url = process.env.DATABASE_URL;
   if (!url) {
     disabled = true;
-    log.warn("DATABASE_URL is not set — the job queue is disabled.");
+    log.warn("DATABASE_URL is not set, so the job queue is disabled.");
     return null;
   }
   try {

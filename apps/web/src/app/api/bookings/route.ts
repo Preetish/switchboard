@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const limit = checkRateLimit("booking", clientIp(request));
   if (!limit.allowed) {
     return tooManyRequests(limit.retryAfterSeconds, {
-      error: "Too many booking attempts — please try again shortly.",
+      error: "Too many booking attempts. Try again in a few minutes.",
     });
   }
   const parsed = parseBookingInput(await readJsonBody(request));

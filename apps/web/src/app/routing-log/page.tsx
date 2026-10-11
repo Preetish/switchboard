@@ -99,13 +99,13 @@ export default async function RoutingLogPage({
 
           <p className={styles.count}>
             {entries.length} decision{entries.length === 1 ? "" : "s"}, newest first
-            {q ? ` matching “${q}”` : ""}.
+            {q ? ` matching "${q}"` : ""}.
           </p>
 
           {entries.length === 0 ? (
             <p className={styles.empty}>
               {q ? (
-                `No decisions match “${q}”.`
+                `No decisions match "${q}".`
               ) : (
                 <>
                   No routing decisions yet. Submit one of your forms (try{" "}
@@ -143,7 +143,7 @@ export default async function RoutingLogPage({
                       </td>
                       <td>
                         {entry.repName ?? entry.teamName ?? (
-                          <span className={styles.muted}>—</span>
+                          <span className={styles.muted}>None</span>
                         )}
                       </td>
                       <td className={styles.mono}>{entry.latencyMs} ms</td>

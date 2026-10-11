@@ -19,7 +19,7 @@ export function getEncryptionKey(): Buffer {
   const hex = process.env.TOKEN_ENCRYPTION_KEY;
   if (!hex) {
     throw new Error(
-      "TOKEN_ENCRYPTION_KEY is not set — generate one with `openssl rand -hex 32` (see .env.example).",
+      "TOKEN_ENCRYPTION_KEY is not set. Generate one with `openssl rand -hex 32` (see .env.example).",
     );
   }
   if (!/^[0-9a-f]{64}$/i.test(hex)) {

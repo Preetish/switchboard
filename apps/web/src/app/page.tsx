@@ -9,15 +9,15 @@ export const dynamic = "force-dynamic";
 const STEPS = [
   {
     title: "Qualify",
-    body: "A lead fills in your form. Rules you keep in git decide where they go, using form answers and your CRM.",
+    body: "A lead fills in your form. Rules you keep in git read the answers and your CRM and decide who should talk to them.",
   },
   {
     title: "Route",
-    body: "The right rep is picked in milliseconds — existing owner, team round robin with weights, capacity, and time off.",
+    body: "Switchboard picks the rep in milliseconds: the account owner if there is one, otherwise the next rep on the team, by weight.",
   },
   {
     title: "Book",
-    body: "That rep's real availability appears on the same page. One click, and the meeting is on their calendar.",
+    body: "The lead sees that rep's open times on the same page and books one. The meeting goes onto the rep's calendar with a Meet link.",
   },
 ];
 
@@ -47,13 +47,14 @@ export default async function Home() {
         <p className={styles.brand}>Switchboard</p>
         <h1 className={styles.title}>Inbound routing that ends in a booked meeting.</h1>
         <p className={styles.lede}>
-          Qualify a form submission, route it to the right rep, and let the lead book on that
-          rep&apos;s calendar before they leave the page. Open source and self-hosted.
+          Switchboard sends each form submission to the right rep and lets the lead book a
+          time on that rep&apos;s calendar before leaving the page. It&apos;s open source and
+          runs on your own servers.
         </p>
         <div className={styles.actions}>
           {form ? (
             <a className={styles.primary} href={`/f/${form.slug}`}>
-              Try “{form.name}”
+              Try the &quot;{form.name}&quot; form
             </a>
           ) : null}
           <a className={styles.secondary} href="/routing-log">

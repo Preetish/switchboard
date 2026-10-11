@@ -23,7 +23,7 @@ export async function generateMetadata({
       .innerJoin(orgs, eq(forms.orgId, orgs.id))
       .where(eq(forms.slug, slug))
       .limit(1);
-    if (row) return { title: `${row.name} — ${row.orgName}` };
+    if (row) return { title: `${row.name} · ${row.orgName}` };
   } catch {
     // Metadata is best-effort; the page itself reports the real error.
   }

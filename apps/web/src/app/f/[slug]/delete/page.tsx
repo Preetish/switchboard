@@ -47,7 +47,7 @@ export default async function ConfirmDeletionPage({
     body = "Deletion links work for 24 hours. Request a new one from the form page.";
   } else {
     title = "Delete your data?";
-    body = `This erases everything ${request.email} submitted${form ? ` through “${form.name}”` : ""}, including any booked meeting on our side. It can't be undone.`;
+    body = `This erases everything ${request.email} submitted${form ? ` through "${form.name}"` : ""}, including any booked meeting on our side. It can't be undone.`;
     showButton = true;
   }
 

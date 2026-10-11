@@ -9,7 +9,7 @@ export default function ErrorPage({ reset }: { error: Error; reset: () => void }
       <section className={styles.card}>
         <h1 className={styles.cardTitle}>Something went wrong</h1>
         <p className={styles.cardBody}>
-          We couldn&apos;t load this page. It&apos;s usually temporary — try again in a moment.
+          We couldn&apos;t load this page. This is usually temporary. Try again in a moment.
         </p>
         <button type="button" className={styles.button} onClick={() => reset()}>
           Try again

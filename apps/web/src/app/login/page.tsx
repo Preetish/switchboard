@@ -47,7 +47,7 @@ export default async function LoginPage({
               Admin sign-in isn&apos;t set up. Set <code className={styles.code}>ADMIN_EMAIL</code>,{" "}
               <code className={styles.code}>ADMIN_PASSWORD</code>, and{" "}
               <code className={styles.code}>AUTH_SECRET</code>, then restart. With Docker these
-              are generated for you — the password is in the first startup log.
+              are generated on first start, and the password is printed in the startup log.
             </p>
           ) : (
             <form action={login} className={styles.stack}>

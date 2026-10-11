@@ -34,5 +34,5 @@ body:
     id: logs
     attributes:
       label: Relevant logs
-      description: From `docker compose logs app` — check them for secrets and personal data first.
+      description: From `docker compose logs app`. Check them for secrets and personal data first.
       render: text

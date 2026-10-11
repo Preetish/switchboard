@@ -47,7 +47,7 @@ describe("buildConfirmationEmail", () => {
       meetLink: null,
       fallbackUrl: "https://cal.example.com/alice",
     });
-    expect(text).toContain("could not create the calendar event");
+    expect(text).toContain("couldn't add this meeting to the calendar");
     expect(text).toContain("https://cal.example.com/alice");
   });
 
@@ -57,7 +57,7 @@ describe("buildConfirmationEmail", () => {
       meetLink: null,
       fallbackUrl: null,
     });
-    expect(text).toContain("could not create the calendar event");
+    expect(text).toContain("couldn't add this meeting to the calendar");
     expect(text).toContain("reply to this email");
   });
 });
@@ -73,7 +73,7 @@ describe("sendConfirmationEmail", () => {
     });
     expect(sent).toBe(false);
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("SMTP_URL is not set — confirmation email skipped."),
+      expect.stringContaining("SMTP_URL is not set, so the confirmation email was skipped."),
     );
   });
 

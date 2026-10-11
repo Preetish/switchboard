@@ -24,7 +24,7 @@ const ERRORS: Record<string, string> = {
   org_missing: "No organization found. Run the migrations and load your config first.",
   rep_missing: "That rep no longer exists. Refresh the page and try again.",
   state_mismatch:
-    "The connection request expired or didn't match. Nothing was connected — try again.",
+    "The connection request expired or didn't match, so nothing was connected. Try again.",
   denied: "Consent was declined. Nothing was connected.",
   scope_missing:
     "Calendar access was only partly granted. Reconnect and keep both calendar permissions ticked.",
@@ -174,13 +174,13 @@ export default async function IntegrationsPage({
                           {rep.status === "revoked" ? (
                             <>
                               <span className={styles.dotWarn} />
-                              Access was revoked — reconnect to restore live availability
+                              Access was revoked. Reconnect to show live availability again.
                             </>
                           ) : rep.updatedAt ? (
                             <>
                               <span className={otherAccount ? styles.dotWarn : styles.dotOk} />
                               {otherAccount
-                                ? `Connected as ${rep.accountEmail} — check this is the right calendar`
+                                ? `Connected as ${rep.accountEmail}. Check that this is the right calendar.`
                                 : `Connected${rep.accountEmail ? ` as ${rep.accountEmail}` : ""}`}
                             </>
                           ) : (
@@ -224,7 +224,7 @@ export default async function IntegrationsPage({
             {googleReady ? (
               <p className={styles.footnote}>
                 Send each rep their connect link (valid for 7 days) so they can sign in with
-                their own Google account. Use “Connect here” only when the rep is at this
+                their own Google account. Use Connect here only when the rep is at this
                 computer.
               </p>
             ) : null}
@@ -243,7 +243,7 @@ export default async function IntegrationsPage({
               {hubspot?.status === "revoked" ? (
                 <>
                   <span className={styles.dotWarn} />
-                  Access was revoked — reconnect HubSpot
+                  Access was revoked. Reconnect HubSpot.
                 </>
               ) : hubspot ? (
                 <>

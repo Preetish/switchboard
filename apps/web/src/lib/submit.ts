@@ -64,7 +64,7 @@ export async function handleSubmission(
       status: "invalid",
       errors: {
         [emailKey!]:
-          "Disposable email addresses are not accepted — please use your work email.",
+          "Use your work email. We can't accept disposable addresses.",
       },
     };
   }

@@ -33,7 +33,7 @@ export async function GET(
   const limit = checkRateLimit("availability", clientIp(request));
   if (!limit.allowed) {
     return tooManyRequests(limit.retryAfterSeconds, {
-      error: "Too many requests — please try again shortly.",
+      error: "Too many requests. Try again in a few minutes.",
     });
   }
   const { userId } = await params;

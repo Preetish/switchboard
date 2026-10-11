@@ -275,8 +275,8 @@ function Outcome({
       <>
         <h1 className={styles.cardTitle}>You can get started right away</h1>
         <p className={styles.cardBody}>
-          Thanks for reaching out. The quickest way in is to set things up yourself — it only
-          takes a few minutes.
+          Thanks for reaching out. You can set things up yourself on the next page, without
+          waiting for a call.
         </p>
         <a className={styles.linkButton} href={settings.selfServeUrl} target="_top">
           Get started
@@ -287,7 +287,7 @@ function Outcome({
   const who = result.repName ?? `Someone from ${orgName}`;
   return (
     <>
-      <h1 className={styles.cardTitle}>Thanks — we&apos;ve got your request</h1>
+      <h1 className={styles.cardTitle}>Thanks, we have your request</h1>
       <p className={styles.cardBody}>
         {who} will be in touch
         {result.email ? (
@@ -467,7 +467,7 @@ function BookingPanel({
         <div className={styles.summary}>
           <p className={styles.summaryWhen}>{formatLongDay(b.startAt)}</p>
           <p>
-            {formatTime(b.startAt)} – {formatTime(b.endAt)} · {friendlyZone(zone)}
+            {formatTime(b.startAt)} to {formatTime(b.endAt)}, {friendlyZone(zone)}
           </p>
         </div>
         {b.meetLink ? (
@@ -491,8 +491,8 @@ function BookingPanel({
     <>
       <h1 className={styles.cardTitle}>Pick a time with {repName}</h1>
       <p className={styles.cardBody}>
-        {repName} is the right person for your request. Choose a {MEETING_MINUTES}‑minute slot
-        below.
+        Choose a time for a {MEETING_MINUTES}‑minute call. {repName} handles requests like
+        yours.
       </p>
 
       {loading ? (
@@ -524,8 +524,8 @@ function BookingPanel({
         <>
           {availability?.degraded ? (
             <p className={styles.notice}>
-              We couldn&apos;t check {repName}&apos;s live calendar just now. If a time turns
-              out to clash, they&apos;ll suggest another.
+              We couldn&apos;t reach {repName}&apos;s calendar. If the time you pick clashes with
+              something, they&apos;ll suggest another.
             </p>
           ) : null}
           {bookingError ? (

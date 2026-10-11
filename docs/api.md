@@ -40,7 +40,7 @@ Validation failures return `400` with `{ "errors": { "<field>": "message" } }`
 `GET /api/availability/{userId}?submission={submissionId}&duration=30&days=14`
 
 Only answers for the rep that submission was routed to (`404` otherwise).
-`duration` is 15–240 minutes; `days` is 1–42.
+`duration` is 15 to 240 minutes; `days` is 1 to 42.
 
 ```json
 {
@@ -78,7 +78,7 @@ booking; asking again returns it with `"duplicate": true`.
 | `200` | The lead already had a booking; it's returned |
 | `400` | Not this lead's rep, or not an offered time |
 | `404` | Unknown submission or rep |
-| `409` | The time was just taken — fetch availability again |
+| `409` | Someone else just took the time; fetch availability again |
 
 ## Request data deletion
 

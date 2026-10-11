@@ -13,8 +13,8 @@ With Docker, put the file at `./config/switchboard.yaml`; it is applied on
 every container start. If it doesn't validate, the container stops and prints
 every problem with its location.
 
-**How applying works.** Everything is written in one transaction — all of it
-or none of it.
+**How applying works.** Switchboard writes everything in one transaction, so
+either all of it lands or none of it does.
 
 | Section | Matched by | When removed from the file |
 | --- | --- | --- |
@@ -42,7 +42,7 @@ reps:
   - email: ana@acme.com          # must match their Google account and HubSpot owner
     name: Ana Lopez
     timezone: America/New_York   # IANA zone; default UTC
-    workingHours:                # optional; default Mon–Fri 09:00–17:00
+    workingHours:                # optional; default Mon to Fri, 09:00 to 17:00
       days: [mon, tue, wed, thu, fri]
       hours: "09:00-17:00"       # 24-hour, in the rep's time zone
 ```
@@ -67,9 +67,10 @@ teams:
 earns their weight in credit per lead, the rep with the most credit gets the
 lead and pays back the team's total weight. Weights are exact (2:1 means
 exactly two of every three) and interleaved (a, b, a, a, b, a), new members
-get their fair share right away, and concurrent submissions take turns — the
-rotation is locked per team. A rep is skipped while paused or at weekly
-capacity; nobody eligible sends the lead to the fallback queue, never drops it.
+get their fair share right away, and concurrent submissions take turns because
+Switchboard locks the rotation per team. Switchboard skips a rep who is paused
+or at weekly capacity. If nobody on the team is eligible, the lead goes to the
+fallback queue instead of being dropped.
 
 ## `forms`
 
@@ -136,15 +137,15 @@ Rules run top to bottom and **the first match wins**; if none match,
 | `crm.contact.id` | The HubSpot contact id |
 
 Paths are checked when the file is applied: `form.*` must be a field of that
-form (or a derived key) — a typo like `from.country` is an error, not a rule
-that silently never matches.
+form (or a derived key). A typo like `from.country` fails validation instead of
+becoming a rule that never matches.
 
 ### Operators
 
 | Operator | Matches when the value… | Example |
 | --- | --- | --- |
 | *(bare value)* | equals it | `form.country: DE` |
-| `exists` | is present (`exists: false` — is missing) | `crm.contact.owner: exists` |
+| `exists` | is present (`exists: false`: is missing) | `crm.contact.owner: exists` |
 | `eq` / `neq` | equals / doesn't equal | `{ neq: Other }` |
 | `in` / `nin` | is / isn't one of a list | `{ in: [DE, AT, CH] }` |
 | `gt` `gte` `lt` `lte` | compares numerically (`"500"` counts as 500) | `{ gte: 500 }` |

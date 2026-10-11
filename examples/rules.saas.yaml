@@ -9,7 +9,7 @@
 # are `eq` shorthand, and the bare word `exists` means `{ exists: true }`.
 
 rules:
-  # A lead HubSpot already has an owner for belongs to that rep — never
+  # A lead HubSpot already has an owner for belongs to that rep. Never
   # re-route someone else's account. Requires the HubSpot integration.
   - name: Existing owner wins
     when:
@@ -54,7 +54,7 @@ rules:
       strategy: existing_owner
 
 # Everything that matched no rule (tiny teams, missing fields) still lands
-# somewhere a human sees it — never dropped silently.
+# somewhere a human sees it, so nobody gets dropped silently.
 fallback:
   team: default
   strategy: round_robin

@@ -1,7 +1,7 @@
 # Embedding a form on your site
 
-The embed puts the whole flow — form, routing, and booking on the rep's
-calendar — on any page of your site. The lead never leaves it.
+The embed puts the whole flow (form, routing, and booking on the rep's
+calendar) on any page of your site, so the lead never leaves it.
 
 ## Quick start
 
@@ -42,7 +42,7 @@ background so the form sits on your page.
 The form reports its height with
 `postMessage({ type: "switchboard:resize", height })`. The loader accepts the
 message only when it comes from the Switchboard origin **and** from one of
-its own iframes, and clamps heights to 200–4000 px, so there are no nested
+its own iframes, and clamps heights to 200 to 4000 px, so there are no nested
 scrollbars.
 
 ## Restricting who can embed
@@ -69,7 +69,7 @@ frame-src  https://switchboard.yourcompany.com;
 The form uses Switchboard's design tokens, including dark mode that follows
 the visitor's system setting. Control the width by sizing the placeholder;
 the form is at most 34rem wide inside it. Styles inside the iframe can't be
-changed from your page — that isolation is the point.
+changed from your page; that isolation is what keeps your CSS and ours apart.
 
 ## Behavior notes
 

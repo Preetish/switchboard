@@ -1,55 +1,61 @@
 # Switchboard
 
-**Open-source inbound lead routing that ends in a booked meeting.**
+**Route each inbound lead to the right rep, then let the lead book that rep's
+calendar on the same page.**
 
-A lead fills in your form. Switchboard decides who should talk to them — using
-the form answers and your CRM — and shows that rep's real calendar on the same
-page, so the meeting is booked before the lead leaves. Self-hosted, configured
-in a YAML file you keep in git, no per-seat pricing.
+Switchboard is an open-source, self-hosted alternative to inbound routing
+tools like Chili Piper. A lead fills in your demo form. Your rules pick the rep
+using the form answers and HubSpot. As soon as the lead submits, the form
+turns into that rep's open times from their Google Calendar, and the lead
+books without leaving the page. You keep the rules in a YAML file in git,
+and you pay nothing per seat.
 
 [![CI](https://github.com/Preetish/switchboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Preetish/switchboard/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 <p align="center">
   <img src="docs/images/1-form.png" width="32%" alt="The hosted form">
-  <img src="docs/images/2-pick-a-time.png" width="32%" alt="The routed rep's open times, inline">
+  <img src="docs/images/2-pick-a-time.png" width="32%" alt="The routed rep's open times, shown inline">
   <img src="docs/images/3-booked.png" width="32%" alt="Booked confirmation">
 </p>
 
-## Try it in two minutes
+## Try it locally
 
 ```bash
 git clone https://github.com/Preetish/switchboard && cd switchboard
 docker compose up
 ```
 
-Open **http://localhost:3000/f/book-a-demo**, fill in the form with a company
-size over 500, and book a time. Then sign in at **/login** to see the routing
-log — the admin password is printed once in the startup logs:
+Open http://localhost:3000/f/book-a-demo, enter a company size over 500, and
+book a time. To see the decision in the routing log, sign in at
+http://localhost:3000/login. Docker prints the admin password once when it
+first starts:
 
 ```bash
 docker compose logs app | grep "Admin login"
 ```
 
-The demo loads four fictional reps, three teams, and the rules in
+The demo comes with four fictional reps, three teams, and the rules in
 [`examples/rules.example.yaml`](examples/rules.example.yaml).
 
-## How it works
+## What happens when a lead submits
 
-1. **Qualify.** Leads submit a hosted form (`/f/<slug>`) or the same form
-   embedded on your site with two lines of HTML.
-2. **Route.** Rules run top to bottom against the answers and, when HubSpot
-   is connected, CRM data. The first match wins: send existing customers to
-   their owner, big companies to the enterprise team, personal emails to
-   self-serve, and so on. Teams rotate by weight with weekly caps and
-   pause switches.
-3. **Book.** The chosen rep's free time — from their own Google Calendar —
-   appears inline. One click creates the event with a Meet link, logs the
-   meeting in HubSpot, and emails a confirmation. If nobody books within a
-   few minutes, the rep gets a speed-to-lead alert in Slack or email.
+1. The lead fills in a hosted form at `/f/<slug>`, or the same form embedded
+   on your site with two lines of HTML.
+2. Your rules run in order against the answers and, if you connect HubSpot,
+   the lead's CRM record. The first match decides. Typical rules send
+   existing customers to their account owner, companies over 500 people to
+   the enterprise team, and Gmail addresses to self-serve signup. Within a
+   team, reps take turns by weight, and you can cap a rep's meetings per week
+   or pause them while they're away.
+3. The lead sees open times from that rep's own Google Calendar and books
+   one. Switchboard creates the event with a Google Meet link, logs the
+   meeting in HubSpot, and emails the lead a confirmation. If the lead leaves
+   without booking, the rep gets a Slack or email alert a few minutes later.
 
-Every decision is recorded — inputs, matched rule, outcome, latency — in a
-searchable routing log with CSV export.
+The routing log records every decision: what the lead entered, which rule
+matched, who got the lead, and how long routing took. You can search it and
+export it as CSV.
 
 <p align="center">
   <img src="docs/images/4-routing-log.png" width="90%" alt="The routing log">
@@ -57,7 +63,8 @@ searchable routing log with CSV export.
 
 ## Set it up for your team
 
-Everything lives in one file, reviewed like code:
+You describe your reps, teams, forms, and rules in one file and review
+changes to it like code:
 
 ```yaml
 # config/switchboard.yaml
@@ -88,48 +95,45 @@ forms:
 
 ```bash
 cp switchboard.example.yaml config/switchboard.yaml   # then edit it
-npm run config:check -- config/switchboard.yaml       # validate (great in CI)
-docker compose up -d                                   # applied on every start
+npm run config:check -- config/switchboard.yaml       # validate it (works in CI)
+docker compose up -d                                   # applies it on every start
 ```
 
-Mistakes are caught before they reach a lead, with the exact place to fix:
+If you make a mistake, Switchboard tells you where it is before any lead hits
+it, for example:
 `forms[0] (book-a-demo) rules rules[1] (DACH): team "dach" is not defined in teams`.
 
-Then connect calendars and CRM at **/integrations**: each rep connects their
-own Google Calendar through a link you send them, and HubSpot connects once
-for the org.
+Then open `/integrations`. You send each rep a link to connect their own
+Google Calendar, and you connect HubSpot once for the whole org.
 
 ## Documentation
 
-| Guide | What's in it |
+| Guide | Covers |
 | --- | --- |
-| [Configuration](docs/configuration.md) | `switchboard.yaml`, rule operators, routing strategies |
-| [Self-hosting](docs/self-hosting.md) | Deploying, environment variables, Google/HubSpot apps, HTTPS, upgrades |
+| [Configuration](docs/configuration.md) | `switchboard.yaml`, rule operators, how reps are picked |
+| [Self-hosting](docs/self-hosting.md) | Deploying, environment variables, Google and HubSpot apps, HTTPS, upgrades |
 | [Embedding](docs/embed.md) | Putting the form on your site |
 | [HTTP API](docs/api.md) | The public and admin endpoints |
-| [Architecture](docs/architecture.md) | How the pieces fit, and how to add a calendar or CRM |
-| [Design decisions](docs/decisions.md) | Why things are the way they are |
+| [Architecture](docs/architecture.md) | How the code fits together, and how to add a calendar or CRM |
+| [Design decisions](docs/decisions.md) | Why it works the way it does |
 
 ## Status and limits
 
-Switchboard is at **v0.1**: the full loop works and is covered by unit,
-Postgres integration, and browser tests, but it is young software. Today it
-supports:
+This is v0.1. The full flow works, and unit, Postgres, and browser tests cover
+it in CI, but the project is new. Today Switchboard supports Google Calendar
+(Outlook isn't supported yet) and HubSpot (Salesforce isn't either). Each
+instance serves one company with one admin login, and lead pages are in
+English. The inline booking step offers 30-minute meetings. Rate limits live
+in memory, so they apply per instance; if you run several, put a shared
+limiter in front.
 
-- **Calendars:** Google Calendar (per rep). Outlook is not supported yet.
-- **CRM:** HubSpot. Salesforce is not supported yet.
-- **One org per instance**, one admin login, English-only lead pages.
-- **30-minute meetings** on the inline booking step.
-- **Rate limits are per instance** (in memory); run one instance or put a
-  shared limiter in front if you scale out.
-
-See the [changelog](CHANGELOG.md) for what changed between releases.
+The [changelog](CHANGELOG.md) lists what changes in each release.
 
 ## Contributing
 
-Bug reports, ideas, and pull requests are welcome — start with
-[CONTRIBUTING.md](CONTRIBUTING.md). Please report security issues privately
-as described in [SECURITY.md](SECURITY.md).
+Bug reports, ideas, and pull requests are welcome. Start with
+[CONTRIBUTING.md](CONTRIBUTING.md). Please report security issues privately as
+described in [SECURITY.md](SECURITY.md).
 
 ## License
 

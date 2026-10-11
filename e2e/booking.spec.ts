@@ -37,7 +37,7 @@ test("a qualified lead picks a time and books it on the same page", async ({ pag
 
   await expect(page.getByText("Booked")).toBeVisible();
   await expect(page.getByRole("heading", { name: /You're meeting/ })).toBeVisible();
-  await expect(page.getByText(new RegExp(`${time} –`))).toBeVisible();
+  await expect(page.getByText(new RegExp(`${time} to`))).toBeVisible();
 });
 
 test("a personal-email lead is sent to self-serve", async ({ page }) => {

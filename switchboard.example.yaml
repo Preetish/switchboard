@@ -1,11 +1,11 @@
-# switchboard.yaml — your reps, teams, forms, and routing rules in one file.
+# switchboard.yaml: your reps, teams, forms, and routing rules in one file.
 #
 #   cp switchboard.example.yaml switchboard.yaml
 #   npm run config:check       # validate (no database needed; good for CI)
 #   npm run config:apply       # write it to DATABASE_URL
 #
-# With Docker, put it at ./config/switchboard.yaml — it's applied on every
-# container start. Changes are applied in one transaction: all or nothing.
+# With Docker, put it at ./config/switchboard.yaml. The container applies it
+# on every start. Changes are applied in one transaction: all or nothing.
 
 org:
   name: Your Company
@@ -17,7 +17,7 @@ reps:
   - email: ana@yourcompany.com
     name: Ana Lopez
     timezone: America/New_York          # IANA zone
-    workingHours:                       # optional; default Mon–Fri 09:00–17:00
+    workingHours:                       # optional; default Mon to Fri, 09:00 to 17:00
       days: [mon, tue, wed, thu, fri]
       hours: "09:00-17:00"
   - email: ben@yourcompany.com

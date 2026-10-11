@@ -101,24 +101,24 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): {
   } else {
     lines.push(
       "",
-      "We could not create the calendar event automatically, so the meeting is not on a calendar yet.",
+      "We couldn't add this meeting to the calendar, so no invite went out.",
     );
     if (input.fallbackUrl) {
       lines.push(`You can pick another time here: ${input.fallbackUrl}`);
     }
     lines.push(
-      `Or simply reply to this email and ${input.repName} will set it up with you.`,
+      `Or reply to this email and ${input.repName} will set it up with you.`,
     );
   }
   lines.push(
     "",
-    `Questions? Reply to ${input.repName} at ${input.repEmail}.`,
+    `Questions? Write to ${input.repName} at ${input.repEmail}.`,
     "",
-    `— ${input.orgName}`,
+    input.orgName,
   );
 
   return {
-    subject: `Confirmed: meeting with ${input.repName} — ${whenSubject}`,
+    subject: `Confirmed: meeting with ${input.repName}, ${whenSubject}`,
     text: lines.join("\n"),
   };
 }
@@ -149,7 +149,7 @@ export async function sendEmail(
 ): Promise<boolean> {
   const url = process.env.SMTP_URL;
   if (!url) {
-    log.warn(`SMTP_URL is not set — ${context} skipped.`);
+    log.warn(`SMTP_URL is not set, so the ${context} was skipped.`);
     return false;
   }
   try {

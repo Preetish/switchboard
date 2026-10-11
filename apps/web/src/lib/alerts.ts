@@ -61,11 +61,11 @@ export function buildSpeedToLeadAlert(input: SpeedToLeadAlertInput): {
       "",
       `Reference: ${input.submissionId}`,
       "",
-      "Reach out soon — speed to lead wins deals.",
+      "Reach out while the request is fresh.",
       "",
-      "— Switchboard",
+      "Switchboard",
     ].join("\n"),
-    slackText: `:hourglass: *Speed-to-lead* — ${escapeSlack(body)} Rep: ${escapeSlack(input.repName)}. Reference: ${input.submissionId}`,
+    slackText: `:hourglass: *Speed-to-lead:* ${escapeSlack(body)} Rep: ${escapeSlack(input.repName)}. Reference: ${input.submissionId}`,
   };
 }
 

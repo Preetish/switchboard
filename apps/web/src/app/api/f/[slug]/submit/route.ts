@@ -27,7 +27,7 @@ export async function POST(
   if (!limit.allowed) {
     return tooManyRequests(limit.retryAfterSeconds, {
       errors: {
-        _form: "Too many submissions from your network — please try again shortly.",
+        _form: "Too many submissions from your network. Try again in a few minutes.",
       },
     });
   }
