@@ -179,6 +179,18 @@ describe("embed loader behavior", () => {
     expect(env.created).toHaveLength(2); // never mounts twice
   });
 
+  it("passes a placeholder's theme attributes to the form", () => {
+    const env = load();
+    const node = env.add("book-a-demo");
+    node.attrs["data-switchboard-accent"] = "#E4002B";
+    node.attrs["data-switchboard-layout"] = "plain";
+    node.attrs["data-switchboard-background"] = "transparent";
+    env.api.mount();
+    expect(env.created[0]!.src).toBe(
+      `${ORIGIN}/f/book-a-demo?embed=1&accent=%23E4002B&layout=plain&bg=transparent`,
+    );
+  });
+
   it("resizes only for messages from its own iframe and origin", () => {
     const env = load();
     env.add("book-a-demo");

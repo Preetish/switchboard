@@ -263,3 +263,36 @@
 .groupTitle + .section {
   margin-top: var(--sb-space-3);
 }
+
+.previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--sb-space-4);
+  margin-top: var(--sb-space-2);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-1);
+}
+
+/* A neutral stage, like a customer page, so plain layouts are visible. */
+.previewStage {
+  padding: var(--sb-space-4);
+  border: 1px dashed var(--sb-border);
+  border-radius: var(--sb-radius-md);
+  background: oklch(0.97 0 0);
+}
+
+.previewStageDark {
+  composes: previewStage;
+  background: oklch(0.16 0 0);
+}
+
+.previewFrame {
+  display: block;
+  width: 100%;
+  border: 0;
+  color-scheme: normal;
+}

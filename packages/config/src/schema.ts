@@ -52,6 +52,10 @@ const form = z.strictObject({
   submitLabel: z.string().min(1).max(40).optional(),
   /** Where `self_serve_link` leads go: a signup or scheduling page (https). */
   selfServeUrl: z.url({ protocol: /^https?$/ }).optional(),
+  /** Overrides the top-level theme for this form (see docs/embed.md). */
+  theme: z.record(z.string(), z.unknown()).optional(),
+  /** Extra CSS for this form's page, after the top-level customCss. */
+  customCss: z.string().optional(),
   /** A path to a rule file (relative to this file) or the rule set inline. */
   rules: z.union([z.string().min(1), z.record(z.string(), z.unknown())]).optional(),
 });
@@ -61,6 +65,10 @@ export const configSchema = z.strictObject({
     name: z.string().min(1).max(120),
     slug: z.string().regex(SLUG_RE, "lowercase letters, digits, and dashes"),
   }),
+  /** Default look for every form: accent, radius, font, colorScheme, layout, background. */
+  theme: z.record(z.string(), z.unknown()).optional(),
+  /** CSS added to every form page (admin-written; no @import or url()). */
+  customCss: z.string().optional(),
   hubspot: z
     .strictObject({
       /**

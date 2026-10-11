@@ -11,6 +11,16 @@ org:
   name: Your Company
   slug: your-company
 
+# Optional: match your site. See docs/embed.md#matching-your-site.
+# theme:
+#   accent: "#0B5FFF"
+#   radius: 6
+#   font:
+#     family: "Inter, system-ui, sans-serif"
+#     stylesheet: https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap
+#   colorScheme: auto        # light | dark | auto
+#   layout: card             # card | plain
+
 # Optional: copy attribution onto HubSpot contacts (the properties must
 # exist in your portal). See docs/configuration.md.
 # hubspot:

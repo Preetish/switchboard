@@ -12,9 +12,9 @@ import {
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import type { Attribution, FormField, WorkingHours } from "@switchboard/core";
+import type { Attribution, FormField, Theme, WorkingHours } from "@switchboard/core";
 
-export type { Attribution, FormField, WorkingHours };
+export type { Attribution, FormField, Theme, WorkingHours };
 
 /** Org-wide settings from switchboard.yaml. */
 export type OrgSettings = {
@@ -24,6 +24,10 @@ export type OrgSettings = {
    * "first.utm_campaign": "first_utm_campaign" }`.
    */
   hubspotProperties?: Record<string, string>;
+  /** Default look for every form (validated; see packages/core/src/theme.ts). */
+  theme?: Theme;
+  /** Admin-written CSS added to every form page. */
+  customCss?: string;
 };
 
 /** Per-form presentation settings (from switchboard.yaml). */
@@ -32,6 +36,10 @@ export type FormSettings = {
   submitLabel?: string;
   /** Where self-serve leads book (e.g. a scheduling page or signup). */
   selfServeUrl?: string;
+  /** Overrides the org theme for this form. */
+  theme?: Theme;
+  /** Extra admin-written CSS for this form, after the org's. */
+  customCss?: string;
 };
 
 export type DecisionOutcome = {

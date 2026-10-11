@@ -106,6 +106,10 @@ If you make a mistake, Switchboard tells you where it is before any lead hits
 it, for example:
 `forms[0] (book-a-demo) rules rules[1] (DACH): team "dach" is not defined in teams`.
 
+Add a `theme` to match your site: accent color, corner radius, font, light or
+dark, and a borderless layout that blends into your page. The Setup page shows
+a live preview of each form. See [Matching your site](docs/embed.md#matching-your-site).
+
 Then open `/integrations`. You send each rep a link to connect their own
 Google Calendar, and you connect HubSpot once for the whole org.
 
@@ -115,7 +119,8 @@ Google Calendar, and you connect HubSpot once for the whole org.
 | --- | --- |
 | [Configuration](docs/configuration.md) | `switchboard.yaml`, rule operators, how reps are picked |
 | [Self-hosting](docs/self-hosting.md) | Deploying, environment variables, Google and HubSpot apps, HTTPS, upgrades |
-| [Embedding](docs/embed.md) | Putting the form on your site |
+| [Embedding](docs/embed.md) | Putting the form on your site, matching your brand, tracking campaigns |
+| [Building your own form](docs/custom-form.md) | Using the API with your own markup |
 | [HTTP API](docs/api.md) | The public and admin endpoints |
 | [Architecture](docs/architecture.md) | How the code fits together, and how to add a calendar or CRM |
 | [Design decisions](docs/decisions.md) | Why it works the way it does |

@@ -80,6 +80,11 @@
   --sb-duration-base: 200ms;
 }
 
+/* Native controls (select, checkbox) follow the active scheme. */
+:root {
+  color-scheme: light dark;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --sb-bg: var(--sb-gray-950);
@@ -99,4 +104,35 @@
     --sb-duration-fast: 0ms;
     --sb-duration-base: 0ms;
   }
+}
+
+/*
+ * Forced schemes for themed forms (`colorScheme: light | dark`). They set
+ * every scheme-dependent token explicitly, so they win over the visitor's
+ * system setting inside the element they're applied to.
+ */
+.sb-scheme-light {
+  color-scheme: light;
+  --sb-bg: var(--sb-gray-50);
+  --sb-surface: oklch(1 0 0);
+  --sb-text: var(--sb-gray-900);
+  --sb-text-muted: var(--sb-gray-600);
+  --sb-border: var(--sb-gray-200);
+  --sb-accent-soft: oklch(0.93 0.05 50);
+  --sb-accent-text: var(--sb-accent-strong);
+  --sb-success-text: oklch(0.48 0.13 150);
+  --sb-danger-text: var(--sb-danger);
+}
+
+.sb-scheme-dark {
+  color-scheme: dark;
+  --sb-bg: var(--sb-gray-950);
+  --sb-surface: var(--sb-gray-900);
+  --sb-text: var(--sb-gray-100);
+  --sb-text-muted: var(--sb-gray-400);
+  --sb-border: var(--sb-gray-800);
+  --sb-accent-soft: oklch(0.32 0.07 40);
+  --sb-accent-text: oklch(0.78 0.14 50);
+  --sb-success-text: var(--sb-success);
+  --sb-danger-text: oklch(0.72 0.17 27);
 }

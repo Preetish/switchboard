@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isEmailAddress } from "@switchboard/core";
 import { getDb } from "@/lib/db";
 import { requestErasure } from "@/lib/erasure";
-import { readJsonBody } from "@/lib/http";
+import { corsPreflight, readJsonBody, withCors } from "@/lib/http";
 import { checkRateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  * The response is the same whether or not the address ever submitted, so
  * this endpoint can't be used to check who filled in the form.
  */
-export async function POST(
+async function handlePOST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
@@ -48,3 +48,6 @@ export async function POST(
     { status: 202 },
   );
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

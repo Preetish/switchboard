@@ -1,4 +1,16 @@
 export {
+  EMBED_THEME_KEYS,
+  contrastRatio,
+  mergeThemes,
+  readableOn,
+  schemeClass,
+  textOn,
+  themeCss,
+  validateCustomCss,
+  validateTheme,
+} from "./theme.js";
+export type { ColorScheme, Layout, Theme, ThemeResult } from "./theme.js";
+export {
   ATTRIBUTION_RULE_PATHS,
   CAMPAIGN_PARAMS,
   CLICK_ID_PARAMS,

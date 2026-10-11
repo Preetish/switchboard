@@ -5,7 +5,9 @@ can build your own form front end or automate exports; anything not listed
 here is internal and may change.
 
 All bodies are JSON (at most 64 KB). Public endpoints are rate limited per
-client address and answer `429` with `Retry-After` when over the limit.
+client address and answer `429` with `Retry-After` when over the limit. They
+also answer CORS requests (from any site, or only from `EMBED_ALLOWED_ORIGINS`
+when set), so you can [build your own form](custom-form.md) on your site.
 
 ## Submit a form
 
