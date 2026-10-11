@@ -20,6 +20,8 @@ export type GoogleTokenSet = {
   expiresAt: Date;
   /** Granted scopes, space-separated, as returned by Google. */
   scope?: string;
+  /** The connected Google account's address (from the ID token), when granted. */
+  email?: string;
 };
 
 export const DEFAULT_TIMEOUT_MS = 2_000;
@@ -28,10 +30,26 @@ export const GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/aut
 export const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 
 /** free/busy read for availability; events write for creating bookings. */
-export const GOOGLE_SCOPES = [
+export const GOOGLE_CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar.freebusy",
   "https://www.googleapis.com/auth/calendar.events",
 ] as const;
+
+/**
+ * Calendar scopes plus `openid email`, so the connect flow learns which
+ * Google account a rep connected and the admin can spot a wrong account.
+ */
+export const GOOGLE_SCOPES = ["openid", "email", ...GOOGLE_CALENDAR_SCOPES] as const;
+
+/**
+ * Calendar scopes the user did not grant. Google's granular consent lets a
+ * user untick individual scopes, so a "successful" connect can still lack
+ * event creation; the caller rejects the connection instead of failing later.
+ */
+export function missingCalendarScopes(granted: string | undefined): string[] {
+  const have = new Set((granted ?? "").split(/\s+/).filter(Boolean));
+  return GOOGLE_CALENDAR_SCOPES.filter((scope) => !have.has(scope));
+}
 
 export class GoogleAuthError extends Error {
   constructor(message: string) {
@@ -58,6 +76,7 @@ type TokenResponse = {
   refresh_token?: string;
   expires_in?: number;
   scope?: string;
+  id_token?: string;
   error?: string;
   error_description?: string;
 };
@@ -92,7 +111,26 @@ async function tokenRequest(
     refreshToken: payload.refresh_token,
     expiresAt: new Date(Date.now() + (payload.expires_in ?? 3600) * 1000),
     scope: payload.scope,
+    email: emailFromIdToken(payload.id_token),
   };
+}
+
+/**
+ * The `email` claim of an ID token. The token comes straight from Google's
+ * token endpoint over TLS (not from the browser), so reading the claim
+ * without verifying the signature is the documented-safe case.
+ */
+function emailFromIdToken(idToken: string | undefined): string | undefined {
+  const payload = idToken?.split(".")[1];
+  if (!payload) return undefined;
+  try {
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      email?: unknown;
+    };
+    return typeof claims.email === "string" ? claims.email.toLowerCase() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Exchange an authorization code from the callback for a token set. */

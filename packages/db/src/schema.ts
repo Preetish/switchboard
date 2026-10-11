@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -220,19 +220,34 @@ export const integrations = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
+    /**
+     * The rep a per-user connection belongs to (Google Calendar: each rep
+     * connects their own calendar). Null for org-wide connections (HubSpot).
+     */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     provider: text("provider", {
       enum: ["google_calendar", "hubspot", "slack"],
     }).notNull(),
     /** AES-encrypted OAuth token blob (IV + ciphertext), never stored in plaintext. */
     tokenCipher: text("token_cipher").notNull(),
     scopes: text("scopes"),
+    /** Account the tokens belong to (e.g. the rep's Google address), for display. */
+    accountEmail: text("account_email"),
     status: text("status", { enum: ["connected", "expired", "revoked"] })
       .notNull()
       .default("connected"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("integrations_org_provider_uq").on(t.orgId, t.provider)],
+  // One org-wide connection per provider, and one per rep per provider.
+  (t) => [
+    uniqueIndex("integrations_org_provider_uq")
+      .on(t.orgId, t.provider)
+      .where(sql`${t.userId} is null`),
+    uniqueIndex("integrations_user_provider_uq")
+      .on(t.userId, t.provider)
+      .where(sql`${t.userId} is not null`),
+  ],
 );
 
 export const orgsRelations = relations(orgs, ({ many }) => ({

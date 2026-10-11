@@ -43,6 +43,13 @@
       "when": 1791668799904,
       "tag": "0005_cheerful_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791729358716,
+      "tag": "0006_per_rep_calendars",
+      "breakpoints": true
     }
   ]
 }

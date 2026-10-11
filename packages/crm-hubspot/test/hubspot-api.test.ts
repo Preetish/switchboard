@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   HubspotApiError,
   findContactByEmail,
+  findOwnerByEmail,
   getOwner,
   logMeeting,
   upsertContact,
@@ -63,7 +64,31 @@ describe("getOwner", () => {
     const owner = await getOwner({ ...token, ownerId: "77" });
     expect(owner).toEqual({ id: "77", email: "alice@acme.test", name: "Alice Chen" });
     const [url] = stub.mock.calls[0]! as [string];
-    expect(url).toContain("/crm/v3/objects/owners/77");
+    // The Owners API lives at /crm/v3/owners — not under /crm/v3/objects.
+    expect(new URL(url).pathname).toBe("/crm/v3/owners/77");
+  });
+
+  it("returns null for an owner HubSpot no longer has", async () => {
+    jsonFetch(404, { message: "not found" });
+    await expect(getOwner({ ...token, ownerId: "77" })).resolves.toBeNull();
+  });
+});
+
+describe("findOwnerByEmail", () => {
+  it("looks the owner up by email on the Owners API", async () => {
+    const stub = jsonFetch(200, {
+      results: [{ id: "88", email: "bob@acme.test", firstName: "Bob" }],
+    });
+    const owner = await findOwnerByEmail({ ...token, email: "Bob@Acme.test" });
+    expect(owner).toEqual({ id: "88", email: "bob@acme.test", name: "Bob" });
+    const url = new URL((stub.mock.calls[0]! as [string])[0]);
+    expect(url.pathname).toBe("/crm/v3/owners/");
+    expect(url.searchParams.get("email")).toBe("bob@acme.test");
+  });
+
+  it("returns null when no owner has that email", async () => {
+    jsonFetch(200, { results: [] });
+    await expect(findOwnerByEmail({ ...token, email: "x@acme.test" })).resolves.toBeNull();
   });
 
   it("tolerates a missing name", async () => {
@@ -142,7 +167,8 @@ describe("logMeeting", () => {
     expect(body.properties.hs_timestamp).toBe("2026-10-12T13:00:00.000Z");
     expect(body.properties.hubspot_owner_id).toBe("77");
     expect(body.associations[0]?.to.id).toBe("501");
-    expect(body.associations[0]?.types[0]?.associationTypeId).toBe(199);
+    // 200 = "Meeting to contact" (199 is the reverse direction).
+    expect(body.associations[0]?.types[0]?.associationTypeId).toBe(200);
   });
 
   it("raises HubspotApiError on failure", async () => {

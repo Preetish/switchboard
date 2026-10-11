@@ -1,4 +1,5 @@
 import {
+  buildRuleInputs,
   crmPathsIn,
   draftOutcome,
   emailFieldKey,
@@ -117,7 +118,8 @@ export async function handleSubmission(
   const needsCrm = crmPathsIn(ruleSet).length > 0;
   const crm: CrmContext | null =
     needsCrm && email ? await fetchCrmContext(db, form.orgId, email) : null;
-  const inputs: Record<string, unknown> = { form: validated.data, crm: crm ?? {} };
+  // form.* plus derived keys (form.email_domain); crm.* from the prefetch.
+  const inputs: Record<string, unknown> = buildRuleInputs(form.fields, validated.data, crm);
 
   const evaluation = evaluate(ruleSet, inputs);
   const latencyMs = Math.max(1, Math.round(performance.now() - startedAt));

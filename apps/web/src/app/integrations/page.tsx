@@ -1,56 +1,44 @@
-import { eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { integrations } from "@switchboard/db";
-import { auth, signOut } from "@/lib/auth";
+import { integrations, users } from "@switchboard/db";
+import { auth } from "@/lib/auth";
+import { hubspotConfig } from "@/lib/crm";
 import { getDb } from "@/lib/db";
-import { findOrg } from "@/lib/integrations";
+import { appBaseUrl, findOrg, googleConfig } from "@/lib/integrations";
+import { signConnectLink } from "@/lib/oauth-state";
+import { deleteTokens } from "@/lib/token-store";
+import AdminHeader from "../AdminHeader";
+import styles from "../admin.module.css";
+import CopyButton from "./CopyButton";
 
 export const dynamic = "force-dynamic";
 
-const BANNER_STYLES = {
-  padding: "var(--sb-space-4)",
-  borderRadius: "var(--sb-radius-md)",
-  marginBottom: "var(--sb-space-6)",
-  fontSize: "var(--sb-text-sm)",
-} as const;
-
 const ERRORS: Record<string, string> = {
   google_not_configured:
-    "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (self-hosters bring their own OAuth client — see the README).",
+    "Google isn't set up yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment and restart (see the self-hosting guide).",
   hubspot_not_configured:
-    "HubSpot OAuth is not configured. Set HUBSPOT_CLIENT_ID and HUBSPOT_CLIENT_SECRET (self-hosters bring their own HubSpot app — see the README).",
-  org_missing:
-    "No organization found. Run the migrations and seed script first (npm run db:migrate && npm run db:seed).",
+    "HubSpot isn't set up yet. Add HUBSPOT_CLIENT_ID and HUBSPOT_CLIENT_SECRET to your environment and restart (see the self-hosting guide).",
+  auth_not_configured: "Set AUTH_SECRET in your environment and restart, then try again.",
+  org_missing: "No organization found. Run the migrations and load your config first.",
+  rep_missing: "That rep no longer exists. Refresh the page and try again.",
   state_mismatch:
-    "The OAuth state did not match — the request may have expired or been tampered with. Nothing was connected; try again.",
+    "The connection request expired or didn't match. Nothing was connected — try again.",
   denied: "Consent was declined. Nothing was connected.",
+  scope_missing:
+    "Calendar access was only partly granted. Reconnect and keep both calendar permissions ticked.",
   exchange_failed:
-    "The provider rejected the token exchange. Check the OAuth app credentials and redirect URI, then try again.",
+    "The provider rejected the connection. Check the OAuth app's credentials and redirect URI, then try again.",
 };
 
-type ProviderCard = {
-  name: string;
-  provider: "google_calendar" | "hubspot";
-  notConnectedText: string;
-  hint: string;
+const CONNECTED: Record<string, string> = {
+  google: "Calendar connected. That rep's availability now comes from their Google Calendar.",
+  hubspot: "HubSpot connected. Owner routing and contact write-back are on.",
 };
 
-const PROVIDERS: ProviderCard[] = [
-  {
-    name: "Google Calendar",
-    provider: "google_calendar",
-    notConnectedText:
-      "Not connected. Free/busy lookup powers real availability when connected.",
-    hint: "Self-hosters use their own Google OAuth client with redirect URI /api/integrations/google/callback.",
-  },
-  {
-    name: "HubSpot",
-    provider: "hubspot",
-    notConnectedText:
-      "Not connected. CRM-aware routing (existing-owner wins) and contact write-back activate when connected.",
-    hint: "Self-hosters create their own HubSpot app with redirect URI /api/integrations/hubspot/callback. Rep emails in Switchboard must match the HubSpot owner emails.",
-  },
-];
+function formatUpdated(date: Date): string {
+  return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
 
 export default async function IntegrationsPage({
   searchParams,
@@ -63,167 +51,225 @@ export default async function IntegrationsPage({
   const db = getDb();
   const org = await findOrg(db);
 
-  const rows = org
+  const reps = org
     ? await db
         .select({
-          provider: integrations.provider,
-          status: integrations.status,
-          scopes: integrations.scopes,
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          accountEmail: integrations.accountEmail,
           updatedAt: integrations.updatedAt,
         })
-        .from(integrations)
-        .where(eq(integrations.orgId, org.id))
+        .from(users)
+        .leftJoin(
+          integrations,
+          and(
+            eq(integrations.userId, users.id),
+            eq(integrations.provider, "google_calendar"),
+          ),
+        )
+        .where(eq(users.orgId, org.id))
+        .orderBy(asc(users.name))
     : [];
-  const statusByProvider = new Map(rows.map((row) => [row.provider, row] as const));
+  const [hubspot] = org
+    ? await db
+        .select({ updatedAt: integrations.updatedAt })
+        .from(integrations)
+        .where(
+          and(
+            eq(integrations.orgId, org.id),
+            eq(integrations.provider, "hubspot"),
+            isNull(integrations.userId),
+          ),
+        )
+        .limit(1)
+    : [];
 
   const banner = connected
-    ? {
-        tone: "ok",
-        text:
-          connected === "hubspot"
-            ? "HubSpot is connected. Existing-owner routing and contact write-back are active."
-            : "Google Calendar is connected. Availability now includes Google free/busy.",
-      }
+    ? { ok: true, text: CONNECTED[connected] ?? "Connected." }
     : error
       ? {
-          tone: "error",
-          text:
-            ERRORS[error] ??
-            "Something went wrong connecting the integration. Nothing was changed.",
+          ok: false,
+          text: ERRORS[error] ?? "Something went wrong while connecting. Nothing was changed.",
         }
       : null;
-  const bannerTone = banner?.tone === "ok" ? "var(--sb-success)" : "var(--sb-danger)";
+  const googleReady = googleConfig() !== null;
+  const base = appBaseUrl();
+
+  async function disconnect(formData: FormData) {
+    "use server";
+    if (!(await auth())) redirect("/login");
+    const db = getDb();
+    const org = await findOrg(db);
+    const provider = formData.get("provider");
+    if (!org) return;
+    if (provider === "hubspot") {
+      await deleteTokens(db, "hubspot", { orgId: org.id, userId: null });
+    } else if (provider === "google_calendar") {
+      const userId = String(formData.get("userId") ?? "");
+      await deleteTokens(db, "google_calendar", { orgId: org.id, userId });
+    }
+    revalidatePath("/integrations");
+  }
 
   return (
-    <main style={mainStyle}>
-      <div style={cardStyle}>
-        <h1 style={{ fontSize: "var(--sb-text-2xl)", fontWeight: 600 }}>Integrations</h1>
-        {org ? (
-          <p style={{ color: "var(--sb-text-muted)", marginTop: "var(--sb-space-1)" }}>
-            Connections for <strong>{org.name}</strong>.{" "}
-            <a href="/routing-log" style={{ color: "var(--sb-info)" }}>
-              Routing log →
-            </a>
+    <>
+      <AdminHeader active="integrations" />
+      <main className={styles.page}>
+        <div className={styles.container}>
+          <h1 className={styles.title}>Integrations</h1>
+          <p className={styles.subtitle}>
+            {org ? (
+              <>
+                Calendars and CRM for <strong>{org.name}</strong>.
+              </>
+            ) : (
+              <>
+                No organization found. Run <code className={styles.code}>npm run db:migrate</code>{" "}
+                and load your config first.
+              </>
+            )}
           </p>
-        ) : (
-          <p style={{ color: "var(--sb-text-muted)", marginTop: "var(--sb-space-1)" }}>
-            No organization found. Run{" "}
-            <code>npm run db:migrate &amp;&amp; npm run db:seed</code> first.
-          </p>
-        )}
 
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/login" });
-          }}
-          style={{ marginTop: "var(--sb-space-2)" }}
-        >
-          <button
-            type="submit"
-            style={{
-              background: "var(--sb-surface)",
-              color: "var(--sb-text)",
-              border: "1px solid var(--sb-border)",
-              borderRadius: "var(--sb-radius-sm)",
-              padding: "var(--sb-space-1) var(--sb-space-3)",
-              fontSize: "var(--sb-text-sm)",
-              cursor: "pointer",
-            }}
-          >
-            Sign out
-          </button>
-        </form>
+          {banner ? (
+            <p className={banner.ok ? styles.bannerOk : styles.bannerError} role="status">
+              {banner.text}
+            </p>
+          ) : null}
 
-        {banner ? (
-          <p
-            style={{
-              ...BANNER_STYLES,
-              marginTop: "var(--sb-space-4)",
-              background: "color-mix(in oklab, " + bannerTone + " 12%, transparent)",
-              border: "1px solid " + bannerTone,
-              color: "var(--sb-text)",
-            }}
-            role="status"
-          >
-            {banner.text}
-          </p>
-        ) : null}
-
-        {PROVIDERS.map((provider) => {
-          const status = statusByProvider.get(provider.provider);
-          return (
-            <section
-              key={provider.provider}
-              style={{
-                marginTop: "var(--sb-space-4)",
-                border: "1px solid var(--sb-border)",
-                borderRadius: "var(--sb-radius-md)",
-                padding: "var(--sb-space-4)",
-              }}
-            >
-              <h2 style={{ fontSize: "var(--sb-text-lg)", fontWeight: 600 }}>
-                {provider.name}
-              </h2>
-              <p
-                style={{
-                  color: "var(--sb-text-muted)",
-                  marginTop: "var(--sb-space-1)",
-                  fontSize: "var(--sb-text-sm)",
-                }}
-              >
-                {status
-                  ? `Connected (${status.status}) — tokens stored encrypted, updated ${status.updatedAt.toISOString().slice(0, 16).replace("T", " ")} UTC.`
-                  : provider.notConnectedText}
+          <section className={styles.section} aria-labelledby="calendars">
+            <h2 id="calendars" className={styles.sectionTitle}>
+              Google Calendar
+            </h2>
+            <p className={styles.sectionBody}>
+              Each rep connects their own calendar. Leads only see times when that rep
+              is free, and booked meetings land on the rep&apos;s calendar with a Meet
+              link. Until a rep connects, their working hours and existing bookings decide
+              what&apos;s offered.
+            </p>
+            {!googleReady ? (
+              <p className={styles.bannerError}>
+                Add <code className={styles.code}>GOOGLE_CLIENT_ID</code> and{" "}
+                <code className={styles.code}>GOOGLE_CLIENT_SECRET</code> to connect
+                calendars. Use redirect URI{" "}
+                <code className={styles.code}>{base}/api/integrations/google/callback</code>.
               </p>
-              <form
-                action={`/api/integrations/${provider.provider === "google_calendar" ? "google" : "hubspot"}/connect`}
-                method="get"
-                style={{ marginTop: "var(--sb-space-4)" }}
-              >
-                <button
-                  type="submit"
-                  style={{
-                    background: "var(--sb-accent)",
-                    color: "var(--sb-text-on-accent)",
-                    border: "none",
-                    borderRadius: "var(--sb-radius-sm)",
-                    padding: "var(--sb-space-2) var(--sb-space-4)",
-                    fontSize: "var(--sb-text-sm)",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  {status ? "Reconnect " : "Connect "}
-                  {provider.name}
-                </button>
-              </form>
-              <p
-                style={{
-                  color: "var(--sb-text-muted)",
-                  marginTop: "var(--sb-space-3)",
-                  fontSize: "var(--sb-text-sm)",
-                }}
-              >
-                {provider.hint}
+            ) : null}
+            {reps.length === 0 ? (
+              <p className={styles.sectionBody}>No reps yet. Add them to your config.</p>
+            ) : (
+              <ul className={styles.list}>
+                {reps.map((rep) => {
+                  const link = signConnectLink(rep.id);
+                  const otherAccount =
+                    rep.accountEmail && rep.accountEmail !== rep.email.toLowerCase();
+                  return (
+                    <li key={rep.id} className={styles.row}>
+                      <div className={styles.rowMain}>
+                        <div className={styles.rowName}>{rep.name}</div>
+                        <div className={styles.muted}>{rep.email}</div>
+                        <div className={styles.status}>
+                          {rep.updatedAt ? (
+                            <>
+                              <span className={otherAccount ? styles.dotWarn : styles.dotOk} />
+                              {otherAccount
+                                ? `Connected as ${rep.accountEmail} — check this is the right calendar`
+                                : `Connected${rep.accountEmail ? ` as ${rep.accountEmail}` : ""}`}
+                            </>
+                          ) : (
+                            <>
+                              <span className={styles.dot} />
+                              Not connected
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {googleReady ? (
+                        <div className={styles.rowActions}>
+                          {link ? (
+                            <CopyButton
+                              value={`${base}/api/integrations/google/connect?${link}`}
+                              label="Copy connect link"
+                            />
+                          ) : null}
+                          <a
+                            className={styles.buttonSecondary}
+                            href={`/api/integrations/google/connect?userId=${rep.id}`}
+                          >
+                            {rep.updatedAt ? "Reconnect" : "Connect here"}
+                          </a>
+                          {rep.updatedAt ? (
+                            <form action={disconnect}>
+                              <input type="hidden" name="provider" value="google_calendar" />
+                              <input type="hidden" name="userId" value={rep.id} />
+                              <button type="submit" className={styles.buttonSecondary}>
+                                Disconnect
+                              </button>
+                            </form>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {googleReady ? (
+              <p className={styles.footnote}>
+                Send each rep their connect link (valid for 7 days) so they can sign in with
+                their own Google account. Use “Connect here” only when the rep is at this
+                computer.
               </p>
-            </section>
-          );
-        })}
-      </div>
-    </main>
+            ) : null}
+          </section>
+
+          <section className={styles.section} aria-labelledby="crm">
+            <h2 id="crm" className={styles.sectionTitle}>
+              HubSpot
+            </h2>
+            <p className={styles.sectionBody}>
+              Routes leads to the rep who already owns the contact, adds new leads as
+              contacts, and logs booked meetings on the contact&apos;s timeline. Reps are
+              matched to HubSpot owners by email.
+            </p>
+            <div className={styles.status}>
+              {hubspot ? (
+                <>
+                  <span className={styles.dotOk} />
+                  Connected · updated {formatUpdated(hubspot.updatedAt)}
+                </>
+              ) : (
+                <>
+                  <span className={styles.dot} />
+                  Not connected
+                </>
+              )}
+            </div>
+            {hubspotConfig() ? (
+              <div className={styles.actions}>
+                <a className={styles.button} href="/api/integrations/hubspot/connect">
+                  {hubspot ? "Reconnect HubSpot" : "Connect HubSpot"}
+                </a>
+                {hubspot ? (
+                  <form action={disconnect}>
+                    <input type="hidden" name="provider" value="hubspot" />
+                    <button type="submit" className={styles.buttonSecondary}>
+                      Disconnect
+                    </button>
+                  </form>
+                ) : null}
+              </div>
+            ) : (
+              <p className={styles.bannerError}>
+                Add <code className={styles.code}>HUBSPOT_CLIENT_ID</code> and{" "}
+                <code className={styles.code}>HUBSPOT_CLIENT_SECRET</code> to connect HubSpot.
+                Use redirect URI{" "}
+                <code className={styles.code}>{base}/api/integrations/hubspot/callback</code>.
+              </p>
+            )}
+          </section>
+        </div>
+      </main>
+    </>
   );
 }
-
-const mainStyle = {
-  minHeight: "100vh",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  padding: "var(--sb-space-8) var(--sb-space-4)",
-} as const;
-
-const cardStyle = {
-  width: "100%",
-  maxWidth: "36rem",
-} as const;

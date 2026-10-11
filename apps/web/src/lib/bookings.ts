@@ -8,7 +8,7 @@ import {
 } from "@switchboard/calendar-google";
 import { and, eq } from "drizzle-orm";
 import { bookings, orgs, submissions, users, type Database } from "@switchboard/db";
-import { getValidAccessToken } from "./integrations";
+import { getGoogleAccessToken } from "./integrations";
 import { logCrmMeeting } from "./crm";
 import { releaseExpiredHolds } from "./holds";
 import { sendConfirmationEmail } from "./email";
@@ -242,13 +242,12 @@ export async function createBooking(
   // only ever missing under a conflict handled above.
   const hold = inserted!;
 
-  const calendar = await reserveCalendar(db, rep.orgId, {
+  const calendar = await reserveCalendar(db, { orgId: rep.orgId, userId: rep.id }, {
     start: input.startAt,
     end: endAt,
     summary: `${rep.orgName} — ${leadName ?? "New meeting"}`,
     description: `Booked via Switchboard (submission ${input.submissionId ?? "n/a"}).`,
     leadEmail,
-    repEmail: rep.email,
   });
 
   if (calendar.slotTaken) {
@@ -303,6 +302,7 @@ export async function createBooking(
     leadEmail,
     leadName,
     repName: rep.name,
+    repEmail: rep.email,
     meetLink: calendar.meetLink,
   });
 
@@ -331,17 +331,17 @@ type CalendarReservation = {
  */
 async function reserveCalendar(
   db: Database,
-  orgId: string,
+  rep: { orgId: string; userId: string },
   event: {
     start: Date;
     end: Date;
     summary: string;
     description: string;
     leadEmail: string | null;
-    repEmail: string;
   },
 ): Promise<CalendarReservation> {
-  const accessToken = await getValidAccessToken(db, orgId);
+  // The rep's own calendar: free/busy re-check and the event both act as them.
+  const accessToken = await getGoogleAccessToken(db, rep);
   if (!accessToken) {
     return { slotTaken: false, eventId: null, meetLink: null };
   }
@@ -367,9 +367,8 @@ async function reserveCalendar(
     );
   }
 
-  const attendees = event.leadEmail
-    ? [event.leadEmail, event.repEmail]
-    : [event.repEmail];
+  // The rep organizes the event on their own calendar; the lead is invited.
+  const attendees = event.leadEmail ? [event.leadEmail] : [];
   try {
     const created = await createCalendarEvent({
       accessToken,

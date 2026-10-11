@@ -10,9 +10,24 @@ import { DEFAULT_TIMEOUT_MS } from "./oauth.js";
 export const HUBSPOT_API_BASE = "https://api.hubapi.com";
 
 export class HubspotApiError extends Error {
-  constructor(message: string) {
+  /** HTTP status when HubSpot answered; undefined for network failures. */
+  readonly status: number | undefined;
+  /** Seconds HubSpot asked us to wait (429 `Retry-After`), when given. */
+  readonly retryAfterSeconds: number | undefined;
+
+  constructor(
+    message: string,
+    options: { status?: number; retryAfterSeconds?: number } = {},
+  ) {
     super(message);
     this.name = "HubspotApiError";
+    this.status = options.status;
+    this.retryAfterSeconds = options.retryAfterSeconds;
+  }
+
+  /** Worth retrying later: rate limited, HubSpot-side errors, or unreachable. */
+  get retryable(): boolean {
+    return this.status === undefined || this.status === 429 || this.status >= 500;
   }
 }
 
@@ -57,13 +72,20 @@ async function apiRequest<T>(
     });
   } catch (cause) {
     throw new HubspotApiError(
-      `HubSpot API unreachable (${path}): ${cause instanceof Error ? cause.message : String(cause)}`,
+      `HubSpot API unreachable: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
   }
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
+    const retryAfter = Number(response.headers.get("retry-after"));
+    // The path is left out of the message: contact lookups put the lead's
+    // email in it, and these messages end up in logs.
     throw new HubspotApiError(
-      `HubSpot API returned HTTP ${response.status} for ${path}${detail ? `: ${detail.slice(0, 200)}` : ""}`,
+      `HubSpot API returned HTTP ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`,
+      {
+        status: response.status,
+        retryAfterSeconds: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+      },
     );
   }
   return (await response.json().catch(() => null)) as T;
@@ -92,31 +114,63 @@ export async function findContactByEmail(options: {
       ownerId: payload.properties?.hubspot_owner_id ?? null,
     };
   } catch (cause) {
-    if (cause instanceof HubspotApiError && cause.message.includes("HTTP 404")) {
+    if (cause instanceof HubspotApiError && cause.status === 404) {
       return null;
     }
     throw cause;
   }
 }
 
-/** The HubSpot owner behind `hubspot_owner_id` (their email drives routing). */
-export async function getOwner(options: {
-  accessToken: string;
-  ownerId: string;
-  timeoutMs?: number;
-}): Promise<HubspotOwner | null> {
-  const payload = await apiRequest<OwnerResponse>({
-    ...options,
-    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    path: `/crm/v3/objects/owners/${encodeURIComponent(options.ownerId)}`,
-  });
-  if (payload.id === undefined) return null;
+function toOwner(payload: OwnerResponse | undefined): HubspotOwner | null {
+  if (payload?.id === undefined) return null;
   const name = [payload.firstName, payload.lastName].filter(Boolean).join(" ");
   return {
     id: String(payload.id),
     email: payload.email ?? null,
     name: name || null,
   };
+}
+
+/**
+ * The HubSpot owner behind `hubspot_owner_id` (their email drives routing).
+ * Null when the owner no longer exists; deactivated owners are included so
+ * a contact owned by someone who left still resolves (and then simply
+ * matches no active rep).
+ */
+export async function getOwner(options: {
+  accessToken: string;
+  ownerId: string;
+  timeoutMs?: number;
+}): Promise<HubspotOwner | null> {
+  try {
+    const payload = await apiRequest<OwnerResponse>({
+      ...options,
+      timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      path: `/crm/v3/owners/${encodeURIComponent(options.ownerId)}?idProperty=id&archived=false`,
+    });
+    return toOwner(payload);
+  } catch (cause) {
+    if (cause instanceof HubspotApiError && cause.status === 404) return null;
+    throw cause;
+  }
+}
+
+/**
+ * The HubSpot owner with this email, or null. Used to put a logged meeting
+ * on the rep who actually took it (not on whoever owns the contact).
+ */
+export async function findOwnerByEmail(options: {
+  accessToken: string;
+  email: string;
+  timeoutMs?: number;
+}): Promise<HubspotOwner | null> {
+  const query = new URLSearchParams({ email: options.email.toLowerCase(), limit: "1" });
+  const payload = await apiRequest<{ results?: OwnerResponse[] }>({
+    accessToken: options.accessToken,
+    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    path: `/crm/v3/owners/?${query.toString()}`,
+  });
+  return toOwner(payload?.results?.[0]);
 }
 
 export type UpsertContactInput = {
@@ -169,8 +223,11 @@ export type LogMeetingInput = {
   timeoutMs?: number;
 };
 
-/** Association type id for HubSpot-defined "Meeting to contact". */
-const MEETING_TO_CONTACT_ASSOCIATION = 199;
+/**
+ * HubSpot-defined association type for "Meeting to contact" (the direction
+ * matters: 199 is "Contact to meeting" and is rejected here).
+ */
+export const MEETING_TO_CONTACT_ASSOCIATION = 200;
 
 /**
  * Log a meeting on the contact's timeline, associated to the contact.

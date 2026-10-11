@@ -3,6 +3,7 @@ import {
   GoogleAuthError,
   authorizationUrl,
   exchangeCode,
+  missingCalendarScopes,
   refreshAccessToken,
   type GoogleOAuthConfig,
 } from "../src/index.js";
@@ -31,7 +32,7 @@ describe("authorizationUrl", () => {
     expect(url.searchParams.get("redirect_uri")).toBe(config.redirectUri);
     expect(url.searchParams.get("response_type")).toBe("code");
     expect(url.searchParams.get("scope")).toBe(
-      "https://www.googleapis.com/auth/calendar.freebusy https://www.googleapis.com/auth/calendar.events",
+      "openid email https://www.googleapis.com/auth/calendar.freebusy https://www.googleapis.com/auth/calendar.events",
     );
     expect(url.searchParams.get("access_type")).toBe("offline");
     expect(url.searchParams.get("prompt")).toBe("consent");
@@ -62,6 +63,24 @@ describe("exchangeCode", () => {
     expect(body.get("client_id")).toBe("client-123");
     expect(body.get("client_secret")).toBe("secret-456");
     expect(body.get("redirect_uri")).toBe(config.redirectUri);
+  });
+
+  it("reads the connected account's email from the ID token", async () => {
+    const claims = Buffer.from(JSON.stringify({ email: "Alice@Acme.test" })).toString(
+      "base64url",
+    );
+    jsonFetch(200, {
+      access_token: "at-1",
+      expires_in: 3600,
+      id_token: `header.${claims}.signature`,
+    });
+    const tokens = await exchangeCode(config, "code-789");
+    expect(tokens.email).toBe("alice@acme.test");
+  });
+
+  it("leaves the email unset when the ID token is missing or malformed", async () => {
+    jsonFetch(200, { access_token: "at-1", expires_in: 3600, id_token: "not-a-jwt" });
+    expect((await exchangeCode(config, "code-789")).email).toBeUndefined();
   });
 
   it("raises GoogleAuthError with Google's description on rejection", async () => {
@@ -108,5 +127,27 @@ describe("refreshAccessToken", () => {
     const body = new URLSearchParams(init.body);
     expect(body.get("grant_type")).toBe("refresh_token");
     expect(body.get("refresh_token")).toBe("rt-keep");
+  });
+});
+
+describe("missingCalendarScopes", () => {
+  it("reports calendar scopes the user unticked on the consent screen", () => {
+    expect(
+      missingCalendarScopes(
+        "openid email https://www.googleapis.com/auth/calendar.freebusy",
+      ),
+    ).toEqual(["https://www.googleapis.com/auth/calendar.events"]);
+  });
+
+  it("is empty when both calendar scopes were granted", () => {
+    expect(
+      missingCalendarScopes(
+        "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.freebusy",
+      ),
+    ).toEqual([]);
+  });
+
+  it("reports everything when Google returned no scope list", () => {
+    expect(missingCalendarScopes(undefined)).toHaveLength(2);
   });
 });

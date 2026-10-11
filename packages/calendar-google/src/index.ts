@@ -1,11 +1,13 @@
 export {
   DEFAULT_TIMEOUT_MS,
   GOOGLE_AUTH_ENDPOINT,
+  GOOGLE_CALENDAR_SCOPES,
   GOOGLE_SCOPES,
   GOOGLE_TOKEN_ENDPOINT,
   GoogleAuthError,
   authorizationUrl,
   exchangeCode,
+  missingCalendarScopes,
   refreshAccessToken,
 } from "./oauth.js";
 export type { GoogleOAuthConfig, GoogleTokenSet } from "./oauth.js";

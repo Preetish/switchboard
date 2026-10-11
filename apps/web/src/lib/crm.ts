@@ -4,23 +4,24 @@ import {
   HubspotAuthError,
   exchangeCode,
   findContactByEmail,
+  findOwnerByEmail,
   getOwner,
   logMeeting,
   refreshAccessToken,
   upsertContact,
   type HubspotOAuthConfig,
-  type HubspotTokenSet,
 } from "@switchboard/crm-hubspot";
-import { and, eq } from "drizzle-orm";
-import { bookings, integrations, type Database } from "@switchboard/db";
-import { decryptJson, encryptJson, getEncryptionKey } from "@/lib/crypto";
+import { eq } from "drizzle-orm";
+import { bookings, type Database } from "@switchboard/db";
+import { appBaseUrl } from "./integrations";
+import { getValidAccessToken, saveTokens } from "./token-store";
 
 /**
- * HubSpot integration plumbing, mirroring `integrations.ts` (Google): env
- * config, OAuth handshake completion, encrypted token lifecycle, and the
- * write-back helpers. CRM lookups are best-effort — a HubSpot outage or
- * timeout degrades routing to non-CRM rules instead of dropping the lead
- * (routing-brief edge case: fall back, log the failure).
+ * HubSpot integration plumbing: env config, OAuth handshake completion, and
+ * the lookup/write-back helpers. HubSpot is one org-wide connection (tokens
+ * in `token-store.ts` with no rep). CRM lookups are best-effort — a HubSpot
+ * outage or timeout degrades routing to non-CRM rules instead of dropping
+ * the lead, and the failure is logged.
  */
 
 export function hubspotConfig(): HubspotOAuthConfig | null {
@@ -32,74 +33,6 @@ export function hubspotConfig(): HubspotOAuthConfig | null {
     clientSecret,
     redirectUri: `${appBaseUrl()}/api/integrations/hubspot/callback`,
   };
-}
-
-function appBaseUrl(): string {
-  return (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-}
-
-/** Same stored shape as Google tokens: epoch-ms survives JSON round-trips. */
-type StoredHubspotTokens = {
-  accessToken: string;
-  refreshToken?: string;
-  expiresAtMs: number;
-  scope?: string;
-};
-
-async function loadHubspotTokens(
-  db: Database,
-  orgId: string,
-): Promise<HubspotTokenSet | null> {
-  const [row] = await db
-    .select({ tokenCipher: integrations.tokenCipher })
-    .from(integrations)
-    .where(and(eq(integrations.orgId, orgId), eq(integrations.provider, "hubspot")))
-    .limit(1);
-  if (!row) return null;
-  try {
-    const stored = decryptJson<StoredHubspotTokens>(row.tokenCipher, getEncryptionKey());
-    return {
-      accessToken: stored.accessToken,
-      refreshToken: stored.refreshToken,
-      expiresAt: new Date(stored.expiresAtMs),
-      scope: stored.scope,
-    };
-  } catch {
-    // Unreadable blob (key rotated/lost) counts as not connected.
-    return null;
-  }
-}
-
-async function saveHubspotTokens(
-  db: Database,
-  orgId: string,
-  tokens: HubspotTokenSet,
-): Promise<void> {
-  const stored: StoredHubspotTokens = {
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-    expiresAtMs: tokens.expiresAt.getTime(),
-    scope: tokens.scope,
-  };
-  const tokenCipher = encryptJson(stored, getEncryptionKey());
-  await db
-    .insert(integrations)
-    .values({
-      orgId,
-      provider: "hubspot",
-      tokenCipher,
-      scopes: tokens.scope ?? null,
-      status: "connected",
-    })
-    .onConflictDoUpdate({
-      target: [integrations.orgId, integrations.provider],
-      set: {
-        tokenCipher,
-        scopes: tokens.scope ?? null,
-        status: "connected",
-        updatedAt: new Date(),
-      },
-    });
 }
 
 /** Complete the OAuth handshake; returns a stable error code on failure. */
@@ -114,7 +47,7 @@ export async function connectHubspot(
   if (!config) return { ok: false, error: "hubspot_not_configured" };
   try {
     const tokens = await exchangeCode(config, code, DEFAULT_TIMEOUT_MS);
-    await saveHubspotTokens(db, orgId, tokens);
+    await saveTokens(db, "hubspot", { orgId, userId: null }, tokens);
     return { ok: true };
   } catch (cause) {
     console.error(
@@ -125,38 +58,19 @@ export async function connectHubspot(
 }
 
 /**
- * A valid access token, refreshing it shortly before expiry (HubSpot tokens
- * live ~30 minutes, so this is the common path). Returns null when the org is
- * not connected or the refresh call fails.
+ * A valid access token (HubSpot tokens live ~30 minutes, so refreshing is
+ * the common path). Null when the org is not connected or the refresh fails.
  */
-async function getValidHubspotAccessToken(
-  db: Database,
-  orgId: string,
-): Promise<string | null> {
-  const tokens = await loadHubspotTokens(db, orgId);
-  if (!tokens?.refreshToken) return tokens?.accessToken ?? null;
-  if (tokens.expiresAt.getTime() - Date.now() > 60_000) return tokens.accessToken;
-
+function getValidHubspotAccessToken(db: Database, orgId: string): Promise<string | null> {
   const config = hubspotConfig();
-  if (!config) return null;
-  try {
-    const refreshed = await refreshAccessToken(
-      config,
-      tokens.refreshToken,
-      DEFAULT_TIMEOUT_MS,
-    );
-    const merged: HubspotTokenSet = {
-      ...refreshed,
-      refreshToken: refreshed.refreshToken ?? tokens.refreshToken,
-    };
-    await saveHubspotTokens(db, orgId, merged);
-    return merged.accessToken;
-  } catch (cause) {
-    console.error(
-      `HubSpot token refresh failed: ${cause instanceof HubspotAuthError ? cause.message : String(cause)}`,
-    );
-    return null;
-  }
+  return getValidAccessToken(
+    db,
+    "hubspot",
+    { orgId, userId: null },
+    config
+      ? (refreshToken) => refreshAccessToken(config, refreshToken, DEFAULT_TIMEOUT_MS)
+      : null,
+  );
 }
 
 export type CrmContext = {
@@ -316,6 +230,7 @@ export async function logCrmMeeting(
     leadEmail: string | null;
     leadName: string | null;
     repName: string;
+    repEmail: string;
     meetLink: string | null;
   },
 ): Promise<string | null> {
@@ -330,6 +245,13 @@ export async function logCrmMeeting(
       timeoutMs: DEFAULT_TIMEOUT_MS,
     });
     if (!contact) return null;
+    // The meeting belongs to the rep who took it. When the rep has no
+    // HubSpot owner record, fall back to the contact's owner.
+    const repOwner = await findOwnerByEmail({
+      accessToken,
+      email: booking.repEmail,
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+    }).catch(() => null);
     const { meetingId } = await logMeeting({
       accessToken,
       contactId: contact.id,
@@ -337,7 +259,7 @@ export async function logCrmMeeting(
       startAt: booking.startAt,
       endAt: booking.endAt,
       body: booking.meetLink ? `Meeting link: ${booking.meetLink}` : undefined,
-      ownerId: contact.ownerId,
+      ownerId: repOwner?.id ?? contact.ownerId,
       timeoutMs: DEFAULT_TIMEOUT_MS,
     });
     await db

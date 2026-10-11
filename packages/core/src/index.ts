@@ -31,6 +31,7 @@ export {
   resolvePath,
 } from "./rules/evaluate.js";
 export { loadRuleSetYaml, parseRuleSetYaml } from "./rules/parse-yaml.js";
+export { DERIVED_FORM_KEYS, buildRuleInputs } from "./rules/inputs.js";
 export { draftOutcome } from "./rules/outcome.js";
 export type { OutcomeDraft, OutcomeKind } from "./rules/outcome.js";
 export { selectRep } from "./strategies/select-rep.js";
