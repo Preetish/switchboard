@@ -35,12 +35,6 @@ describe("embed loader", () => {
     expect(source).toContain("?embed=1");
   });
 
-  it("validates postMessage origin and source before resizing", () => {
-    expect(source).toContain("event.origin !== base");
-    expect(source).toContain("event.source !== iframe.contentWindow");
-    expect(source).toContain('data.type !== "switchboard:resize"');
-  });
-
   it("refuses to mount when the deployment origin is unknown", () => {
     // An empty base would silently point the iframe at the host's origin.
     expect(source).toContain('console.warn("[switchboard] embed.js must be loaded via <script src=...>")');
@@ -53,17 +47,39 @@ describe("embed loader", () => {
 
 /**
  * Behavioral checks: run the real loader against a minimal fake DOM, so the
- * mount, late-mount, and resize-validation paths are exercised rather than
- * string-matched.
+ * mount, late-mount, resize, attribution, and conversion paths are exercised
+ * rather than string-matched.
  */
 describe("embed loader behavior", () => {
-  type Node = { attrs: Record<string, string>; children: unknown[]; __sbEmbed?: boolean };
+  type Frame = {
+    src: string;
+    title: string;
+    style: { cssText: string; height?: string };
+    contentWindow: { postMessage: (message: unknown, origin: string) => void; sent: unknown[] };
+  };
+  type Placeholder = {
+    attrs: Record<string, string>;
+    children: unknown[];
+    events: { type: string; detail: unknown }[];
+    getAttribute: (key: string) => string | null;
+    appendChild: (child: unknown) => void;
+    dispatchEvent: (event: { type: string; detail: unknown }) => boolean;
+  };
 
-  function load() {
+  function load(
+    options: {
+      href?: string;
+      referrer?: string;
+      cookie?: string;
+      consent?: boolean;
+      storage?: Map<string, string>;
+    } = {},
+  ) {
     const listeners: Record<string, Array<(event: unknown) => void>> = {};
-    const placeholders: Node[] = [];
+    const placeholders: Placeholder[] = [];
     let observer: (() => void) | null = null;
-    const created: Array<{ src: string; style: { cssText: string; height?: string }; contentWindow: object }> = [];
+    const created: Frame[] = [];
+    const storage = options.storage ?? new Map<string, string>();
     const window: Record<string, unknown> = {
       addEventListener: (type: string, fn: (event: unknown) => void) => {
         (listeners[type] ??= []).push(fn);
@@ -75,50 +91,87 @@ describe("embed loader behavior", () => {
         observe() {}
       },
     };
+    const href = options.href ?? "https://acme.example/demo";
     const document = {
       readyState: "complete",
-      currentScript: { src: "https://sb.example.com/embed.js" },
+      currentScript: {
+        src: "https://sb.example.com/embed.js",
+        getAttribute: (key: string) =>
+          key === "data-switchboard-consent" && options.consent ? "granted" : null,
+      },
+      referrer: options.referrer ?? "",
+      cookie: options.cookie ?? "",
       body: {},
       querySelector: () => null,
       querySelectorAll: () => placeholders,
       createElement: () => {
-        const iframe = { src: "", title: "", style: { cssText: "" } as { cssText: string; height?: string }, contentWindow: {} };
-        created.push(iframe);
-        return iframe;
+        const sent: unknown[] = [];
+        const frame: Frame = {
+          src: "",
+          title: "",
+          style: { cssText: "" },
+          contentWindow: { sent, postMessage: (message) => void sent.push(message) },
+        };
+        created.push(frame);
+        return frame;
       },
     };
+    const localStorage = {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => void storage.set(key, value),
+    };
+    class FakeCustomEvent {
+      constructor(
+        public type: string,
+        init: { detail: unknown },
+      ) {
+        this.detail = init.detail;
+      }
+      detail: unknown;
+    }
+    const location = { href, hostname: new URL(href).hostname };
     const run = new Function(
       "window",
       "document",
       "location",
+      "localStorage",
+      "CustomEvent",
       "requestAnimationFrame",
       "console",
       source,
     );
-    run(window, document, { href: "https://host.example/" }, (fn: () => void) => fn(), console);
+    run(window, document, location, localStorage, FakeCustomEvent, (fn: () => void) => fn(), console);
     const add = (slug: string) => {
-      const node: Node & { getAttribute: (k: string) => string | null; appendChild: (c: unknown) => void } = {
+      const node: Placeholder = {
         attrs: { "data-switchboard-form": slug },
         children: [],
+        events: [],
         getAttribute(key) {
           return this.attrs[key] ?? null;
         },
         appendChild(child) {
           this.children.push(child);
         },
+        dispatchEvent(event) {
+          this.events.push({ type: event.type, detail: event.detail });
+          return true;
+        },
       };
       placeholders.push(node);
       return node;
     };
     const message = (event: unknown) => listeners.message?.forEach((fn) => fn(event));
-    return { window, add, created, message, mutate: () => observer?.() };
+    const api = window.Switchboard as { mount: () => void; setConsent: (granted: boolean) => void };
+    return { window, add, created, message, mutate: () => observer?.(), api, storage };
   }
+
+  const ORIGIN = "https://sb.example.com";
 
   it("mounts placeholders present at load and ones added later", () => {
     const env = load();
     env.add("book-a-demo");
-    (env.window.Switchboard as { mount: () => void }).mount();
-    expect(env.created.map((f) => f.src)).toEqual(["https://sb.example.com/f/book-a-demo?embed=1"]);
+    env.api.mount();
+    expect(env.created.map((f) => f.src)).toEqual([`${ORIGIN}/f/book-a-demo?embed=1`]);
     env.add("pricing");
     env.mutate();
     expect(env.created).toHaveLength(2);
@@ -129,16 +182,106 @@ describe("embed loader behavior", () => {
   it("resizes only for messages from its own iframe and origin", () => {
     const env = load();
     env.add("book-a-demo");
-    (env.window.Switchboard as { mount: () => void }).mount();
+    env.api.mount();
     const iframe = env.created[0]!;
     const resize = { type: "switchboard:resize", height: 812.4 };
     env.message({ origin: "https://evil.example", source: iframe.contentWindow, data: resize });
     expect(iframe.style.height).toBeUndefined();
-    env.message({ origin: "https://sb.example.com", source: {}, data: resize });
+    env.message({ origin: ORIGIN, source: {}, data: resize });
     expect(iframe.style.height).toBeUndefined();
-    env.message({ origin: "https://sb.example.com", source: iframe.contentWindow, data: { ...resize, height: 99999 } });
+    env.message({ origin: ORIGIN, source: iframe.contentWindow, data: { ...resize, height: 99999 } });
     expect(iframe.style.height).toBeUndefined();
-    env.message({ origin: "https://sb.example.com", source: iframe.contentWindow, data: resize });
+    env.message({ origin: ORIGIN, source: iframe.contentWindow, data: resize });
     expect(iframe.style.height).toBe("812px");
+  });
+
+  it("answers the form's ready message with the host page's attribution", () => {
+    const env = load({
+      href: "https://acme.example/pricing?utm_source=google&utm_medium=cpc&gclid=Cj0&email=x@y.co",
+      referrer: "https://www.google.com/",
+      cookie: "_ga=GA1.2.3.4; _fbp=fb.1.2",
+    });
+    env.add("book-a-demo");
+    env.api.mount();
+    const frame = env.created[0]!;
+    env.message({ origin: ORIGIN, source: frame.contentWindow, data: { type: "switchboard:ready" } });
+    const reply = frame.contentWindow.sent[0] as { type: string; attribution: Record<string, unknown> };
+    expect(reply.type).toBe("switchboard:attribution");
+    expect(reply.attribution).toMatchObject({
+      utm_source: "google",
+      utm_medium: "cpc",
+      gclid: "Cj0",
+      referrer: "https://www.google.com/",
+      landing_page: "https://acme.example/pricing",
+      page_url: "https://acme.example/pricing",
+    });
+    // No consent: cookies are not read and nothing is stored.
+    expect(reply.attribution.cookies).toBeUndefined();
+    expect(env.storage.size).toBe(0);
+  });
+
+  it("with consent, keeps first and last touch across pages and reads cookie IDs", () => {
+    const storage = new Map<string, string>();
+    load({ href: "https://acme.example/?utm_source=linkedin&utm_campaign=abm", consent: true, storage });
+    // Later visit from a Google ad, then the lead opens the demo page directly.
+    load({ href: "https://acme.example/?utm_source=google&gclid=g1", consent: true, storage });
+    const env = load({
+      href: "https://acme.example/demo",
+      consent: true,
+      storage,
+      cookie: "_ga=GA1.2.3.4; _gcl_aw=GCL.1.g1; hubspotutk=abc; session=secret",
+    });
+    env.add("book-a-demo");
+    env.api.mount();
+    const frame = env.created[0]!;
+    env.message({ origin: ORIGIN, source: frame.contentWindow, data: { type: "switchboard:ready" } });
+    const { attribution } = frame.contentWindow.sent[0] as { attribution: Record<string, unknown> };
+    expect(attribution).toMatchObject({
+      utm_source: "google",
+      gclid: "g1",
+      first: { utm_source: "linkedin", utm_campaign: "abm" },
+      page_url: "https://acme.example/demo",
+      cookies: { ga: "GA1.2.3.4", gcl_aw: "GCL.1.g1", hubspotutk: "abc" },
+    });
+    expect(JSON.stringify(attribution)).not.toContain("secret");
+  });
+
+  it("setConsent(true) from a cookie banner starts storing and re-sends attribution", () => {
+    const env = load({ href: "https://acme.example/?utm_source=bing", cookie: "_ga=GA1.9" });
+    env.add("book-a-demo");
+    env.api.mount();
+    env.api.setConsent(true);
+    expect(env.storage.size).toBe(1);
+    const sent = env.created[0]!.contentWindow.sent as { attribution: { cookies?: unknown } }[];
+    expect(sent.at(-1)?.attribution.cookies).toEqual({ ga: "GA1.9" });
+  });
+
+  it("forwards conversions to the dataLayer and as DOM events, without personal data", () => {
+    const env = load();
+    const node = env.add("book-a-demo");
+    env.api.mount();
+    const frame = env.created[0]!;
+    env.message({
+      origin: ORIGIN,
+      source: frame.contentWindow,
+      data: { type: "switchboard:event", name: "booked", outcome: "route_team", email: "x@y.co" },
+    });
+    env.message({
+      origin: "https://evil.example",
+      source: frame.contentWindow,
+      data: { type: "switchboard:event", name: "booked" },
+    });
+    expect(env.window.dataLayer).toEqual([
+      { event: "switchboard_booked", switchboard_form: "book-a-demo", switchboard_outcome: "route_team" },
+    ]);
+    expect(node.events).toEqual([
+      { type: "switchboard:booked", detail: { form: "book-a-demo", outcome: "route_team" } },
+    ]);
+  });
+
+  it("captures the same URL parameters the server accepts", async () => {
+    const { URL_PARAMS } = await import("@switchboard/core");
+    const list = /var PARAMS = \[([^\]]+)\]/.exec(source)?.[1] ?? "";
+    expect(list.match(/"([a-z_]+)"/g)?.map((p) => p.slice(1, -1))).toEqual([...URL_PARAMS]);
   });
 });

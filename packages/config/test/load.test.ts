@@ -118,3 +118,49 @@ forms:
     }
   });
 });
+
+describe("attribution in config", () => {
+  const withRules = (rules: string, extra = "") =>
+    MINIMAL.replace("    rules: rules/demo.yaml", `    rules:\n${rules}`) + extra;
+
+  it("accepts rules on attribution fields and a HubSpot property map", () => {
+    const result = load(
+      withRules(
+        `      rules:
+        - { name: Paid, when: { attribution.utm_medium: cpc, attribution.first.utm_source: google }, route: { team: sales, strategy: round_robin } }
+      fallback: { team: sales, strategy: round_robin }`,
+        `hubspot:
+  properties: { utm_source: utm_source, first.utm_campaign: first_campaign, cookies.ga: ga_client_id }
+`,
+      ),
+    );
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    expect(result.plan.org.settings).toEqual({
+      hubspotProperties: { utm_source: "utm_source", "first.utm_campaign": "first_campaign", "cookies.ga": "ga_client_id" },
+    });
+  });
+
+  it("rejects unknown attribution fields in rules and in the HubSpot map", () => {
+    const result = load(
+      withRules(
+        `      rules:
+        - { name: Typo, when: { attribution.utm_sauce: google }, route: { team: sales, strategy: round_robin } }
+      fallback: { team: sales, strategy: round_robin }`,
+        `hubspot:
+  properties: { email: email_prop }
+`,
+      ),
+    );
+    if (result.ok) throw new Error("expected errors");
+    const text = result.errors.join("\n");
+    expect(text).toMatch(/attribution\.utm_sauce isn't an attribution field/);
+    expect(text).toMatch(/hubspot\.properties\.email: not an attribution field/);
+  });
+
+  it("rejects HubSpot property names HubSpot wouldn't accept", () => {
+    const result = load(MINIMAL + 'hubspot:\n  properties: { utm_source: "Not Valid" }\n', {
+      "/cfg/rules/demo.yaml": RULES,
+    });
+    expect(!result.ok && result.errors.join()).toMatch(/HubSpot property names are lowercase/);
+  });
+});

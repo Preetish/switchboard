@@ -1,4 +1,5 @@
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { clickIdOf, type Attribution } from "@switchboard/core";
 import {
   forms,
   routingDecisions,
@@ -20,7 +21,9 @@ export type DecisionLogEntry = {
   id: string;
   createdAt: Date;
   leadEmail: string | null;
-  /** Full evaluation inputs ({ form, crm }) as stored on the decision. */
+  /** Campaign and click data captured with the submission. */
+  attribution: Attribution | null;
+  /** Full evaluation inputs ({ form, crm, attribution }) as stored on the decision. */
   inputs: Record<string, unknown>;
   /** Rule that fired; null when only the fallback matched. */
   matchedRule: string | null;
@@ -32,7 +35,7 @@ export type DecisionLogEntry = {
 };
 
 export type DecisionLogOptions = {
-  /** Case-insensitive substring match on lead email, rule name, or outcome reason. */
+  /** Case-insensitive substring match on lead email, rule, reason, UTM source, or campaign. */
   q?: string;
   limit?: number;
 };
@@ -63,6 +66,7 @@ export async function fetchDecisionLog(
       outcome: routingDecisions.outcome,
       latencyMs: routingDecisions.latencyMs,
       leadEmail: submissions.email,
+      attribution: submissions.attribution,
       formSlug: forms.slug,
     })
     .from(routingDecisions)
@@ -75,6 +79,8 @@ export async function fetchDecisionLog(
             or(
               ilike(submissions.email, search),
               ilike(routingDecisions.matchedRule, search),
+              sql`${submissions.attribution} ->> 'utm_source' ilike ${search}`,
+              sql`${submissions.attribution} ->> 'utm_campaign' ilike ${search}`,
               sql`${routingDecisions.outcome} ->> 'reason' ilike ${search}`,
             ),
           )
@@ -120,6 +126,7 @@ export async function fetchDecisionLog(
     id: row.id,
     createdAt: row.createdAt,
     leadEmail: row.leadEmail,
+    attribution: row.attribution,
     inputs: row.inputs,
     matchedRule: row.matchedRule,
     outcome: row.outcome,
@@ -170,6 +177,16 @@ export const DECISION_CSV_COLUMNS = [
   "team",
   "latency_ms",
   "reason",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "click_id",
+  "referrer",
+  "landing_page",
+  "first_utm_source",
+  "first_utm_campaign",
 ] as const;
 
 export type DecisionCsvRow = {
@@ -182,6 +199,7 @@ export type DecisionCsvRow = {
   teamName: string | null;
   latencyMs: number;
   reason: string;
+  attribution: Attribution | null;
 };
 
 export function decisionToCsvRow(entry: DecisionLogEntry): DecisionCsvRow {
@@ -195,7 +213,41 @@ export function decisionToCsvRow(entry: DecisionLogEntry): DecisionCsvRow {
     teamName: entry.teamName,
     latencyMs: entry.latencyMs,
     reason: entry.outcome.reason,
+    attribution: entry.attribution,
   };
+}
+
+const CLICK_PLATFORMS: Record<string, string> = {
+  gclid: "Google Ads click",
+  gbraid: "Google Ads click",
+  wbraid: "Google Ads click",
+  fbclid: "Meta ad click",
+  msclkid: "Microsoft Ads click",
+  li_fat_id: "LinkedIn ad click",
+  ttclid: "TikTok ad click",
+  twclid: "X ad click",
+};
+
+/**
+ * A short label for where the lead came from: "google / cpc · spring" from
+ * UTMs, a click ID's platform when there are no UTMs, otherwise the
+ * referring site.
+ */
+export function sourceLabel(attribution: Attribution | null): string | null {
+  if (!attribution) return null;
+  const utm = [attribution.utm_source, attribution.utm_medium].filter(Boolean).join(" / ");
+  const campaign = attribution.utm_campaign ? ` · ${attribution.utm_campaign}` : "";
+  if (utm) return `${utm}${campaign}`;
+  const click = clickIdOf(attribution);
+  if (click) return CLICK_PLATFORMS[click.split(":")[0]!] ?? "Ad click";
+  if (attribution.referrer) {
+    try {
+      return new URL(attribution.referrer).hostname.replace(/^www\./, "");
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 /** Flat machine-readable CSV (CRLF line endings per RFC 4180). */
@@ -214,6 +266,16 @@ export function decisionRowsToCsv(rows: DecisionCsvRow[]): string {
         row.teamName ?? "",
         row.latencyMs,
         row.reason,
+        row.attribution?.utm_source ?? "",
+        row.attribution?.utm_medium ?? "",
+        row.attribution?.utm_campaign ?? "",
+        row.attribution?.utm_term ?? "",
+        row.attribution?.utm_content ?? "",
+        clickIdOf(row.attribution) ?? "",
+        row.attribution?.referrer ?? "",
+        row.attribution?.landing_page ?? "",
+        row.attribution?.first?.utm_source ?? "",
+        row.attribution?.first?.utm_campaign ?? "",
       ]),
     );
   }

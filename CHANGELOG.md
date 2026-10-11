@@ -6,6 +6,19 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Attribution: the embed captures UTM parameters, ad click IDs (`gclid`,
+  `gbraid`, `wbraid`, `fbclid`, `msclkid`, `li_fat_id`, `ttclid`, `twclid`),
+  the referrer, and the landing page from your site. With consent it also
+  keeps first touch for 90 days and reads `_ga`, `_fbp`, `_fbc`, `_gcl_aw`,
+  and `hubspotutk`. Direct links to `/f/<slug>` keep their UTMs too.
+- Rules can route on `attribution.*`; the routing log shows each lead's
+  source, the CSV export has attribution columns, and `hubspot.properties`
+  writes attribution to HubSpot contacts.
+- Conversion events on the host page: `switchboard_submitted` and
+  `switchboard_booked` in `window.dataLayer`, plus matching DOM events.
+
 ## [0.1.0]
 
 The first public release: qualify a form submission, route it to the right

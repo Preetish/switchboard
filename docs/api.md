@@ -15,6 +15,7 @@ client address and answer `429` with `Retry-After` when over the limit.
 {
   "data": { "name": "Priya Shah", "email": "priya@globex.example", "company_size": "1200", "consent": true },
   "idempotencyKey": "a-uuid-per-page-load",
+  "attribution": { "utm_source": "google", "utm_medium": "cpc", "gclid": "Cj0…", "first": { "utm_source": "linkedin" } },
   "honeypot": "",
   "captchaToken": "only when Turnstile is on"
 }
@@ -29,6 +30,11 @@ client address and answer `429` with `Retry-After` when over the limit.
   "repName": "Alice Chen"
 }
 ```
+
+`attribution` is optional; the embed fills it in. The server keeps only the
+known fields (see [embed tracking](embed.md#tracking-and-attribution)), caps
+their length, reduces URLs to origin and path, and never rejects a lead over
+it.
 
 `decision.kind` is `route_user`, `route_team`, `self_serve_link`, or
 `fallback_queue`. When `userId` is set, the lead can book with that rep.
@@ -93,7 +99,10 @@ configured.
 `GET /api/decisions/export?q={search}`
 
 CSV (RFC 4180, at most 5,000 rows) with columns `decided_at, lead_email,
-form, matched_rule, outcome, rep, team, latency_ms, reason`. Requires the
+form, matched_rule, outcome, rep, team, latency_ms, reason, utm_source,
+utm_medium, utm_campaign, utm_term, utm_content, click_id, referrer,
+landing_page, first_utm_source, first_utm_campaign`. `click_id` is the first
+click ID present, prefixed with its type (`gclid:Cj0…`). Requires the
 admin session, or for scripts:
 
 ```bash

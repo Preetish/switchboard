@@ -50,12 +50,12 @@ that decides where a lead goes is tested as plain functions.
 
 | Table | Holds |
 | --- | --- |
-| `orgs` | The org (one per instance) |
+| `orgs` | The org (one per instance) and its settings (HubSpot property map) |
 | `users` | Reps: email (unique, case-insensitive), time zone, working hours |
 | `teams`, `team_members` | Teams; weight, weekly capacity, active flag, rotation credit |
 | `rule_sets` | Versioned rule JSON; identical content reuses a version |
 | `forms` | Fields, settings (submit label, self-serve URL), rule set |
-| `submissions` | Lead answers; idempotent per form + key; send-once markers |
+| `submissions` | Lead answers and attribution; idempotent per form + key; send-once markers |
 | `routing_decisions` | Inputs, matched rule, outcome, latency |
 | `bookings` | Hold/confirmed/cancelled; calendar event, Meet link, CRM meeting |
 | `integrations` | Encrypted OAuth tokens: org-wide (HubSpot) or per rep (Google) |

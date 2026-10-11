@@ -41,7 +41,7 @@ export function draftOutcome(
     }
     // An inputs path that didn't resolve (e.g. no CRM owner) has no rep to
     // route to; a literal email/id target is kept for rep matching.
-    if (/^(form|crm)\./.test(action.to)) {
+    if (/^(form|crm|attribution)\./.test(action.to)) {
       return {
         kind: "fallback_queue",
         reason: `Target ${action.to} has no value for this lead; sent to the fallback queue.`,

@@ -1,5 +1,7 @@
 import path from "node:path";
 import {
+  ATTRIBUTION_RULE_PATHS,
+  COOKIE_IDS,
   DERIVED_FORM_KEYS,
   emailFieldKey,
   isValidTimeZone,
@@ -10,7 +12,7 @@ import {
   type RuleSet,
   type WorkingHours,
 } from "@switchboard/core";
-import type { FormSettings } from "@switchboard/db";
+import type { FormSettings, OrgSettings } from "@switchboard/db";
 import { parse } from "yaml";
 import { DAY_NAMES, configSchema } from "./schema.js";
 
@@ -43,7 +45,7 @@ export type PlannedForm = {
 };
 
 export type ConfigPlan = {
-  org: { name: string; slug: string };
+  org: { name: string; slug: string; settings: OrgSettings };
   reps: PlannedRep[];
   teams: PlannedTeam[];
   forms: PlannedForm[];
@@ -195,8 +197,28 @@ export function loadConfig(text: string, configPath: string, readFile: ReadFile)
     };
   });
 
+  // HubSpot property mapping for attribution fields.
+  const hubspotProperties = config.hubspot?.properties ?? {};
+  const mappable = new Set([
+    ...ATTRIBUTION_RULE_PATHS.map((rulePath) => rulePath.slice("attribution.".length)),
+    ...COOKIE_IDS.map((id) => `cookies.${id}`),
+  ]);
+  for (const field of Object.keys(hubspotProperties)) {
+    if (!mappable.has(field)) {
+      errors.push(
+        `hubspot.properties.${field}: not an attribution field (e.g. utm_source, gclid, first.utm_campaign, cookies.ga)`,
+      );
+    }
+  }
+
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, plan: { org: config.org, reps, teams, forms }, warnings };
+  const settings: OrgSettings =
+    Object.keys(hubspotProperties).length > 0 ? { hubspotProperties } : {};
+  return {
+    ok: true,
+    plan: { org: { ...config.org, settings }, reps, teams, forms },
+    warnings,
+  };
 }
 
 /** Rules may only point at fields, teams, and reps that exist. */
@@ -219,6 +241,9 @@ function checkRuleReferences(
     }
     if ("to" in route) {
       if (route.to.startsWith("crm.")) usesCrm = true;
+      else if (route.to.startsWith("attribution.")) {
+        errors.push(`${source} ${where}: can't route to ${route.to}; route to a team or a rep instead`);
+      }
       else if (route.to.startsWith("form.")) {
         const key = route.to.slice(5);
         if (!formKeys.has(key)) errors.push(`${source} ${where}: ${route.to} is not a field of this form`);
@@ -231,7 +256,13 @@ function checkRuleReferences(
   ruleSet.rules.forEach((rule, i) => {
     for (const rulePath of Object.keys(rule.when)) {
       if (rulePath.startsWith("crm.")) usesCrm = true;
-      else {
+      else if (rulePath.startsWith("attribution.")) {
+        if (!ATTRIBUTION_RULE_PATHS.includes(rulePath)) {
+          errors.push(
+            `${source} rules[${i}] (${rule.name}): ${rulePath} isn't an attribution field (e.g. attribution.utm_source, attribution.gclid, attribution.first.utm_campaign)`,
+          );
+        }
+      } else {
         const key = rulePath.slice(5).split(".")[0]!;
         if (!formKeys.has(key)) {
           errors.push(
@@ -244,6 +275,6 @@ function checkRuleReferences(
   });
   checkRoute(ruleSet.fallback, "fallback");
   if (usesCrm) {
-    warnings.push(`${source}: reads crm.* — those conditions only match once HubSpot is connected`);
+    warnings.push(`${source}: reads crm.*, so those conditions only match once HubSpot is connected`);
   }
 }

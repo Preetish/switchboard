@@ -1,6 +1,7 @@
 import {
   buildRuleInputs,
   crmPathsIn,
+  sanitizeAttribution,
   draftOutcome,
   emailFieldKey,
   evaluate,
@@ -41,6 +42,7 @@ export async function handleSubmission(
   slug: string,
   payload: unknown,
   idempotencyKey: string | undefined,
+  rawAttribution: unknown = null,
 ): Promise<SubmitOutcome> {
   const [row] = await db
     .select({ form: forms, ruleSet: ruleSets })
@@ -95,7 +97,15 @@ export async function handleSubmission(
   const crm: CrmContext | null =
     needsCrm && email ? await fetchCrmContext(db, form.orgId, email) : null;
   // form.* plus derived keys (form.email_domain); crm.* from the prefetch.
-  const inputs: Record<string, unknown> = buildRuleInputs(form.fields, validated.data, crm);
+  // Campaign and click data from the browser: allowlisted and bounded, and
+  // never a reason to reject the lead.
+  const attribution = sanitizeAttribution(rawAttribution);
+  const inputs: Record<string, unknown> = buildRuleInputs(
+    form.fields,
+    validated.data,
+    crm,
+    attribution,
+  );
 
   const evaluation = evaluate(ruleSet, inputs);
   const owner = crm?.contact.owner ?? null;
@@ -116,6 +126,7 @@ export async function handleSubmission(
         orgId: form.orgId,
         formId: form.id,
         data: validated.data,
+        attribution,
         email,
         idempotencyKey: idempotencyKey ?? null,
       })

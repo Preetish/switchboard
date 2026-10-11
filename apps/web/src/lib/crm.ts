@@ -12,7 +12,13 @@ import {
   type HubspotOAuthConfig,
 } from "@switchboard/crm-hubspot";
 import { eq } from "drizzle-orm";
-import { bookings, submissions, type Database } from "@switchboard/db";
+import {
+  bookings,
+  orgs,
+  submissions,
+  type Attribution,
+  type Database,
+} from "@switchboard/db";
 import { appBaseUrl } from "./integrations";
 import { getValidAccessToken, saveTokens } from "./token-store";
 import { log } from "./log";
@@ -185,6 +191,32 @@ function submissionToHubspotProperties(
 }
 
 /**
+ * Attribution fields copied onto the contact, per the `hubspot.properties`
+ * map in switchboard.yaml (`utm_source: utm_source`,
+ * `first.utm_campaign: first_utm_campaign`, `cookies.ga: ga_client_id`).
+ * The properties must exist in the portal; HubSpot rejects unknown ones.
+ */
+export function attributionToHubspotProperties(
+  attribution: Attribution | null,
+  map: Record<string, string>,
+): Record<string, string> {
+  const properties: Record<string, string> = {};
+  if (!attribution) return properties;
+  for (const [field, property] of Object.entries(map)) {
+    const [scope, key] = field.includes(".") ? field.split(".", 2) : [null, field];
+    const source =
+      scope === "first"
+        ? attribution.first
+        : scope === "cookies"
+          ? attribution.cookies
+          : attribution;
+    const value = (source as Record<string, string | undefined> | undefined)?.[key!];
+    if (value) properties[property] = value;
+  }
+  return properties;
+}
+
+/**
  * Write a lead to HubSpot (create-or-update keyed on email, so retries never
  * create duplicate CRM records). Runs as a queued job: throws on failures
  * worth retrying (rate limits, HubSpot outages) and returns quietly when
@@ -196,9 +228,12 @@ export async function syncLeadToCrm(db: Database, submissionId: string): Promise
       orgId: submissions.orgId,
       email: submissions.email,
       data: submissions.data,
+      attribution: submissions.attribution,
       crmSyncedAt: submissions.crmSyncedAt,
+      orgSettings: orgs.settings,
     })
     .from(submissions)
+    .innerJoin(orgs, eq(submissions.orgId, orgs.id))
     .where(eq(submissions.id, submissionId))
     .limit(1);
   if (!submission?.email || submission.crmSyncedAt) return;
@@ -208,7 +243,13 @@ export async function syncLeadToCrm(db: Database, submissionId: string): Promise
     await upsertContact({
       accessToken,
       email: submission.email,
-      properties: submissionToHubspotProperties(submission.data),
+      properties: {
+        ...submissionToHubspotProperties(submission.data),
+        ...attributionToHubspotProperties(
+          submission.attribution,
+          submission.orgSettings.hubspotProperties ?? {},
+        ),
+      },
       timeoutMs: DEFAULT_TIMEOUT_MS,
     });
   } catch (cause) {

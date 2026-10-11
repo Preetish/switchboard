@@ -12,9 +12,19 @@ import {
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import type { FormField, WorkingHours } from "@switchboard/core";
+import type { Attribution, FormField, WorkingHours } from "@switchboard/core";
 
-export type { FormField, WorkingHours };
+export type { Attribution, FormField, WorkingHours };
+
+/** Org-wide settings from switchboard.yaml. */
+export type OrgSettings = {
+  /**
+   * HubSpot contact property to write each attribution field to, e.g.
+   * `{ utm_source: "utm_source", gclid: "hs_google_click_id",
+   * "first.utm_campaign": "first_utm_campaign" }`.
+   */
+  hubspotProperties?: Record<string, string>;
+};
 
 /** Per-form presentation settings (from switchboard.yaml). */
 export type FormSettings = {
@@ -36,6 +46,7 @@ export const orgs = pgTable("orgs", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  settings: jsonb("settings").$type<OrgSettings>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -144,6 +155,8 @@ export const submissions = pgTable(
       .notNull()
       .references(() => forms.id, { onDelete: "cascade" }),
     data: jsonb("data").$type<Record<string, string>>().notNull(),
+    /** Campaign parameters, click IDs, and referrer (sanitized; null if none). */
+    attribution: jsonb("attribution").$type<Attribution>(),
     email: text("email"),
     /** Client-provided key for idempotent retries; unique per form. */
     idempotencyKey: text("idempotency_key"),

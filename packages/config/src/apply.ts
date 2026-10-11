@@ -36,8 +36,11 @@ export async function applyConfig(db: Database, plan: ConfigPlan): Promise<Apply
   return db.transaction(async (tx) => {
     const [org] = await tx
       .insert(orgs)
-      .values({ name: plan.org.name, slug: plan.org.slug })
-      .onConflictDoUpdate({ target: orgs.slug, set: { name: plan.org.name } })
+      .values({ name: plan.org.name, slug: plan.org.slug, settings: plan.org.settings })
+      .onConflictDoUpdate({
+        target: orgs.slug,
+        set: { name: plan.org.name, settings: plan.org.settings },
+      })
       .returning({ id: orgs.id, name: orgs.name });
     const orgId = org!.id;
 

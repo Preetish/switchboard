@@ -53,9 +53,12 @@ The demo comes with four fictional reps, three teams, and the rules in
    meeting in HubSpot, and emails the lead a confirmation. If the lead leaves
    without booking, the rep gets a Slack or email alert a few minutes later.
 
-The routing log records every decision: what the lead entered, which rule
+The routing log records every decision: what the lead entered, where they
+came from (UTMs and ad click IDs such as `gclid` and `fbclid`), which rule
 matched, who got the lead, and how long routing took. You can search it and
-export it as CSV.
+export it as CSV. When a lead submits or books inside the embed, your page
+gets `switchboard_submitted` and `switchboard_booked` events in the GTM
+`dataLayer`, so your GA4, Google Ads, and Meta tags count the conversion.
 
 <p align="center">
   <img src="docs/images/4-routing-log.png" width="90%" alt="The routing log">

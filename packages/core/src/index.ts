@@ -1,3 +1,16 @@
+export {
+  ATTRIBUTION_RULE_PATHS,
+  CAMPAIGN_PARAMS,
+  CLICK_ID_PARAMS,
+  COOKIE_IDS,
+  TOUCH_FIELDS,
+  URL_PARAMS,
+  clickIdOf,
+  sanitizeAttribution,
+  stripUrl,
+  touchFromUrl,
+} from "./attribution.js";
+export type { Attribution, CookieId, Touch, TouchField } from "./attribution.js";
 export { domainFromEmail } from "./domain-from-email.js";
 export { DEFAULT_WORKING_HOURS, computeSlots } from "./calendar/slots.js";
 export { groupSlotsByDay } from "./calendar/group-slots.js";

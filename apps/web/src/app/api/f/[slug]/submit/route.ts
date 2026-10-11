@@ -58,7 +58,13 @@ export async function POST(
     typeof payload.idempotencyKey === "string" && payload.idempotencyKey.length <= 128
       ? payload.idempotencyKey
       : undefined;
-  const result = await handleSubmission(getDb(), slug, payload.data, idempotencyKey);
+  const result = await handleSubmission(
+    getDb(),
+    slug,
+    payload.data,
+    idempotencyKey,
+    payload.attribution,
+  );
   switch (result.status) {
     case "not_found":
       return NextResponse.json({ error: "Form not found." }, { status: 404 });
