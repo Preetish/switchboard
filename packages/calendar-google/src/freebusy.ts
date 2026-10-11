@@ -1,7 +1,7 @@
 /**
- * Google Calendar free/busy lookup — plain `fetch`, ~2s timeout per the
- * routing brief. Failures raise `GoogleApiError`; the caller degrades
- * gracefully (availability falls back to local bookings only).
+ * Google Calendar free/busy lookup — plain `fetch` with a ~2s timeout, so a
+ * slow provider never stalls a lead. Failures raise `GoogleApiError`; the
+ * caller degrades gracefully (availability falls back to local bookings).
  */
 
 import { DEFAULT_TIMEOUT_MS } from "./oauth.js";

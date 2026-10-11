@@ -63,7 +63,7 @@ export function draftOutcome(
     };
   }
   if (action.action === "self_serve_link") {
-    return { kind: "self_serve_link", reason: "Self-serve booking link." };
+    return { kind: "self_serve_link", reason: "Sent to self-serve." };
   }
   return { kind: "fallback_queue", reason: "Sent to the fallback queue." };
 }

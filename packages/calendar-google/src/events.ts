@@ -1,8 +1,8 @@
 /**
- * Google Calendar event creation — plain `fetch`, ~2s timeout per the
- * routing brief. Creates the event with a Meet link (`conferenceData`) and
- * the lead as an attendee; failures raise `GoogleApiError` and the caller
- * degrades (booking stays confirmed locally, a plain link goes out by email).
+ * Google Calendar event creation — plain `fetch`. Creates the event on the
+ * rep's calendar with a Meet link (`conferenceData`) and the lead as an
+ * attendee. Failures raise `GoogleEventError` and the caller degrades (the
+ * booking stays confirmed locally and the rep follows up).
  */
 
 import { DEFAULT_TIMEOUT_MS } from "./oauth.js";

@@ -9,7 +9,7 @@ import {
  * Encryption for stored OAuth tokens (`integrations.token_cipher`).
  * AES-256-GCM, key from `TOKEN_ENCRYPTION_KEY` (32 bytes, hex). The blob is
  * `base64(iv[12] | authTag[16] | ciphertext)` — nothing is ever stored in
- * plaintext (operating rule 5).
+ * plaintext.
  */
 
 const IV_LENGTH = 12;

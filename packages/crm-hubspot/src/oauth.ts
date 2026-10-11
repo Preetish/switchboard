@@ -3,7 +3,7 @@
  * dependency, mirroring `packages/calendar-google`. Self-hosters create their
  * own HubSpot app (see README); the public app credentials never ship.
  *
- * All network calls take a timeout (default ~2s, per the routing brief) and
+ * All network calls take a timeout (default ~2s, so a slow provider never stalls a lead) and
  * raise `HubspotAuthError` instead of hanging.
  */
 

@@ -283,7 +283,7 @@
 
 
 
-/* Honeypot (task 13): rendered but invisible and unreachable, so a human
+/* Honeypot: rendered but invisible and unreachable, so a human
    never fills it — a submitted value means a bot. Off-screen rather than
    display:none because some naive bots skip hidden fields entirely. */
 .honeypot {

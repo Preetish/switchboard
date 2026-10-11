@@ -11,6 +11,7 @@
  *   node server.mjs          production (after `next build`)
  *   node server.mjs --dev    development with hot reload
  */
+import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,9 +21,12 @@ import { enforceConfig } from "./config-check.mjs";
 
 const dev = process.argv.includes("--dev");
 const dir = path.dirname(fileURLToPath(import.meta.url));
-// Load .env files the way Next would, so PORT and TRUSTED_PROXY_HOPS set
-// there apply to this wrapper too.
+// Load .env files the way Next would (apps/web/.env*), plus the repo-root
+// .env that docker compose and the CLI scripts also read. Real environment
+// variables always win; files never override them.
 nextEnv.loadEnvConfig(dir, dev);
+const rootEnv = path.resolve(dir, "../../.env");
+if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 // Next reads NODE_ENV when it loads, so set it before importing.
 process.env.NODE_ENV ??= dev ? "development" : "production";
 

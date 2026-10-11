@@ -23,6 +23,10 @@ How every Switchboard surface should look, behave, and be built. The tokens in
   px/rem values in components** — if a value is missing, add a token first.
 - Color is defined in oklch: perceptually uniform ramps (`--sb-gray-50..950`)
   plus one accent (`--sb-accent`, signal orange) and semantic colors.
+- Text in an accent or semantic color uses the `-text` tokens
+  (`--sb-accent-text`, `--sb-success-text`, `--sb-danger-text`), which are
+  tuned to keep 4.5:1 contrast in both themes. Buttons use
+  `--sb-accent-strong` with white text and darken on hover — never lighten.
 - Dark mode is a token override via `prefers-color-scheme`, never a rewrite.
 
 ## Layout and rhythm
@@ -58,7 +62,8 @@ How every Switchboard surface should look, behave, and be built. The tokens in
 
 ## Testing the standard
 
-Every UI change ships an end-to-end browser test of the real flow (see
-`docs/decisions.md` for CI steps). Visual checks in review: does it respect the
+Lead-facing flow changes ship with a Playwright test in `e2e/` (run on
+desktop and mobile in CI), and README screenshots are regenerated with
+`scripts/screenshots.mjs`. Visual checks in review: does it respect the
 grid, the two durations, the one shadow? Is there a keyboard path? Does dark
 mode work?

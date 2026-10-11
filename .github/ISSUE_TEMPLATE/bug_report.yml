@@ -1,0 +1,38 @@
+name: Bug report
+description: Something doesn't work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! For security issues, please use the Security tab → "Report a vulnerability" instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The smallest switchboard.yaml or steps that show the problem help most. Remove real names and emails.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "0.1.0, or a commit"
+    validations:
+      required: true
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: How do you run it?
+      options: [docker compose, Docker image, Node.js directly, Other]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: From `docker compose logs app` — check them for secrets and personal data first.
+      render: text

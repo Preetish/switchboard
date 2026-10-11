@@ -1,6 +1,7 @@
 # Sample rule set for a B2B SaaS company ("Acme Cloud") with a sales-assist
-# motion. Copy it, adjust team names to yours, and load it through the
-# admin UI or the seed script (see docs/self-hosting.md).
+# motion. Copy it next to your switchboard.yaml, adjust the team names, and
+# point a form at it with `rules: rules.saas.yaml` (see docs/configuration.md).
+# It reads form.requested_demo, so that form needs a select field with that key.
 #
 # Rules apply top to bottom; the first match wins. If nothing matches, the
 # `fallback` route fires. `crm.*` conditions are resolved from HubSpot before

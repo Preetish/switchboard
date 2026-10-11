@@ -3,7 +3,7 @@
  * no SDK dependency. Self-hosters supply their own OAuth client; Google
  * requires app verification for calendar scopes on public apps (see README).
  *
- * All network calls take a timeout (default ~2s, per the routing brief) and
+ * All network calls take a timeout (default ~2s, so a slow provider never stalls a lead) and
  * raise `GoogleAuthError` instead of hanging.
  */
 

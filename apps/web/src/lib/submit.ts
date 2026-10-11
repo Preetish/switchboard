@@ -57,7 +57,7 @@ export async function handleSubmission(
   const emailKey = emailFieldKey(form.fields);
   const email = emailKey ? (validated.data[emailKey] ?? null) : null;
 
-  // Abuse protection (task 13): bounce throwaway addresses with a field
+  // Abuse protection: bounce throwaway addresses with a field
   // error like any other validation failure.
   if (email && isDisposableEmail(email)) {
     return {

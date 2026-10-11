@@ -41,7 +41,7 @@ export type Condition = {
 
 /**
  * Per-path condition. A bare scalar is shorthand for `{ eq: value }` and the
- * bare word `exists` for `{ exists: true }`, so the brief's
+ * bare word `exists` for `{ exists: true }`, so the README's
  * `when: { crm.contact.owner: exists }` validates as-is.
  */
 export type WhenClause = Record<string, Condition | "exists" | string | number | boolean>;

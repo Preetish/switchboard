@@ -7,11 +7,15 @@
  * The file defaults to $SWITCHBOARD_CONFIG, then ./switchboard.yaml.
  * Exit code 1 on any validation or apply error.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createDb } from "@switchboard/db";
 import { applyConfig } from "./apply.js";
 import { loadConfig } from "./load.js";
+
+// The .env in the working directory (the repo root for npm scripts), when
+// present; real environment variables win.
+if (existsSync(".env")) process.loadEnvFile(".env");
 
 const [command, fileArg] = process.argv.slice(2);
 if (command !== "check" && command !== "apply") {

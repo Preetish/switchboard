@@ -1,0 +1,8 @@
+# Local development: Postgres on 127.0.0.1:5432 for `npm run dev` and the
+# test suites. Never use this file on a server.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

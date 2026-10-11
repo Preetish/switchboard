@@ -1,84 +1,94 @@
-# Embedding Switchboard on your site
+# Embedding a form on your site
 
-The embed puts the whole flow — form, routing, and instant booking — inline on
-any page. The lead never leaves your site.
+The embed puts the whole flow — form, routing, and booking on the rep's
+calendar — on any page of your site. The lead never leaves it.
 
 ## Quick start
 
-Paste two tags into any page and replace `your-switchboard.example.com` with
-your Switchboard deployment and `book-a-demo` with your form's slug:
+Copy the snippet from **Setup** in the admin, or paste this and replace the
+host and the form's slug:
 
 ```html
 <div data-switchboard-form="book-a-demo"></div>
-<script src="https://your-switchboard.example.com/embed.js" defer></script>
+<script src="https://switchboard.yourcompany.com/embed.js" defer></script>
 ```
 
-That is all. The loader script (about 1 KB minified, vanilla JS, no
-dependencies) turns every `data-switchboard-form` placeholder into the hosted
-form experience: submit → route → the rep's calendar inline → booked.
+The loader (about 1.5 KB, no dependencies) turns every
+`data-switchboard-form` placeholder into the form. Several placeholders on one
+page each get their own form.
+
+## Single-page apps, modals, and tag managers
+
+- Placeholders added after the page loads (client-side routing, a modal that
+  opens later) are mounted automatically.
+- To mount on demand, call `window.Switchboard.mount()`.
+- If a tag manager injects the script, add `data-switchboard-embed` to the
+  `<script>` tag so the loader can find its own origin:
+
+  ```html
+  <script src="https://switchboard.yourcompany.com/embed.js" data-switchboard-embed defer></script>
+  ```
+
+- Set an accessible name for the frame with
+  `data-switchboard-title="Book a demo with Acme"` on the placeholder.
 
 ## How it works
 
-`embed.js` injects an **iframe** of the hosted form page
-(`/f/<slug>?embed=1`). All product logic — field validation, rule evaluation,
-the inline calendar, the confirmation, the GDPR delete section — runs in that
-hosted page. The embed is a mount point, so:
+`embed.js` inserts an iframe of the hosted form page (`/f/<slug>?embed=1`).
+All the logic runs there, so the embed can't drift from the hosted form and
+your site's CSS can't collide with it. Embed mode drops the page padding and
+background so the form sits on your page.
 
-- it can never drift from the product (no duplicated flow logic),
-- it stays tiny (the brief's budget is 10 KB; the loader is ~1 KB),
-- your site's CSS and the widget's styles cannot collide.
+The form reports its height with
+`postMessage({ type: "switchboard:resize", height })`. The loader accepts the
+message only when it comes from the Switchboard origin **and** from one of
+its own iframes, and clamps heights to 200–4000 px, so there are no nested
+scrollbars.
 
-Embed mode (`?embed=1`) removes the hosted page's own vertical padding and
-makes its background transparent, so the widget blends into your page.
+## Restricting who can embed
 
-## Auto-resize protocol
+By default any site can frame your forms. Limit it to your own domains with
+`EMBED_ALLOWED_ORIGINS` (sent as `Content-Security-Policy: frame-ancestors`):
 
-The hosted page reports its content height with
-`postMessage({ type: "switchboard:resize", height })` whenever it changes
-(submit, calendar load, booked card). The loader only accepts a message when
-**both** its `origin` is your Switchboard deployment and its `source` is the
-widget's own iframe `contentWindow`, and clamps heights to 200–4000 px. It
-then sets the iframe height, so there are no nested scrollbars.
+```bash
+EMBED_ALLOWED_ORIGINS="https://yourcompany.com https://www.yourcompany.com"
+```
 
-Options on the placeholder (v0.1): none — one form per placeholder, multiple
-placeholders per page are supported, each mounting its own iframe.
+Admin pages can never be framed.
+
+If **your** site sends a Content Security Policy, allow the script and the
+frame:
+
+```
+script-src https://switchboard.yourcompany.com;
+frame-src  https://switchboard.yourcompany.com;
+```
 
 ## Styling
 
-The widget is styled entirely by the Switchboard design tokens
-(`packages/ui/src/tokens.css`), including a dark-mode variant. To adjust how
-it looks inside your site:
-
-- Wrap the placeholder to control width — the iframe fills it
-  (`max-width: 34rem` inside).
-- The card's surface, border, and radius come from the tokens; overriding
-  them inside the iframe from the host page is not possible by design
-  (style isolation is the point of the iframe).
+The form uses Switchboard's design tokens, including dark mode that follows
+the visitor's system setting. Control the width by sizing the placeholder;
+the form is at most 34rem wide inside it. Styles inside the iframe can't be
+changed from your page — that isolation is the point.
 
 ## Behavior notes
 
-- **Submissions are idempotent per page load**: retries (double click, flaky
-  network) reuse the same idempotency key, so no duplicate leads.
-- **Slot races are handled**: if someone else books the slot while the lead
-  is choosing, the confirm shows a clear error and the calendar refreshes.
-- **Consent and data deletion travel with the form**: the hosted page's
-  consent checkbox and "Delete your data" section work unchanged inside the
-  embed.
-- **The loader needs `document.currentScript`** (or a `script[src]` selector)
-  to know the deployment origin — load it as a plain `<script src>`, not by
-  pasting its contents into a bundle.
-- **Same-origin embeds are fine too**: embedding from the Switchboard origin
-  itself works and skips cross-origin restrictions entirely.
+- **Retries are safe.** Double clicks and flaky networks reuse the same
+  request key, so a lead is never routed or booked twice.
+- **Slot races are handled.** If someone else takes a time while the lead is
+  choosing, they see a clear message and the calendar refreshes.
+- **Consent and data deletion come with it.** The consent checkbox and the
+  "Delete my data" link work the same inside the embed.
 
 ## Building the loader
 
-The readable source is `packages/embed/embed.js`; the served artifact is the
-minified `apps/web/public/embed.js`:
+The source is `packages/embed/embed.js`; the served file is the minified
+`apps/web/public/embed.js`:
 
 ```bash
 npm run build -w @switchboard/embed
 ```
 
-A test (`apps/web/test/embed.test.ts`) keeps the artifact under 10 KB, byte-identical
-to a fresh minify of the source, and checks its safety properties (no
-`eval`/`innerHTML`/`document.write`, validated postMessage).
+`apps/web/test/embed.test.ts` keeps the artifact under 10 KB and identical to
+a fresh build, and runs the loader against a fake DOM to check mounting and
+message validation.

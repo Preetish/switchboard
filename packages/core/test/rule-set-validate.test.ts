@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { loadRuleSetYaml, parseRuleSetYaml, validateRuleSet } from "../src/rules/index.js";
 
 describe("validateRuleSet", () => {
-  it("accepts the brief's example rule set", () => {
+  it("accepts the README example rule set", () => {
     const result = validateRuleSet({
       rules: [
         { name: "Existing owner wins", when: { "crm.contact.owner": "exists" }, route: { to: "crm.contact.owner" } },

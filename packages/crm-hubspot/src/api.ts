@@ -1,8 +1,8 @@
 /**
  * HubSpot CRM v3 operations over plain `fetch`: contact lookup by email,
  * owner lookup, idempotent contact upsert, and meeting logging (the "logged
- * meeting" write-back). Every call takes a timeout (default ~2s, per the
- * routing brief) and raises `HubspotApiError` instead of hanging.
+ * meeting" write-back). Every call takes a timeout (default ~2s, so a slow
+ * portal never stalls a lead) and raises `HubspotApiError` instead of hanging.
  */
 
 import { DEFAULT_TIMEOUT_MS } from "./oauth.js";
@@ -184,7 +184,7 @@ export type UpsertContactInput = {
  * Create-or-update the contact for an email in one call — HubSpot's
  * `batch/upsert` endpoint is idempotent by construction: keyed on
  * `idProperty=email`, a repeat write updates the same contact instead of
- * creating a duplicate (routing-brief rule 4). Returns the contact id.
+ * creating a duplicate. Returns the contact id.
  */
 export async function upsertContact(input: UpsertContactInput): Promise<{ id: string }> {
   const email = input.email.toLowerCase();
