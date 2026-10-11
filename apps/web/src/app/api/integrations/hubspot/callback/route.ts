@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { adminSession } from "@/lib/auth";
 import { connectHubspot } from "@/lib/crm";
 import { getDb } from "@/lib/db";
 import { appBaseUrl, findOrg } from "@/lib/integrations";
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   };
 
   // Org-wide connection: only the admin may complete it.
-  if (!(await auth())) return NextResponse.redirect(`${base}/login`);
+  if (!(await adminSession())) return NextResponse.redirect(`${base}/login`);
   // CSRF guard: the signed state must round-trip through HubSpot and the cookie.
   const verified = verifyOAuthState(
     "hubspot",

@@ -1,5 +1,6 @@
 "use client";
 
+import Script from "next/script";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { groupSlotsByDay, type FormField, type SlotGroup } from "@switchboard/core";
 import type { DecisionOutcome } from "@switchboard/db";
@@ -25,8 +26,8 @@ const AVAILABILITY_DAYS = 14;
 
 type Availability = {
   rep: { name: string; timeZone: string };
-  source: "google" | "local";
-  calendarError?: string;
+  /** The live calendar couldn't be read; times reflect local bookings only. */
+  degraded: boolean;
   slots: { start: string; end: string }[];
 };
 
@@ -38,9 +39,11 @@ type BookedResult = {
     endAt: string;
     meetLink: string | null;
   };
-  calendarError?: string;
+  calendarFailed: boolean;
   emailSent: boolean;
 };
+
+type PublicDecision = { kind: DecisionOutcome["kind"]; userId: string | null };
 
 export default function FormView({
   slug,
@@ -48,19 +51,22 @@ export default function FormView({
   formName,
   fields,
   embedded = false,
+  turnstileSiteKey = null,
 }: {
   slug: string;
   orgName: string;
   formName: string;
   fields: FormField[];
   embedded?: boolean;
+  /** Cloudflare Turnstile site key when the optional bot check is on. */
+  turnstileSiteKey?: string | null;
 }) {
   const [values, setValues] = useState<Values>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{
     submissionId: string | null;
-    decision: DecisionOutcome | null;
+    decision: PublicDecision | null;
     repName: string | null;
   } | null>(null);
   // Stable per page load, so retries reuse the same key (idempotent submits).
@@ -107,13 +113,16 @@ export default function FormView({
     setSubmitting(true);
     setErrors({});
     try {
-      const honeypot = new FormData(event.currentTarget).get("sb_website");
+      const formData = new FormData(event.currentTarget);
+      const honeypot = formData.get("sb_website");
+      const captchaToken = formData.get("cf-turnstile-response");
       const response = await fetch(`/api/f/${encodeURIComponent(slug)}/submit`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           data: values,
           honeypot: typeof honeypot === "string" ? honeypot : "",
+          captchaToken: typeof captchaToken === "string" ? captchaToken : undefined,
           idempotencyKey: idempotencyKey.current,
         }),
       });
@@ -298,6 +307,15 @@ export default function FormView({
             ) : null}
           </div>
         ))}
+        {turnstileSiteKey ? (
+          <>
+            <Script
+              src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+              strategy="afterInteractive"
+            />
+            <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+          </>
+        ) : null}
         <button type="submit" className={styles.button} disabled={submitting}>
           {submitting ? "Sending…" : "Submit request"}
         </button>
@@ -373,7 +391,11 @@ function BookingPanel({
       setBookingError(null);
       try {
         const response = await fetch(
-          `/api/availability/${encodeURIComponent(repId)}?duration=${MEETING_MINUTES}&days=${AVAILABILITY_DAYS}`,
+          `/api/availability/${encodeURIComponent(repId)}?${new URLSearchParams({
+            submission: submissionId ?? "",
+            duration: String(MEETING_MINUTES),
+            days: String(AVAILABILITY_DAYS),
+          }).toString()}`,
         );
         const body = await response.json().catch(() => null);
         if (cancelled) return;
@@ -396,7 +418,7 @@ function BookingPanel({
     return () => {
       cancelled = true;
     };
-  }, [repId, reloadToken]);
+  }, [repId, submissionId, reloadToken]);
 
   async function confirmBooking() {
     if (!selectedSlot) return;
@@ -448,7 +470,7 @@ function BookingPanel({
           <p className={styles.meetLink}>
             <a href={booked.booking.meetLink}>Join the video call</a>
           </p>
-        ) : booked.calendarError ? (
+        ) : booked.calendarFailed ? (
           <p className={styles.help}>
             The calendar event could not be created — we will email you a booking
             link instead.
@@ -515,7 +537,7 @@ function BookingPanel({
           : ""}
         . Book a meeting right here — no email tag needed.
       </p>
-      {availability?.calendarError ? (
+      {availability?.degraded ? (
         <p className={styles.help}>
           Live calendar is unavailable right now — times reflect local bookings
           only.
@@ -608,11 +630,7 @@ function DeleteSection({ slug }: { slug: string }) {
       if (!response.ok) {
         setMessage(body?.error ?? "Something went wrong. Please try again.");
       } else {
-        setMessage(
-          body.deleted > 0
-            ? `Deleted ${body.deleted} submission${body.deleted === 1 ? "" : "s"}.`
-            : "No submissions found for that email.",
-        );
+        setMessage(body?.message ?? "Check your inbox for a confirmation link.");
       }
     } catch {
       setMessage("Network error. Please try again.");
@@ -625,7 +643,8 @@ function DeleteSection({ slug }: { slug: string }) {
     <details className={styles.delete}>
       <summary>Delete your data</summary>
       <p className={styles.help}>
-        Enter the email you submitted and we will erase it from this form&apos;s records.
+        Enter the email you submitted. We&apos;ll send a link to that address to confirm
+        the deletion.
       </p>
       <div className={styles.deleteRow}>
         <input
@@ -642,7 +661,7 @@ function DeleteSection({ slug }: { slug: string }) {
           onClick={onDelete}
           disabled={working || email.trim() === ""}
         >
-          {working ? "Deleting…" : "Delete"}
+          {working ? "Sending…" : "Send link"}
         </button>
       </div>
       {message ? <p className={styles.help}>{message}</p> : null}

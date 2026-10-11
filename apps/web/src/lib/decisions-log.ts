@@ -146,11 +146,12 @@ export function outcomeLabel(kind: DecisionOutcome["kind"]): string {
 /**
  * One RFC 4180 cell: quote when the value contains a comma, quote, or
  * newline, and neutralize formula injection for spreadsheet apps by
- * prefixing a `'` to string cells that open with = + - or @ (OWASP).
+ * prefixing a `'` to string cells that open with = + - @, tab, or carriage
+ * return (OWASP).
  */
 export function csvCell(value: string | number): string {
   let cell = String(value);
-  if (typeof value === "string" && /^[=+@-]/.test(cell)) cell = `'${cell}`;
+  if (typeof value === "string" && /^[=+@\-\t\r]/.test(cell)) cell = `'${cell}`;
   if (/[",\r\n]/.test(cell)) cell = `"${cell.replace(/"/g, '""')}"`;
   return cell;
 }

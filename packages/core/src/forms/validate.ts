@@ -4,6 +4,9 @@ import type { FormField } from "./types.js";
 const FIELD_KEY_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/;
 const MAX_TEXT_LENGTH = 1000;
 const MAX_TEXTAREA_LENGTH = 5000;
+/** RFC 5321 caps a forward path at 254 characters. */
+export const MAX_EMAIL_LENGTH = 254;
+const MAX_NUMBER_LENGTH = 32;
 export const MAX_FIELDS = 50;
 
 const fieldSchema = z
@@ -62,7 +65,17 @@ export type SubmissionErrors = Record<string, string>;
 export type SubmissionResult =
   { ok: true; data: Record<string, string> } | { ok: false; errors: SubmissionErrors };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/**
+ * Linear-time email shape check: the domain labels exclude "." so there is
+ * exactly one way to split them (no catastrophic backtracking on hostile
+ * input). Length is capped before this ever runs.
+ */
+export const EMAIL_RE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
+
+/** True for a plausibly shaped address of sane length. */
+export function isEmailAddress(value: string): boolean {
+  return value.length <= MAX_EMAIL_LENGTH && EMAIL_RE.test(value);
+}
 
 /**
  * Validate a submitted payload against a form definition. Returns cleaned
@@ -88,7 +101,9 @@ export function validateSubmission(
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 
   for (const field of fields) {
-    const raw = values[field.key];
+    // Own properties only: a field keyed "constructor" must not read
+    // Object.prototype.constructor.
+    const raw = Object.hasOwn(values, field.key) ? values[field.key] : undefined;
     const error = validateFieldValue(field, raw);
     if (error) {
       errors[field.key] = error;
@@ -122,9 +137,11 @@ function validateFieldValue(field: FormField, raw: unknown): string | undefined 
   const value = String(raw);
   switch (field.type) {
     case "email":
-      return EMAIL_RE.test(value.trim()) ? undefined : "Enter a valid email address.";
+      return isEmailAddress(value.trim()) ? undefined : "Enter a valid email address.";
     case "number":
-      return Number.isFinite(Number(value)) ? undefined : "Enter a valid number.";
+      return value.length <= MAX_NUMBER_LENGTH && Number.isFinite(Number(value))
+        ? undefined
+        : "Enter a valid number.";
     case "select":
       return field.options?.includes(value)
         ? undefined

@@ -1,16 +1,21 @@
 # One-command setup: `docker compose up` starts Postgres, applies migrations,
-# seeds demo data (a form at /f/book-a-demo), and serves the app on
-# http://localhost:3000. Values in .env (see .env.example) override the demo
-# defaults below — set real ones before real use.
+# loads the demo data, and serves the app on http://localhost:3000.
+#
+# Secrets you leave unset (AUTH_SECRET, TOKEN_ENCRYPTION_KEY, ADMIN_PASSWORD)
+# are generated on first start and kept in the `appdata` volume; the admin
+# password is printed once in the logs. Put your own values in .env (see
+# .env.example) to manage them yourself.
 services:
   db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: switchboard
-      POSTGRES_PASSWORD: switchboard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-switchboard}
       POSTGRES_DB: switchboard
-    ports:
-      - "5432:5432"
+    # Not published: only the app container can reach Postgres. To connect
+    # from your machine, uncomment (localhost only — never 0.0.0.0):
+    # ports:
+    #   - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -25,19 +30,19 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
+    volumes:
+      - appdata:/var/lib/switchboard
     environment:
-      DATABASE_URL: postgres://switchboard:switchboard@db:5432/switchboard
+      DATABASE_URL: postgres://switchboard:${POSTGRES_PASSWORD:-switchboard}@db:5432/switchboard
+      # Demo form, reps, and rules at /f/book-a-demo. Set false for real use.
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
-      # Demo admin credentials — override in .env before real use.
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin1234}
-      AUTH_SECRET: ${AUTH_SECRET:-dev-only-demo-secret-change-me}
-      # No demo default on purpose: real OAuth tokens must not be encrypted
-      # with a key published in this file. Connecting Google/HubSpot without
-      # setting TOKEN_ENCRYPTION_KEY fails with a clear message.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      AUTH_SECRET: ${AUTH_SECRET:-}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
       ORG_SLUG: ${ORG_SLUG:-acme}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
@@ -49,7 +54,10 @@ services:
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       SPEED_TO_LEAD_MINUTES: ${SPEED_TO_LEAD_MINUTES:-5}
       ADMIN_SETUP_KEY: ${ADMIN_SETUP_KEY:-}
-      ENRICHMENT_WEBHOOK_URL: ${ENRICHMENT_WEBHOOK_URL:-}
+      EMBED_ALLOWED_ORIGINS: ${EMBED_ALLOWED_ORIGINS:-}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
 
 volumes:
   pgdata:
+  appdata:

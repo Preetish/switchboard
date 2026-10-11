@@ -2,7 +2,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { integrations, users } from "@switchboard/db";
-import { auth } from "@/lib/auth";
+import { adminSession } from "@/lib/auth";
 import { hubspotConfig } from "@/lib/crm";
 import { getDb } from "@/lib/db";
 import { appBaseUrl, findOrg, googleConfig } from "@/lib/integrations";
@@ -45,7 +45,7 @@ export default async function IntegrationsPage({
 }: {
   searchParams: Promise<{ connected?: string; error?: string }>;
 }) {
-  const session = await auth();
+  const session = await adminSession();
   if (!session) redirect("/login");
   const { connected, error } = await searchParams;
   const db = getDb();
@@ -98,7 +98,7 @@ export default async function IntegrationsPage({
 
   async function disconnect(formData: FormData) {
     "use server";
-    if (!(await auth())) redirect("/login");
+    if (!(await adminSession())) redirect("/login");
     const db = getDb();
     const org = await findOrg(db);
     const provider = formData.get("provider");

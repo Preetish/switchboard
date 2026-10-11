@@ -1,4 +1,4 @@
-import { computeSlots, DEFAULT_WORKING_HOURS } from "@switchboard/core";
+import { computeSlots } from "@switchboard/core";
 import {
   DEFAULT_TIMEOUT_MS,
   GoogleAuthError,
@@ -112,21 +112,50 @@ export async function getGoogleAccessToken(
   );
 }
 
+/**
+ * Public availability for the booking UI: the rep's display name and zone
+ * and open slots. Working hours, calendar error text, and free/busy details
+ * stay server-side.
+ */
 export type Availability = {
   rep: { name: string; timeZone: string };
-  workingHours: WorkingHours;
-  from: Date;
-  to: Date;
   durationMinutes: number;
-  /** Where busy windows came from: Google Calendar, or local bookings only. */
-  source: "google" | "local";
-  calendarError?: string;
+  /** True when the live calendar could not be read and only local bookings count. */
+  degraded: boolean;
   slots: { start: string; end: string }[];
 };
 
 /** Lead time before the earliest bookable slot (a lead cannot book the past). */
-const LEAD_MINUTES = 60;
+export const LEAD_MINUTES = 60;
+/** Furthest ahead a lead may look or book. */
+export const MAX_HORIZON_DAYS = 42;
 const MINUTE_MS = 60_000;
+
+/**
+ * Whether `startAt` is a slot the rep actually offers for this duration:
+ * inside their working hours, on the slot grid, after the lead time, and
+ * within the booking horizon. Busy time is checked separately (the database
+ * constraint and the live free/busy re-check).
+ */
+export function isOfferedSlot(
+  rep: { timeZone: string; workingHours: WorkingHours | null },
+  startAt: Date,
+  durationMinutes: number,
+  now: number = Date.now(),
+): boolean {
+  const earliest = now + LEAD_MINUTES * MINUTE_MS;
+  const latest = now + MAX_HORIZON_DAYS * 24 * 60 * MINUTE_MS;
+  const end = startAt.getTime() + durationMinutes * MINUTE_MS;
+  if (startAt.getTime() < earliest || end > latest) return false;
+  const slots = computeSlots({
+    timeZone: rep.timeZone,
+    workingHours: rep.workingHours ?? undefined,
+    from: startAt,
+    to: new Date(end),
+    durationMinutes,
+  });
+  return slots.some((slot) => slot.start.getTime() === startAt.getTime());
+}
 
 /**
  * Bookable slots for one rep over the next `days` days: confirmed bookings
@@ -154,7 +183,7 @@ export async function getAvailability(
 
   const now = Date.now();
   const from = new Date(now + LEAD_MINUTES * MINUTE_MS);
-  const to = new Date(now + days * 24 * 60 * MINUTE_MS);
+  const to = new Date(now + Math.min(days, MAX_HORIZON_DAYS) * 24 * 60 * MINUTE_MS);
   const workingHours = rep.workingHours ?? undefined;
 
   // Expired holds release lazily; remaining holds and confirmed bookings both
@@ -176,8 +205,7 @@ export async function getAvailability(
     start: interval.start,
     end: interval.end,
   }));
-  let source: Availability["source"] = "local";
-  let calendarError: string | undefined;
+  let degraded = false;
 
   const accessToken = await getGoogleAccessToken(db, { orgId: rep.orgId, userId });
   if (accessToken) {
@@ -189,12 +217,15 @@ export async function getAvailability(
         timeoutMs: DEFAULT_TIMEOUT_MS,
       });
       busy.push(...freeBusy.busy);
-      source = "google";
     } catch (cause) {
-      calendarError =
-        cause instanceof GoogleApiError || cause instanceof GoogleAuthError
-          ? cause.message
-          : "Google Calendar lookup failed.";
+      degraded = true;
+      console.error(
+        `Google free/busy failed for rep ${userId}; offering times from local bookings only: ${
+          cause instanceof GoogleApiError || cause instanceof GoogleAuthError
+            ? cause.message
+            : String(cause)
+        }`,
+      );
     }
   }
 
@@ -209,12 +240,8 @@ export async function getAvailability(
 
   return {
     rep: { name: rep.name, timeZone: rep.timeZone },
-    workingHours: workingHours ?? DEFAULT_WORKING_HOURS,
-    from,
-    to,
     durationMinutes,
-    source,
-    calendarError,
+    degraded,
     slots: slots.map((slot) => ({
       start: slot.start.toISOString(),
       end: slot.end.toISOString(),

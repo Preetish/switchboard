@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { checkRateLimit, clientIp, resetRateLimits } from "@/lib/rate-limit";
+import {
+  checkRateLimit,
+  clientIp,
+  resetRateLimits,
+  trackedIdentities,
+} from "@/lib/rate-limit";
 
 const T0 = 1_700_000_000_000;
 
@@ -70,18 +75,30 @@ describe("checkRateLimit", () => {
   });
 });
 
+describe("memory bound", () => {
+  beforeEach(() => resetRateLimits());
+
+  it("evicts the least recently used identity instead of growing", () => {
+    for (let i = 0; i < 10_050; i++) checkRateLimit("submit", `10.0.${i >> 8}.${i & 255}`, T0);
+    expect(trackedIdentities()).toBe(10_000);
+  });
+});
+
 describe("clientIp", () => {
   const request = (headers: Record<string, string>) =>
     new Request("https://sb.example/api", { headers });
 
-  it("prefers the first x-forwarded-for hop", () => {
-    expect(clientIp(request({ "x-forwarded-for": "203.0.113.7, 10.0.0.1" }))).toBe(
-      "203.0.113.7",
-    );
+  it("uses the address resolved by the server, not X-Forwarded-For", () => {
+    expect(
+      clientIp(
+        request({ "x-switchboard-client-ip": "203.0.113.7", "x-forwarded-for": "6.6.6.6" }),
+      ),
+    ).toBe("203.0.113.7");
   });
 
-  it("falls back to x-real-ip, then unknown", () => {
-    expect(clientIp(request({ "x-real-ip": "198.51.100.9" }))).toBe("198.51.100.9");
-    expect(clientIp(request({}))).toBe("unknown");
+  it("ignores client-controlled headers when the server header is absent", () => {
+    expect(clientIp(request({ "x-forwarded-for": "6.6.6.6", "x-real-ip": "6.6.6.6" }))).toBe(
+      "unknown",
+    );
   });
 });

@@ -3,6 +3,7 @@ import {
   DEFAULT_ALERT_MINUTES,
   buildSpeedToLeadAlert,
   decideSpeedToLeadAlert,
+  escapeSlack,
   leadDisplay,
   sendSlackAlert,
   alertWindowMinutes,
@@ -149,5 +150,26 @@ describe("sendSlackAlert", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(await sendSlackAlert("https://hooks.slack.com/x", "hello")).toBe(false);
     expect(error).toHaveBeenCalledWith(expect.stringContaining("ENOTFOUND"));
+  });
+});
+
+describe("escapeSlack", () => {
+  it("neutralizes mentions and links a lead could put in their name", () => {
+    expect(escapeSlack("<!channel> <https://evil.example|Click> & co")).toBe(
+      "&lt;!channel&gt; &lt;https://evil.example|Click&gt; &amp; co",
+    );
+  });
+
+  it("is applied to the Slack text of an alert", () => {
+    const alert = buildSpeedToLeadAlert({
+      repName: "Alice",
+      leadName: "<!here>",
+      leadEmail: null,
+      formName: null,
+      waitedMinutes: 6,
+      submissionId: "s-1",
+    });
+    expect(alert.slackText).not.toContain("<!here>");
+    expect(alert.slackText).toContain("&lt;!here&gt;");
   });
 });

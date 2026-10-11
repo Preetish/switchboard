@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizationUrl } from "@switchboard/crm-hubspot";
-import { auth } from "@/lib/auth";
+import { adminSession } from "@/lib/auth";
 import { hubspotConfig } from "@/lib/crm";
 import { getDb } from "@/lib/db";
 import { appBaseUrl, findOrg } from "@/lib/integrations";
@@ -16,7 +16,7 @@ export async function GET() {
   const base = appBaseUrl();
   const fail = (error: string) => NextResponse.redirect(`${base}/integrations?error=${error}`);
 
-  if (!(await auth())) return NextResponse.redirect(`${base}/login`);
+  if (!(await adminSession())) return NextResponse.redirect(`${base}/login`);
   const config = hubspotConfig();
   if (!config) return fail("hubspot_not_configured");
   const org = await findOrg(getDb());

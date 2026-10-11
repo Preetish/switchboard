@@ -50,6 +50,13 @@
       "when": 1791729358716,
       "tag": "0006_per_rep_calendars",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791730105120,
+      "tag": "0007_booking_integrity",
+      "breakpoints": true
     }
   ]
 }

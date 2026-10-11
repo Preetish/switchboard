@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { users } from "@switchboard/db";
-import { auth } from "@/lib/auth";
+import { adminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { appBaseUrl, connectGoogle, findOrg } from "@/lib/integrations";
 import { STATE_COOKIE, readCookie, verifyOAuthState } from "@/lib/oauth-state";
@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const base = appBaseUrl();
   const url = new URL(request.url);
-  const isAdmin = Boolean(await auth());
+  const isAdmin = Boolean(await adminSession());
   const done = (query: string) => {
     const response = NextResponse.redirect(
       isAdmin

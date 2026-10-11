@@ -34,6 +34,15 @@ export function leadDisplay(leadName: string | null, leadEmail: string | null): 
   return leadName ?? leadEmail ?? "An unnamed lead";
 }
 
+/**
+ * Slack treats `<…>` as links and mentions (`<!channel>`, `<https://x|Click>`)
+ * and `&` as an entity start, so lead-supplied text is escaped before it is
+ * posted to an internal channel.
+ */
+export function escapeSlack(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 export function buildSpeedToLeadAlert(input: SpeedToLeadAlertInput): {
   subject: string;
   text: string;
@@ -57,7 +66,7 @@ export function buildSpeedToLeadAlert(input: SpeedToLeadAlertInput): {
       "",
       "— Switchboard",
     ].join("\n"),
-    slackText: `:hourglass: *Speed-to-lead* — ${body} Rep: ${input.repName}. Reference: ${input.submissionId}`,
+    slackText: `:hourglass: *Speed-to-lead* — ${escapeSlack(body)} Rep: ${escapeSlack(input.repName)}. Reference: ${input.submissionId}`,
   };
 }
 

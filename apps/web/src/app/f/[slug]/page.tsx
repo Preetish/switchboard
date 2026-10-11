@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { forms, orgs } from "@switchboard/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { turnstileSiteKey } from "@/lib/captcha";
 import { getDb } from "@/lib/db";
 import FormView from "./FormView";
 
@@ -82,6 +83,7 @@ export default async function FormPage({
         formName={row.form.name}
         fields={fields.fields}
         embedded={embedded}
+        turnstileSiteKey={turnstileSiteKey()}
       />
     </main>
   );

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getAvailability } from "@/lib/integrations";
 import { getDb } from "@/lib/db";
-import { checkRateLimit, clientIp } from "@/lib/rate-limit";
+import { MAX_HORIZON_DAYS, getAvailability } from "@/lib/integrations";
+import { findRoutedLead } from "@/lib/lead-access";
+import { checkRateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit";
+import { isUuid } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function intParam(
   params: URLSearchParams,
@@ -21,10 +21,10 @@ function intParam(
 }
 
 /**
- * Public read-only availability for one rep — the surface the instant-booking
- * UI (roadmap task 9) will call after a routing decision. Rep name + slot
- * times only, no lead data. Google free/busy degrades to local bookings on
- * failure.
+ * Open times for the rep a lead was routed to — the inline booking UI calls
+ * this right after submit. `?submission=<id>` is required and must have been
+ * routed to this rep, so rep calendars can't be browsed by anyone holding a
+ * rep id. Returns the rep's name and zone plus slot times only.
  */
 export async function GET(
   request: Request,
@@ -32,22 +32,23 @@ export async function GET(
 ) {
   const limit = checkRateLimit("availability", clientIp(request));
   if (!limit.allowed) {
-    return NextResponse.json(
-      { error: "Too many requests — please try again shortly." },
-      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
-    );
+    return tooManyRequests(limit.retryAfterSeconds, {
+      error: "Too many requests — please try again shortly.",
+    });
   }
   const { userId } = await params;
-  if (!UUID_RE.test(userId)) {
-    return NextResponse.json({ error: "Rep not found." }, { status: 404 });
-  }
   const searchParams = new URL(request.url).searchParams;
-  const duration = intParam(searchParams, "duration", 30, 15, 240);
-  const days = intParam(searchParams, "days", 14, 1, 42);
+  const submissionId = searchParams.get("submission");
+  const notFound = () => NextResponse.json({ error: "Rep not found." }, { status: 404 });
+  if (!isUuid(userId) || !submissionId || !isUuid(submissionId)) return notFound();
 
-  const availability = await getAvailability(getDb(), userId, duration, days);
-  if (!availability) {
-    return NextResponse.json({ error: "Rep not found." }, { status: 404 });
-  }
-  return NextResponse.json(availability);
+  const db = getDb();
+  const lead = await findRoutedLead(db, submissionId);
+  if (!lead || lead.repId !== userId) return notFound();
+
+  const duration = intParam(searchParams, "duration", 30, 15, 240);
+  const days = intParam(searchParams, "days", 14, 1, MAX_HORIZON_DAYS);
+  const availability = await getAvailability(db, userId, duration, days);
+  if (!availability) return notFound();
+  return NextResponse.json(availability, { headers: { "Cache-Control": "no-store" } });
 }

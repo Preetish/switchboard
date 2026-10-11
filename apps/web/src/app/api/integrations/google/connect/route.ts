@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { authorizationUrl } from "@switchboard/calendar-google";
 import { users } from "@switchboard/db";
-import { auth } from "@/lib/auth";
+import { adminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { appBaseUrl, findOrg, googleConfig } from "@/lib/integrations";
 import {
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const base = appBaseUrl();
   const params = new URL(request.url).searchParams;
   const linkRep = verifyConnectLink(params);
-  const isAdmin = Boolean(await auth());
+  const isAdmin = Boolean(await adminSession());
   const fail = (error: string) =>
     NextResponse.redirect(
       isAdmin

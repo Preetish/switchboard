@@ -1,13 +1,17 @@
 /**
- * Runs once per server boot. Starts the speed-to-lead alert worker so
- * delayed jobs fire without a separate worker process — self-hosters run
- * one command and the queue lives in the same Postgres (no Redis).
+ * Runs once per server boot. server.mjs has already checked the
+ * configuration (and exits on errors in production); this repeats the check
+ * for `next dev`/`next start` run directly. Then it starts the speed-to-lead
+ * alert worker so delayed jobs fire without a
+ * separate worker process — the queue lives in the same Postgres (no Redis).
  *
- * The import sits inside the runtime check (Next's documented pattern) so
- * the Node-only worker graph is never bundled for the edge runtime.
+ * The imports sit inside the runtime check (Next's documented pattern) so
+ * the Node-only graph is never bundled for the edge runtime.
  */
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { enforceConfig } = await import("../config-check.mjs");
+    enforceConfig();
     const { startAlertWorker } = await import("./lib/alerts-worker");
     await startAlertWorker();
   }

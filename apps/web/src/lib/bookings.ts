@@ -7,24 +7,34 @@ import {
   fetchFreeBusy,
 } from "@switchboard/calendar-google";
 import { and, eq } from "drizzle-orm";
-import { bookings, orgs, submissions, users, type Database } from "@switchboard/db";
-import { getGoogleAccessToken } from "./integrations";
+import { bookings, orgs, users, type Database } from "@switchboard/db";
+import { safeDisplayName } from "./display-name";
+import { isUuid } from "./http";
+import { getGoogleAccessToken, isOfferedSlot } from "./integrations";
+import { findActiveBooking, findRoutedLead } from "./lead-access";
 import { logCrmMeeting } from "./crm";
 import { releaseExpiredHolds } from "./holds";
 import { sendConfirmationEmail } from "./email";
 
 /**
- * Booking creation: claim the slot with a short `hold` row (the unique index
- * on `user_id + start_at` makes the claim atomic), create the Google Calendar
- * event with a Meet link, then confirm. A crash after the hold leaves the slot
- * reserved until lazy cleanup expires it (~5 minutes, per the routing brief).
- * If the calendar call fails after ~2s the booking is still confirmed locally
- * and the confirmation email carries a plain booking link instead.
+ * Booking creation for a routed lead. The lead may only book the rep routing
+ * chose for them, only at a slot that rep actually offers, and only once:
+ *
+ * 1. The submission must exist and its latest decision must name this rep.
+ * 2. A lead with a live booking gets it back (idempotent; one per lead).
+ * 3. The start must be on the rep's slot grid inside working hours, after
+ *    the lead time and within the horizon.
+ * 4. The slot is claimed with a `hold` row; the `bookings_no_overlap`
+ *    exclusion constraint makes overlapping claims fail atomically.
+ * 5. The rep's Google Calendar is re-checked and the event created (with a
+ *    Meet link), then the hold is confirmed. A crash after the hold leaves
+ *    the slot reserved until lazy cleanup expires it (~5 minutes). If the
+ *    calendar call fails, the booking is still confirmed locally and the
+ *    confirmation email carries a plain booking link instead.
  */
 
 const MINUTE_MS = 60_000;
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIN_DURATION_MINUTES = 15;
 const MAX_DURATION_MINUTES = 240;
 
@@ -32,7 +42,7 @@ export type BookingInput = {
   userId: string;
   startAt: Date;
   durationMinutes: number;
-  submissionId?: string | null;
+  submissionId: string;
   idempotencyKey?: string | null;
 };
 
@@ -45,8 +55,11 @@ export function parseBookingInput(body: unknown): ParsedBookingInput {
     return { ok: false, error: "Expected a JSON body." };
   }
   const raw = body as Record<string, unknown>;
-  if (typeof raw.userId !== "string" || !UUID_RE.test(raw.userId)) {
+  if (!isUuid(raw.userId)) {
     return { ok: false, error: "userId must be a rep's UUID." };
+  }
+  if (!isUuid(raw.submissionId)) {
+    return { ok: false, error: "submissionId is required (the lead's submission UUID)." };
   }
   const startAt = typeof raw.startAt === "string" ? new Date(raw.startAt) : null;
   if (!startAt || Number.isNaN(startAt.getTime())) {
@@ -62,11 +75,6 @@ export function parseBookingInput(body: unknown): ParsedBookingInput {
       error: `durationMinutes must be an integer between ${MIN_DURATION_MINUTES} and ${MAX_DURATION_MINUTES}.`,
     };
   }
-  if (raw.submissionId !== undefined && raw.submissionId !== null) {
-    if (typeof raw.submissionId !== "string" || !UUID_RE.test(raw.submissionId)) {
-      return { ok: false, error: "submissionId must be a UUID when provided." };
-    }
-  }
   if (raw.idempotencyKey !== undefined && raw.idempotencyKey !== null) {
     if (typeof raw.idempotencyKey !== "string" || raw.idempotencyKey.length > 128) {
       return {
@@ -81,7 +89,7 @@ export function parseBookingInput(body: unknown): ParsedBookingInput {
       userId: raw.userId,
       startAt,
       durationMinutes: raw.durationMinutes as number,
-      submissionId: (raw.submissionId as string | undefined) ?? null,
+      submissionId: raw.submissionId,
       idempotencyKey: (raw.idempotencyKey as string | undefined) ?? null,
     },
   };
@@ -92,8 +100,8 @@ export function fallbackBookingUrl(): string | null {
   return process.env.FALLBACK_BOOKING_URL ?? null;
 }
 
-function pgUniqueViolation(cause: unknown): boolean {
-  return cause instanceof Error && (cause as { code?: string }).code === "23505";
+function pgErrorCode(cause: unknown): string | undefined {
+  return cause instanceof Error ? (cause as { code?: string }).code : undefined;
 }
 
 export type BookingFailure =
@@ -107,7 +115,6 @@ export type BookingRecord = {
   startAt: string;
   endAt: string;
   status: "hold" | "confirmed";
-  calendarEventId: string | null;
   meetLink: string | null;
 };
 
@@ -115,7 +122,8 @@ export type BookingSuccess = {
   status: "created";
   duplicate: boolean;
   booking: BookingRecord;
-  calendarError?: string;
+  /** True when the calendar event could not be created (booked locally only). */
+  calendarFailed: boolean;
   emailSent: boolean;
 };
 
@@ -126,7 +134,6 @@ function toRecord(row: {
   startAt: Date;
   endAt: Date;
   status: string;
-  calendarEventId: string | null;
   meetLink: string | null;
 }): BookingRecord {
   return {
@@ -135,125 +142,111 @@ function toRecord(row: {
     startAt: row.startAt.toISOString(),
     endAt: row.endAt.toISOString(),
     status: row.status as "hold" | "confirmed",
-    calendarEventId: row.calendarEventId,
     meetLink: row.meetLink,
   };
 }
 
-async function findByIdempotencyKey(
-  db: Database,
-  key: string,
-): Promise<BookingSuccess | null> {
-  const [row] = await db
-    .select()
-    .from(bookings)
-    .where(eq(bookings.idempotencyKey, key))
-    .limit(1);
-  return row
-    ? { status: "created", duplicate: true, booking: toRecord(row), emailSent: false }
-    : null;
+function duplicateOf(row: Parameters<typeof toRecord>[0]): BookingSuccess {
+  return {
+    status: "created",
+    duplicate: true,
+    booking: toRecord(row),
+    calendarFailed: false,
+    emailSent: false,
+  };
 }
+
+const SLOT_TAKEN: BookingFailure = {
+  status: "slot_taken",
+  error: "That time was just taken. Pick another one.",
+};
 
 export async function createBooking(
   db: Database,
   input: BookingInput,
 ): Promise<BookingFailure | BookingSuccess> {
+  const lead = await findRoutedLead(db, input.submissionId);
+  if (!lead) return { status: "not_found", error: "We couldn't find your request." };
+  if (lead.repId !== input.userId) {
+    return { status: "invalid", error: "That rep isn't available for this request." };
+  }
+
+  // One live booking per lead: retries (with or without a key) get it back.
+  const existing = await findActiveBooking(db, lead.submissionId);
+  if (existing) return duplicateOf(existing);
+
   const [rep] = await db
     .select({
       id: users.id,
       name: users.name,
       email: users.email,
       timezone: users.timezone,
+      workingHours: users.workingHours,
       orgId: users.orgId,
       orgName: orgs.name,
     })
     .from(users)
     .innerJoin(orgs, eq(users.orgId, orgs.id))
-    .where(eq(users.id, input.userId))
+    .where(and(eq(users.id, input.userId), eq(users.orgId, lead.orgId)))
     .limit(1);
-  if (!rep) return { status: "not_found", error: "Rep not found." };
+  if (!rep) return { status: "not_found", error: "That rep is no longer available." };
 
+  if (
+    !isOfferedSlot(
+      { timeZone: rep.timezone, workingHours: rep.workingHours },
+      input.startAt,
+      input.durationMinutes,
+    )
+  ) {
+    return { status: "invalid", error: "That time isn't available. Pick another one." };
+  }
   const endAt = new Date(input.startAt.getTime() + input.durationMinutes * MINUTE_MS);
-  if (input.startAt.getTime() <= Date.now()) {
-    return { status: "invalid", error: "The slot start must be in the future." };
-  }
-
-  // Lead context for the confirmation email; a submission must belong to the
-  // same org as the rep, or the reference is bad — the booking would otherwise
-  // carry a dangling FK that fails on insert.
-  let leadEmail: string | null = null;
-  let leadName: string | null = null;
-  if (input.submissionId) {
-    const [submission] = await db
-      .select({
-        email: submissions.email,
-        data: submissions.data,
-        orgId: submissions.orgId,
-      })
-      .from(submissions)
-      .where(eq(submissions.id, input.submissionId))
-      .limit(1);
-    if (!submission || submission.orgId !== rep.orgId) {
-      return {
-        status: "invalid",
-        error: "submissionId does not match a submission in this org.",
-      };
-    }
-    leadEmail = submission.email;
-    leadName = typeof submission.data?.name === "string" ? submission.data.name : null;
-  }
-
-  // Idempotent retries return the original booking instead of creating a second one.
-  if (input.idempotencyKey) {
-    const existing = await findByIdempotencyKey(db, input.idempotencyKey);
-    if (existing) return existing;
-  }
+  const leadEmail = lead.email;
+  const leadName = safeDisplayName(lead.data?.name);
 
   await releaseExpiredHolds(db);
 
-  let inserted: typeof bookings.$inferSelect | undefined;
+  let hold: typeof bookings.$inferSelect;
   try {
     const rows = await db
       .insert(bookings)
       .values({
         orgId: rep.orgId,
         userId: rep.id,
-        submissionId: input.submissionId ?? null,
+        submissionId: lead.submissionId,
+        decisionId: lead.decisionId,
         startAt: input.startAt,
         endAt,
         status: "hold",
         idempotencyKey: input.idempotencyKey ?? null,
       })
       .returning();
-    inserted = rows[0];
+    hold = rows[0]!;
   } catch (cause) {
-    // Unique violation: either the slot is claimed, or a concurrent request
-    // with the same idempotency key already created the booking.
-    if (input.idempotencyKey) {
-      const existing = await findByIdempotencyKey(db, input.idempotencyKey);
-      if (existing) return existing;
-    }
-    if (pgUniqueViolation(cause)) {
-      return { status: "slot_taken", error: "That slot is no longer available." };
+    const code = pgErrorCode(cause);
+    // 23P01: the exclusion constraint — the rep is busy for part of this time.
+    if (code === "23P01") return SLOT_TAKEN;
+    // 23505: a concurrent request for this lead booked first; return it.
+    if (code === "23505") {
+      const winner = await findActiveBooking(db, lead.submissionId);
+      if (winner) return duplicateOf(winner);
     }
     throw cause;
   }
-  // The slot is now claimed atomically by the unique index; `inserted` is
-  // only ever missing under a conflict handled above.
-  const hold = inserted!;
 
   const calendar = await reserveCalendar(db, { orgId: rep.orgId, userId: rep.id }, {
+    bookingId: hold.id,
     start: input.startAt,
     end: endAt,
-    summary: `${rep.orgName} — ${leadName ?? "New meeting"}`,
-    description: `Booked via Switchboard (submission ${input.submissionId ?? "n/a"}).`,
+    summary: `Meeting with ${rep.name} (${rep.orgName})`,
+    description: "Booked via Switchboard.",
     leadEmail,
   });
 
   if (calendar.slotTaken) {
-    // Live free/busy contradicted the stale slot; release the hold.
+    // Live free/busy contradicted the slot; release the hold.
     await db.delete(bookings).where(eq(bookings.id, hold.id));
-    return { status: "slot_taken", error: "That slot is no longer available." };
+    return SLOT_TAKEN;
   }
 
   const confirmedRows = await db
@@ -265,17 +258,10 @@ export async function createBooking(
     })
     .where(and(eq(bookings.id, hold.id), eq(bookings.status, "hold")))
     .returning();
-  let row = confirmedRows[0];
-  if (!row) {
-    // Defensive: the hold cannot expire (it was just created) and nothing
-    // else deletes it, so the update always returns the row.
-    const reselected = await db
-      .select()
-      .from(bookings)
-      .where(eq(bookings.id, hold.id))
-      .limit(1);
-    row = reselected[0];
-  }
+  const row =
+    confirmedRows[0] ??
+    // Defensive: the hold was just created and nothing else confirms it.
+    (await db.select().from(bookings).where(eq(bookings.id, hold.id)).limit(1))[0];
   if (!row) throw new Error(`Booking row disappeared after confirm: ${hold.id}`);
 
   const emailSent = leadEmail
@@ -310,9 +296,22 @@ export async function createBooking(
     status: "created",
     duplicate: false,
     booking: toRecord(row),
-    calendarError: calendar.error,
+    calendarFailed: Boolean(calendar.error),
     emailSent,
   };
+}
+
+/**
+ * Event creation is a write that emails the lead an invite, so it gets a
+ * longer budget than reads, and a deterministic event id derived from the
+ * booking: a retry after a timeout finds the event Google already created
+ * instead of sending a second invite.
+ */
+const EVENT_TIMEOUT_MS = 10_000;
+
+/** Google event ids use base32hex (a–v, 0–9); a dashless UUID fits. */
+export function googleEventId(bookingId: string): string {
+  return `sb${bookingId.replace(/-/g, "").toLowerCase()}`;
 }
 
 type CalendarReservation = {
@@ -333,6 +332,7 @@ async function reserveCalendar(
   db: Database,
   rep: { orgId: string; userId: string },
   event: {
+    bookingId: string;
     start: Date;
     end: Date;
     summary: string;
@@ -377,7 +377,8 @@ async function reserveCalendar(
       end: event.end,
       description: event.description,
       attendeeEmails: attendees,
-      timeoutMs: DEFAULT_TIMEOUT_MS,
+      eventId: googleEventId(event.bookingId),
+      timeoutMs: EVENT_TIMEOUT_MS,
     });
     return { slotTaken: false, eventId: created.eventId, meetLink: created.meetLink };
   } catch (cause) {

@@ -1,0 +1,145 @@
+/* Routing log table — tokens only, per docs/design.md. */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-6);
+}
+
+.search {
+  display: flex;
+  gap: var(--sb-space-2);
+  flex: 1 1 20rem;
+  margin-top: var(--sb-space-4);
+}
+
+.toolbar .search {
+  margin-top: 0;
+}
+
+.count {
+  margin-top: var(--sb-space-4);
+  color: var(--sb-text-muted);
+  font-size: var(--sb-text-sm);
+}
+
+.empty {
+  margin-top: var(--sb-space-4);
+  padding: var(--sb-space-8);
+  border: 1px dashed var(--sb-border);
+  border-radius: var(--sb-radius-lg);
+  color: var(--sb-text-muted);
+  text-align: center;
+}
+
+.empty a {
+  text-decoration: underline;
+}
+
+.tableWrap {
+  margin-top: var(--sb-space-2);
+  overflow-x: auto;
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-lg);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sb-text-sm);
+}
+
+.table th {
+  text-align: left;
+  color: var(--sb-text-muted);
+  font-weight: 500;
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border-bottom: 1px solid var(--sb-border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--sb-space-3);
+  border-bottom: 1px solid var(--sb-border);
+  vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.mono {
+  font-family: var(--sb-font-mono);
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--sb-text-muted);
+}
+
+.reason {
+  margin-top: var(--sb-space-1);
+  max-width: 22rem;
+  color: var(--sb-text-muted);
+}
+
+/* Outcome badges carry their label as text — never color alone. */
+.badge {
+  display: inline-block;
+  padding: 0 var(--sb-space-2);
+  border-radius: var(--sb-radius-full);
+  white-space: nowrap;
+  font-weight: 500;
+  border: 1px solid;
+}
+
+.badgeRouted {
+  composes: badge;
+  border-color: color-mix(in oklab, var(--sb-success) 50%, transparent);
+  background: color-mix(in oklab, var(--sb-success) 12%, transparent);
+}
+
+.badgeSelfServe {
+  composes: badge;
+  border-color: color-mix(in oklab, var(--sb-info) 50%, transparent);
+  background: color-mix(in oklab, var(--sb-info) 12%, transparent);
+}
+
+.badgeFallback {
+  composes: badge;
+  border-color: color-mix(in oklab, var(--sb-warning) 60%, transparent);
+  background: color-mix(in oklab, var(--sb-warning) 14%, transparent);
+}
+
+.inputs summary {
+  cursor: pointer;
+  color: var(--sb-text-muted);
+  white-space: nowrap;
+}
+
+.inputs summary:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 2px;
+}
+
+.inputs pre {
+  margin-top: var(--sb-space-2);
+  padding: var(--sb-space-3);
+  max-height: 16rem;
+  overflow: auto;
+  background: var(--sb-bg);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-sm);
+  font-family: var(--sb-font-mono);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -14,8 +14,11 @@ export type { CalendarDate, ZonedParts } from "./calendar/tz.js";
 export type { BusyInterval, WorkingHours } from "./calendar/types.js";
 export type { FormField, FormFieldType } from "./forms/types.js";
 export {
+  EMAIL_RE,
+  MAX_EMAIL_LENGTH,
   MAX_FIELDS,
   emailFieldKey,
+  isEmailAddress,
   validateFormFields,
   validateSubmission,
 } from "./forms/validate.js";

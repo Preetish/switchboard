@@ -1,5 +1,14 @@
 /* Hosted form page — tokens only, per docs/design.md. */
 
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sb-space-6);
+}
+
 .card {
   width: 100%;
   max-width: 34rem;
@@ -133,8 +142,18 @@
   transition: background var(--sb-duration-base) var(--sb-ease-out);
 }
 
+/* Darker on hover: white text keeps AA contrast (the lighter accent doesn't). */
 .button:hover:not(:disabled) {
-  background: var(--sb-accent);
+  background: color-mix(in oklab, var(--sb-accent-strong) 85%, black);
+}
+
+.dangerButton {
+  composes: button;
+  background: var(--sb-danger);
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--sb-danger) 85%, black);
 }
 
 .button:focus-visible {

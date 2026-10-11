@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -206,10 +207,21 @@ export const bookings = pgTable(
     idempotencyKey: text("idempotency_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  // Double-booking guard: a rep can hold exactly one booking per start time.
+  // Double-booking guard: the `bookings_no_overlap` exclusion constraint
+  // (btree_gist, migration 0007 — drizzle cannot express EXCLUDE) rejects any
+  // two live bookings for one rep whose [start, end) ranges overlap.
+  // Cancelled rows never block a slot.
   (t) => [
-    uniqueIndex("bookings_user_start_uq").on(t.userId, t.startAt),
-    uniqueIndex("bookings_idempotency_uq").on(t.idempotencyKey),
+    // One live booking per lead; retries return it instead of booking again.
+    uniqueIndex("bookings_active_submission_uq")
+      .on(t.submissionId)
+      .where(sql`${t.status} in ('hold', 'confirmed')`),
+    // Idempotency keys are scoped to the lead they were issued for.
+    uniqueIndex("bookings_submission_idempotency_uq").on(t.submissionId, t.idempotencyKey),
+    index("bookings_user_start_idx").on(t.userId, t.startAt),
+    index("bookings_status_created_idx").on(t.status, t.createdAt),
+    check("bookings_end_after_start", sql`${t.endAt} > ${t.startAt}`),
+    check("bookings_status_valid", sql`${t.status} in ('hold', 'confirmed', 'cancelled')`),
   ],
 );
 

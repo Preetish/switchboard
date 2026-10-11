@@ -4,11 +4,12 @@
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.mjs --dev",
     "build": "next build",
-    "start": "next start"
+    "start": "node server.mjs"
   },
   "dependencies": {
+    "@next/env": "^15.5.27",
     "@switchboard/calendar-google": "*",
     "@switchboard/core": "*",
     "@switchboard/crm-hubspot": "*",

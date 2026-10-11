@@ -127,6 +127,13 @@ export async function sendConfirmationEmail(
   );
 }
 
+/** `jane.doe@corp.com` → `j***@corp.com`, so logs don't collect lead addresses. */
+export function maskEmail(address: string): string {
+  const at = address.lastIndexOf("@");
+  if (at <= 0) return "***";
+  return `${address[0]}***${address.slice(at)}`;
+}
+
 /** A short label used in the skip/failure logs, e.g. "confirmation email". */
 export type EmailContext = { context: string };
 
@@ -153,7 +160,7 @@ export async function sendEmail(
     return true;
   } catch (cause) {
     console.error(
-      `Email to ${message.to} failed: ${
+      `Email (${context}) to ${maskEmail(message.to)} failed: ${
         cause instanceof Error ? cause.message : String(cause)
       }`,
     );

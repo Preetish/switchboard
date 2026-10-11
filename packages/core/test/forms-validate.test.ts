@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   emailFieldKey,
+  isEmailAddress,
   validateFormFields,
   validateSubmission,
 } from "../src/forms/validate.js";
@@ -161,5 +162,41 @@ describe("emailFieldKey", () => {
   it("finds the first email field", () => {
     expect(emailFieldKey(fields)).toBe("email");
     expect(emailFieldKey(fields.filter((f) => f.type !== "email"))).toBeUndefined();
+  });
+});
+
+describe("hostile input", () => {
+  const fields: FormField[] = [
+    { key: "email", label: "Email", type: "email", required: true },
+    { key: "size", label: "Size", type: "number", required: false },
+    { key: "constructor", label: "Note", type: "text", required: false },
+  ];
+
+  it("rejects a long backtracking-bait email quickly", () => {
+    const bait = `a@${"a.".repeat(50_000)}@`;
+    const started = performance.now();
+    const result = validateSubmission(fields, { email: bait });
+    expect(performance.now() - started).toBeLessThan(50);
+    expect(result.ok).toBe(false);
+  });
+
+  it("still runs the shape check linearly on near-limit input", () => {
+    const started = performance.now();
+    for (let i = 0; i < 1000; i++) isEmailAddress(`a@${"a.".repeat(120)}@`);
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+
+  it("caps email and number lengths", () => {
+    const longEmail = `${"a".repeat(250)}@x.co`;
+    expect(validateSubmission(fields, { email: longEmail }).ok).toBe(false);
+    const longNumber = "1".repeat(40);
+    expect(validateSubmission(fields, { email: "a@b.co", size: longNumber }).ok).toBe(false);
+  });
+
+  it("does not read inherited properties for optional fields", () => {
+    expect(validateSubmission(fields, { email: "a@b.co" })).toEqual({
+      ok: true,
+      data: { email: "a@b.co" },
+    });
   });
 });
