@@ -2,22 +2,11 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { groupSlotsByDay, type FormField, type SlotGroup } from "@switchboard/core";
-import type { DecisionOutcome } from "@switchboard/db";
+import { groupSlotsByDay, type FormField, type SlotGroup } from "@switchboard/core/client";
+import type { DecisionOutcome, FormSettings } from "@switchboard/db";
 import styles from "./FormView.module.css";
 
 type Values = Record<string, string | boolean>;
-
-const CONFIRMATIONS: Record<DecisionOutcome["kind"], string> = {
-  route_user:
-    "Thanks — your request was routed to the right specialist. They will reach out shortly.",
-  route_team:
-    "Thanks — your request was routed to the right team. They will reach out shortly.",
-  self_serve_link:
-    "Thanks — we will email you a link so you can pick a time that suits you.",
-  fallback_queue:
-    "Thanks — your request is in our queue. We will get back to you shortly.",
-};
 
 /** Meeting length offered for instant booking, in minutes. */
 const MEETING_MINUTES = 30;
@@ -33,23 +22,27 @@ type Availability = {
 
 type BookedResult = {
   duplicate: boolean;
-  booking: {
-    id: string;
-    startAt: string;
-    endAt: string;
-    meetLink: string | null;
-  };
+  booking: { id: string; startAt: string; endAt: string; meetLink: string | null };
   calendarFailed: boolean;
   emailQueued: boolean;
+  invited: boolean;
 };
 
 type PublicDecision = { kind: DecisionOutcome["kind"]; userId: string | null };
+
+type Result = {
+  submissionId: string | null;
+  decision: PublicDecision | null;
+  repName: string | null;
+  email: string | null;
+};
 
 export default function FormView({
   slug,
   orgName,
   formName,
   fields,
+  settings,
   embedded = false,
   turnstileSiteKey = null,
 }: {
@@ -57,6 +50,7 @@ export default function FormView({
   orgName: string;
   formName: string;
   fields: FormField[];
+  settings: FormSettings;
   embedded?: boolean;
   /** Cloudflare Turnstile site key when the optional bot check is on. */
   turnstileSiteKey?: string | null;
@@ -64,49 +58,16 @@ export default function FormView({
   const [values, setValues] = useState<Values>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{
-    submissionId: string | null;
-    decision: PublicDecision | null;
-    repName: string | null;
-  } | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
+  // The form only works once React is running; until then the button stays
+  // disabled so an early click can't fall through to a native form submit.
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
   // Stable per page load, so retries reuse the same key (idempotent submits).
   const idempotencyKey = useRef<string>(crypto.randomUUID());
+  useEmbedResize(embedded);
 
-  // Embed mode (packages/embed): make the iframe blend into the host page and
-  // report the content height so the host can resize with no scrollbars. The
-  // host loader validates the message's origin and source; the payload is
-  // only a height number.
-  useEffect(() => {
-    if (!embedded) return;
-    document.body.style.background = "transparent";
-    document.documentElement.style.background = "transparent";
-    const inIframe = window.parent !== window;
-    let target: string = "*";
-    try {
-      target = new URL(document.referrer).origin;
-    } catch {
-      // Referrer blocked (e.g. a strict referrer policy); the loader still
-      // validates origin and source, and the payload is a height number.
-    }
-    const post = () => {
-      if (!inIframe) return;
-      // The body's own height, not documentElement.scrollHeight: inside an
-      // iframe scrollHeight is floored by the viewport, so the iframe could
-      // grow but never shrink back.
-      window.parent.postMessage(
-        { type: "switchboard:resize", height: document.body.getBoundingClientRect().height },
-        target,
-      );
-    };
-    post();
-    const observer = new ResizeObserver(post);
-    observer.observe(document.body);
-    return () => {
-      observer.disconnect();
-      document.body.style.background = "";
-      document.documentElement.style.background = "";
-    };
-  }, [embedded]);
+  const emailKey = fields.find((field) => field.type === "email")?.key;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -128,56 +89,41 @@ export default function FormView({
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) {
-        setErrors(body?.errors ?? { _form: "Something went wrong. Please try again." });
+        setErrors(
+          body?.errors ?? {
+            _form: "We couldn't send the form. Check your connection and try again.",
+          },
+        );
         return;
       }
       setResult({
         submissionId: body.submissionId ?? null,
         decision: body.decision ?? null,
         repName: typeof body.repName === "string" ? body.repName : null,
+        email:
+          emailKey && typeof values[emailKey] === "string" ? (values[emailKey] as string) : null,
       });
     } catch {
-      setErrors({ _form: "Network error. Please try again." });
+      setErrors({ _form: "We couldn't reach the server. Check your connection and try again." });
     } finally {
       setSubmitting(false);
     }
   }
 
   if (result) {
-    const repId = result.decision?.userId;
-    if (repId) {
-      return (
-        <section className={styles.card}>
-          <BookingPanel
-            slug={slug}
-            repId={repId}
-            routedName={result.repName}
-            submissionId={result.submissionId}
-          />
-        </section>
-      );
-    }
     return (
       <section className={styles.card}>
-        <h1 className={styles.cardTitle}>Request received</h1>
-        <p className={styles.cardBody}>
-          {result.repName
-            ? `Thanks — your request was routed to ${result.repName}, who will reach out shortly.`
-            : result.decision
-              ? CONFIRMATIONS[result.decision.kind]
-              : "Thanks — we received your request."}
-        </p>
-        {result.submissionId ? (
-          <p className={styles.reference}>
-            Reference: <code>{result.submissionId.slice(0, 8)}</code>
-          </p>
-        ) : null}
-        <DeleteSection slug={slug} />
+        <Outcome result={result} orgName={orgName} settings={settings} />
+        <PrivacyFooter slug={slug} />
       </section>
     );
   }
 
   const formErrors = Object.entries(errors).filter(([key]) => key.startsWith("_form"));
+  const describedBy = (field: FormField) =>
+    errors[field.key] ? `${field.key}-error` : field.helpText ? `${field.key}-help` : undefined;
+  const setValue = (key: string, value: string | boolean) =>
+    setValues((current) => ({ ...current, [key]: value }));
 
   return (
     <section className={styles.card}>
@@ -190,7 +136,7 @@ export default function FormView({
           ))}
         </div>
       ) : null}
-      <form onSubmit={onSubmit} noValidate>
+      <form onSubmit={onSubmit} method="post" noValidate>
         <div className={styles.honeypot} aria-hidden="true">
           <label htmlFor="sb_website">Leave this field empty</label>
           <input
@@ -209,9 +155,9 @@ export default function FormView({
                 <input
                   type="checkbox"
                   checked={values[field.key] === true}
-                  onChange={(e) =>
-                    setValues({ ...values, [field.key]: e.target.checked })
-                  }
+                  onChange={(e) => setValue(field.key, e.target.checked)}
+                  aria-invalid={Boolean(errors[field.key])}
+                  aria-describedby={describedBy(field)}
                 />
                 <span>{field.label}</span>
               </label>
@@ -219,24 +165,17 @@ export default function FormView({
               <>
                 <label className={styles.label} htmlFor={field.key}>
                   {field.label}
-                  {field.required ? <span aria-hidden="true"> *</span> : null}
+                  {field.required ? null : <span className={styles.optional}> (optional)</span>}
                 </label>
                 {field.type === "select" ? (
                   <select
                     id={field.key}
                     className={styles.input}
                     value={(values[field.key] as string) ?? ""}
-                    onChange={(e) =>
-                      setValues({ ...values, [field.key]: e.target.value })
-                    }
+                    onChange={(e) => setValue(field.key, e.target.value)}
                     aria-invalid={Boolean(errors[field.key])}
-                    aria-describedby={
-                      errors[field.key]
-                        ? `${field.key}-error`
-                        : field.helpText
-                          ? `${field.key}-help`
-                          : undefined
-                    }
+                    aria-describedby={describedBy(field)}
+                    required={field.required}
                   >
                     <option value="">Choose one…</option>
                     {field.options?.map((option) => (
@@ -251,56 +190,32 @@ export default function FormView({
                     className={styles.input}
                     rows={3}
                     value={(values[field.key] as string) ?? ""}
-                    onChange={(e) =>
-                      setValues({ ...values, [field.key]: e.target.value })
-                    }
+                    onChange={(e) => setValue(field.key, e.target.value)}
                     aria-invalid={Boolean(errors[field.key])}
-                    aria-describedby={
-                      errors[field.key]
-                        ? `${field.key}-error`
-                        : field.helpText
-                          ? `${field.key}-help`
-                          : undefined
-                    }
+                    aria-describedby={describedBy(field)}
                   />
                 ) : (
                   <input
                     id={field.key}
                     className={styles.input}
-                    type={
-                      field.type === "number"
-                        ? "number"
-                        : field.type === "email"
-                          ? "email"
-                          : "text"
-                    }
+                    type={field.type === "email" ? "email" : "text"}
+                    inputMode={field.type === "number" ? "numeric" : undefined}
+                    autoComplete={autocompleteFor(field)}
                     value={(values[field.key] as string) ?? ""}
-                    onChange={(e) =>
-                      setValues({ ...values, [field.key]: e.target.value })
-                    }
+                    onChange={(e) => setValue(field.key, e.target.value)}
                     aria-invalid={Boolean(errors[field.key])}
-                    aria-describedby={
-                      errors[field.key]
-                        ? `${field.key}-error`
-                        : field.helpText
-                          ? `${field.key}-help`
-                          : undefined
-                    }
+                    aria-describedby={describedBy(field)}
+                    required={field.required}
                   />
                 )}
               </>
             )}
-            {field.type === "consent" && errors[field.key] ? (
-              <p className={styles.error} id={`${field.key}-error`}>
-                {errors[field.key]}
-              </p>
-            ) : null}
             {field.type !== "consent" && field.helpText ? (
               <p className={styles.help} id={`${field.key}-help`}>
                 {field.helpText}
               </p>
             ) : null}
-            {field.type !== "consent" && errors[field.key] ? (
+            {errors[field.key] ? (
               <p className={styles.error} id={`${field.key}-error`}>
                 {errors[field.key]}
               </p>
@@ -313,15 +228,77 @@ export default function FormView({
               src="https://challenges.cloudflare.com/turnstile/v0/api.js"
               strategy="afterInteractive"
             />
-            <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+            <div className={`cf-turnstile ${styles.captcha}`} data-sitekey={turnstileSiteKey} />
           </>
         ) : null}
-        <button type="submit" className={styles.button} disabled={submitting}>
-          {submitting ? "Sending…" : "Submit request"}
+        <button type="submit" className={styles.button} disabled={!ready || submitting}>
+          {submitting ? "Sending…" : (settings.submitLabel ?? "Continue")}
         </button>
       </form>
-      <DeleteSection slug={slug} />
+      <PrivacyFooter slug={slug} />
     </section>
+  );
+}
+
+/** Browser autofill hints for the common lead fields. */
+function autocompleteFor(field: FormField): string | undefined {
+  if (field.type === "email") return "email";
+  if (field.key === "name" || field.key === "full_name") return "name";
+  if (field.key === "company" || field.key === "company_name") return "organization";
+  if (field.key === "phone") return "tel";
+  return undefined;
+}
+
+/** What the lead sees after submitting, by routing outcome. */
+function Outcome({
+  result,
+  orgName,
+  settings,
+}: {
+  result: Result;
+  orgName: string;
+  settings: FormSettings;
+}) {
+  const repId = result.decision?.userId;
+  if (repId && result.submissionId) {
+    return (
+      <BookingPanel
+        repId={repId}
+        routedName={result.repName}
+        submissionId={result.submissionId}
+        orgName={orgName}
+      />
+    );
+  }
+  if (result.decision?.kind === "self_serve_link" && settings.selfServeUrl) {
+    return (
+      <>
+        <h1 className={styles.cardTitle}>You can get started right away</h1>
+        <p className={styles.cardBody}>
+          Thanks for reaching out. The quickest way in is to set things up yourself — it only
+          takes a few minutes.
+        </p>
+        <a className={styles.linkButton} href={settings.selfServeUrl} target="_top">
+          Get started
+        </a>
+      </>
+    );
+  }
+  const who = result.repName ?? `Someone from ${orgName}`;
+  return (
+    <>
+      <h1 className={styles.cardTitle}>Thanks — we&apos;ve got your request</h1>
+      <p className={styles.cardBody}>
+        {who} will be in touch
+        {result.email ? (
+          <>
+            {" "}
+            at <strong>{result.email}</strong>
+          </>
+        ) : null}{" "}
+        soon.
+      </p>
+    </>
   );
 }
 
@@ -333,38 +310,58 @@ function leadTimeZone(): string {
   }
 }
 
-function formatDayLabel(dateKey: string): string {
+/** "Eastern Time" for America/New_York; falls back to the zone id. */
+function friendlyZone(zone: string): string {
+  try {
+    const part = new Intl.DateTimeFormat(undefined, {
+      timeZone: zone,
+      timeZoneName: "longGeneric",
+    })
+      .formatToParts(new Date())
+      .find((p) => p.type === "timeZoneName");
+    return part?.value ?? zone;
+  } catch {
+    return zone;
+  }
+}
+
+function formatDayLabel(dateKey: string): { weekday: string; date: string } {
   // Noon local time: the calendar date never tips over a day boundary.
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(`${dateKey}T12:00:00`));
+  const date = new Date(`${dateKey}T12:00:00`);
+  return {
+    weekday: new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(date),
+    date: new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date),
+  };
 }
 
 function formatTime(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(
+    new Date(iso),
+  );
+}
+
+function formatLongDay(iso: string): string {
   return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
   }).format(new Date(iso));
 }
 
 /**
- * The instant-booking flow: the lead just submitted, routing picked a rep,
- * and their calendar renders inline so the meeting is booked before the
- * lead leaves the page. Availability and booking come from the same API
- * surface the embed uses (tasks 5 and 7).
+ * Instant booking: routing picked a rep, and their open times render right
+ * here so the lead books before leaving the page.
  */
 function BookingPanel({
-  slug,
   repId,
   routedName,
   submissionId,
+  orgName,
 }: {
-  slug: string;
   repId: string;
   routedName: string | null;
-  submissionId: string | null;
+  submissionId: string;
+  orgName: string;
 }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -380,7 +377,8 @@ function BookingPanel({
   // Stable per page load: a retried confirm returns the original booking.
   const bookingKey = useRef<string>(crypto.randomUUID());
 
-  const repName = routedName ?? availability?.rep.name ?? "the rep";
+  const repName = routedName ?? availability?.rep.name ?? `your contact at ${orgName}`;
+  const zone = leadTimeZone();
 
   useEffect(() => {
     let cancelled = false;
@@ -388,28 +386,32 @@ function BookingPanel({
       setLoading(true);
       setLoadError(null);
       setSelectedSlot(null);
-      setBookingError(null);
       try {
+        const query = new URLSearchParams({
+          submission: submissionId,
+          duration: String(MEETING_MINUTES),
+          days: String(AVAILABILITY_DAYS),
+        });
         const response = await fetch(
-          `/api/availability/${encodeURIComponent(repId)}?${new URLSearchParams({
-            submission: submissionId ?? "",
-            duration: String(MEETING_MINUTES),
-            days: String(AVAILABILITY_DAYS),
-          }).toString()}`,
+          `/api/availability/${encodeURIComponent(repId)}?${query.toString()}`,
         );
         const body = await response.json().catch(() => null);
         if (cancelled) return;
         if (!response.ok) {
-          setLoadError(body?.error ?? "Could not load the calendar. Please try again.");
+          setLoadError(body?.error ?? "We couldn't load the calendar.");
           return;
         }
         const data = body as Availability;
         const grouped = groupSlotsByDay(data.slots, leadTimeZone());
         setAvailability(data);
         setDays(grouped);
-        setSelectedDay(grouped[0]?.dateKey ?? null);
+        setSelectedDay((current) =>
+          grouped.some((group) => group.dateKey === current)
+            ? current
+            : (grouped[0]?.dateKey ?? null),
+        );
       } catch {
-        if (!cancelled) setLoadError("Network error. Please try again.");
+        if (!cancelled) setLoadError("We couldn't reach the server.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -437,187 +439,165 @@ function BookingPanel({
         }),
       });
       const body = await response.json().catch(() => null);
-      // 201 always carries the booking row; anything else is a failure shape.
       if (response.ok && body?.booking) {
         setBooked(body as BookedResult);
         return;
       }
-      setBookingError(body?.error ?? "Something went wrong. Please try again.");
+      setBookingError(body?.error ?? "We couldn't book that time. Please try again.");
       // A taken or stale slot changes what is bookable; refresh the calendar.
       if (response.status === 409) setReloadToken((token) => token + 1);
     } catch {
-      setBookingError("Network error. Please try again.");
+      setBookingError("We couldn't reach the server. Please try again.");
     } finally {
       setBooking(false);
     }
   }
 
   if (booked) {
-    const start = new Date(booked.booking.startAt);
-    const range = `${formatTime(booked.booking.startAt)} – ${formatTime(booked.booking.endAt)}`;
-    const day = new Intl.DateTimeFormat(undefined, {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    }).format(start);
+    const { booking: b } = booked;
     return (
       <>
-        <h1 className={styles.cardTitle}>Meeting booked</h1>
-        <p className={styles.cardBody}>
-          {day} at {range} ({leadTimeZone()}) with {repName}.
+        <p className={styles.eyebrow}>
+          <span className={styles.check} aria-hidden="true">
+            ✓
+          </span>
+          Booked
         </p>
-        {booked.booking.meetLink ? (
-          <p className={styles.meetLink}>
-            <a href={booked.booking.meetLink}>Join the video call</a>
+        <h1 className={styles.cardTitle}>You&apos;re meeting {repName}</h1>
+        <div className={styles.summary}>
+          <p className={styles.summaryWhen}>{formatLongDay(b.startAt)}</p>
+          <p>
+            {formatTime(b.startAt)} – {formatTime(b.endAt)} · {friendlyZone(zone)}
           </p>
-        ) : booked.calendarFailed ? (
-          <p className={styles.help}>
-            The calendar event could not be created — we will email you a booking
-            link instead.
-          </p>
-        ) : null}
-        {booked.emailQueued ? (
-          <p className={styles.help}>A confirmation email is on its way.</p>
-        ) : null}
-        <p className={styles.reference}>
-          Reference: <code>{booked.booking.id.slice(0, 8)}</code>
-        </p>
-        <DeleteSection slug={slug} />
-      </>
-    );
-  }
-
-  if (loading) {
-    return (
-      <>
-        <h1 className={styles.cardTitle}>Request received</h1>
-        <p className={styles.cardBody}>
-          Thanks — your request was routed to {repName}. Loading their calendar…
-        </p>
-        <p role="status" className={styles.help}>
-          Finding open times…
-        </p>
-      </>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <>
-        <h1 className={styles.cardTitle}>Request received</h1>
-        <p className={styles.cardBody}>
-          Thanks — your request was routed to {repName}, who will reach out
-          shortly.
-        </p>
-        <div role="alert" className={styles.alert}>
-          <p>{loadError}</p>
         </div>
-        <button
-          type="button"
-          className={styles.button}
-          onClick={() => setReloadToken((token) => token + 1)}
-        >
-          Try loading times again
-        </button>
-        <DeleteSection slug={slug} />
+        {b.meetLink ? (
+          <a className={styles.linkButton} href={b.meetLink} target="_blank" rel="noreferrer">
+            Join with Google Meet
+          </a>
+        ) : null}
+        <p className={styles.cardBody}>
+          {booked.invited
+            ? "A calendar invite is on its way to your inbox."
+            : `${repName} will send you a calendar invite.`}
+          {booked.emailQueued ? " We've also emailed you the details." : null}
+        </p>
       </>
     );
   }
 
   const activeDay = days.find((group) => group.dateKey === selectedDay) ?? days[0];
-  const zone = leadTimeZone();
 
   return (
     <>
       <h1 className={styles.cardTitle}>Pick a time with {repName}</h1>
       <p className={styles.cardBody}>
-        Your request was routed to {repName}
-        {availability?.rep.timeZone && availability.rep.timeZone !== zone
-          ? ` (in ${availability.rep.timeZone})`
-          : ""}
-        . Book a meeting right here — no email tag needed.
+        {repName} is the right person for your request. Choose a {MEETING_MINUTES}‑minute slot
+        below.
       </p>
-      {availability?.degraded ? (
-        <p className={styles.help}>
-          Live calendar is unavailable right now — times reflect local bookings
-          only.
-        </p>
-      ) : null}
-      {bookingError ? (
-        <div role="alert" className={styles.alert}>
-          <p>{bookingError}</p>
+
+      {loading ? (
+        <div className={styles.skeleton} role="status" aria-label="Loading open times">
+          <div className={styles.skeletonRow} />
+          <div className={styles.skeletonGrid}>
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className={styles.skeletonCell} />
+            ))}
+          </div>
         </div>
-      ) : null}
-      {days.length === 0 ? (
-        <p role="status" className={styles.cardBody}>
-          {repName} has no open times in the next {AVAILABILITY_DAYS} days —
-          they will follow up by email.
+      ) : loadError ? (
+        <div role="alert" className={styles.alert}>
+          <p>{loadError}</p>
+          <button
+            type="button"
+            className={styles.textButton}
+            onClick={() => setReloadToken((token) => token + 1)}
+          >
+            Try again
+          </button>
+        </div>
+      ) : days.length === 0 ? (
+        <p role="status" className={styles.notice}>
+          {repName} has no open times in the next {AVAILABILITY_DAYS} days, so they&apos;ll
+          reach out to find one that works.
         </p>
       ) : (
         <>
-          <div className={styles.dayTabs} role="group" aria-label="Choose a day">
-            {days.map((group) => (
-              <button
-                key={group.dateKey}
-                type="button"
-                className={`${styles.dayTab} ${group.dateKey === activeDay?.dateKey ? styles.dayTabActive : ""}`}
-                aria-pressed={group.dateKey === activeDay?.dateKey}
-                onClick={() => {
-                  setSelectedDay(group.dateKey);
-                  setSelectedSlot(null);
-                }}
-              >
-                {formatDayLabel(group.dateKey)}
-              </button>
-            ))}
-          </div>
-          <div className={styles.slotGrid} role="group" aria-label="Choose a time">
-            {activeDay?.slots.map((slot) => (
-              <button
-                key={slot.start}
-                type="button"
-                className={`${styles.slot} ${slot.start === selectedSlot ? styles.slotActive : ""}`}
-                aria-pressed={slot.start === selectedSlot}
-                onClick={() => setSelectedSlot(slot.start)}
-              >
-                {formatTime(slot.start)}
-              </button>
-            ))}
-          </div>
-          <p className={styles.help}>Times in your time zone ({zone}).</p>
-          {selectedSlot ? (
-            <div className={styles.confirmBar}>
-              <span>
-                {formatDayLabel(selectedDay ?? "")} · {formatTime(selectedSlot)} –{" "}
-                {formatTime(
-                  new Date(
-                    new Date(selectedSlot).getTime() + MEETING_MINUTES * 60_000,
-                  ).toISOString(),
-                )}
-              </span>
-              <button
-                type="button"
-                className={styles.button}
-                onClick={() => void confirmBooking()}
-                disabled={booking}
-              >
-                {booking ? "Booking…" : "Confirm booking"}
-              </button>
+          {availability?.degraded ? (
+            <p className={styles.notice}>
+              We couldn&apos;t check {repName}&apos;s live calendar just now. If a time turns
+              out to clash, they&apos;ll suggest another.
+            </p>
+          ) : null}
+          {bookingError ? (
+            <div role="alert" className={styles.alert}>
+              <p>{bookingError}</p>
             </div>
           ) : null}
+          <div className={styles.dayTabs} role="group" aria-label="Choose a day">
+            {days.map((group) => {
+              const label = formatDayLabel(group.dateKey);
+              const active = group.dateKey === activeDay?.dateKey;
+              return (
+                <button
+                  key={group.dateKey}
+                  type="button"
+                  className={active ? styles.dayTabActive : styles.dayTab}
+                  aria-pressed={active}
+                  onClick={() => {
+                    setSelectedDay(group.dateKey);
+                    setSelectedSlot(null);
+                  }}
+                >
+                  <span className={styles.dayTabWeekday}>{label.weekday}</span>
+                  <span>{label.date}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className={styles.slotGrid} role="group" aria-label="Choose a time">
+            {activeDay?.slots.map((slot) => {
+              const active = slot.start === selectedSlot;
+              return (
+                <button
+                  key={slot.start}
+                  type="button"
+                  className={active ? styles.slotActive : styles.slot}
+                  aria-pressed={active}
+                  onClick={() => setSelectedSlot(slot.start)}
+                >
+                  {formatTime(slot.start)}
+                </button>
+              );
+            })}
+          </div>
+          <p className={styles.help}>Times are in {friendlyZone(zone)}.</p>
+          <button
+            type="button"
+            className={styles.button}
+            onClick={() => void confirmBooking()}
+            disabled={!selectedSlot || booking}
+          >
+            {booking
+              ? "Booking…"
+              : selectedSlot && activeDay
+                ? `Book ${formatDayLabel(activeDay.dateKey).weekday} at ${formatTime(selectedSlot)}`
+                : "Choose a time"}
+          </button>
         </>
       )}
-      <DeleteSection slug={slug} />
     </>
   );
 }
 
-function DeleteSection({ slug }: { slug: string }) {
+/** A quiet link to request deletion of what the lead submitted. */
+function PrivacyFooter({ slug }: { slug: string }) {
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
 
-  async function onDelete() {
+  async function onRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setWorking(true);
     setMessage(null);
     try {
@@ -627,44 +607,90 @@ function DeleteSection({ slug }: { slug: string }) {
         body: JSON.stringify({ email }),
       });
       const body = await response.json().catch(() => null);
-      if (!response.ok) {
-        setMessage(body?.error ?? "Something went wrong. Please try again.");
-      } else {
-        setMessage(body?.message ?? "Check your inbox for a confirmation link.");
-      }
+      setMessage(
+        response.ok
+          ? (body?.message ?? "Check your inbox for a confirmation link.")
+          : (body?.error ?? "Something went wrong. Please try again."),
+      );
     } catch {
-      setMessage("Network error. Please try again.");
+      setMessage("We couldn't reach the server. Please try again.");
     } finally {
       setWorking(false);
     }
   }
 
   return (
-    <details className={styles.delete}>
-      <summary>Delete your data</summary>
-      <p className={styles.help}>
-        Enter the email you submitted. We&apos;ll send a link to that address to confirm
-        the deletion.
-      </p>
-      <div className={styles.deleteRow}>
-        <input
-          type="email"
-          className={styles.input}
-          aria-label="Email to delete"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <button
-          type="button"
-          className={styles.deleteButton}
-          onClick={onDelete}
-          disabled={working || email.trim() === ""}
-        >
-          {working ? "Sending…" : "Send link"}
+    <div className={styles.privacy}>
+      {open ? (
+        <form onSubmit={onRequest}>
+          <label htmlFor={`${slug}-delete-email`} className={styles.help}>
+            Enter the email you used. We&apos;ll send a link to confirm deleting your data.
+          </label>
+          <div className={styles.deleteRow}>
+            <input
+              id={`${slug}-delete-email`}
+              type="email"
+              className={styles.input}
+              placeholder="you@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <button type="submit" className={styles.deleteButton} disabled={working}>
+              {working ? "Sending…" : "Send link"}
+            </button>
+          </div>
+          {message ? (
+            <p className={styles.help} role="status">
+              {message}
+            </p>
+          ) : null}
+        </form>
+      ) : (
+        <button type="button" className={styles.textButton} onClick={() => setOpen(true)}>
+          Delete my data
         </button>
-      </div>
-      {message ? <p className={styles.help}>{message}</p> : null}
-    </details>
+      )}
+    </div>
   );
+}
+
+/**
+ * Embed mode (packages/embed): make the iframe blend into the host page and
+ * report the content height so the host can resize with no scrollbars. The
+ * host loader validates the message's origin and source; the payload is
+ * only a height number.
+ */
+function useEmbedResize(embedded: boolean) {
+  useEffect(() => {
+    if (!embedded) return;
+    document.body.style.background = "transparent";
+    document.documentElement.style.background = "transparent";
+    const inIframe = window.parent !== window;
+    let target = "*";
+    try {
+      target = new URL(document.referrer).origin;
+    } catch {
+      // Referrer blocked (strict referrer policy); the loader still
+      // validates origin and source, and the payload is a height number.
+    }
+    const post = () => {
+      if (!inIframe) return;
+      // The body's own height, not documentElement.scrollHeight: inside an
+      // iframe scrollHeight is floored by the viewport, so the iframe could
+      // grow but never shrink back.
+      window.parent.postMessage(
+        { type: "switchboard:resize", height: document.body.getBoundingClientRect().height },
+        target,
+      );
+    };
+    post();
+    const observer = new ResizeObserver(post);
+    observer.observe(document.body);
+    return () => {
+      observer.disconnect();
+      document.body.style.background = "";
+      document.documentElement.style.background = "";
+    };
+  }, [embedded]);
 }

@@ -88,7 +88,7 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): {
 } {
   const whenSubject = formatWhen(input.startAt, input.repTimeZone, SUBJECT_OPTIONS);
   const whenBody = formatWhen(input.startAt, input.repTimeZone, BODY_OPTIONS);
-  const greeting = input.leadName ? `Hi ${input.leadName}` : "Hello";
+  const greeting = input.leadName ? `Hi ${input.leadName.split(" ")[0]}` : "Hello";
 
   const lines = [
     `${greeting},`,
@@ -111,9 +111,9 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): {
   }
   lines.push(
     "",
-    `Questions? Reach ${input.repName} at ${input.repEmail}.`,
+    `Questions? Reply to ${input.repName} at ${input.repEmail}.`,
     "",
-    "— Switchboard",
+    `— ${input.orgName}`,
   );
 
   return {

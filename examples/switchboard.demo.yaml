@@ -39,6 +39,8 @@ teams:
 forms:
   - slug: book-a-demo
     name: Book a demo
+    submitLabel: Find a time
+    selfServeUrl: https://example.com/signup
     rules: rules.example.yaml
     fields:
       - { key: name, label: Full name, type: text, required: true }

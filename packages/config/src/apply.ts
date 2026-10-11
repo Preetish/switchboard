@@ -145,7 +145,7 @@ export async function applyConfig(db: Database, plan: ConfigPlan): Promise<Apply
     let formsUpdated = 0;
     for (const form of plan.forms) {
       const ruleSetId = form.ruleSet ? await ruleSetIdFor(form.ruleSet) : null;
-      const values = { name: form.name, fields: form.fields, ruleSetId };
+      const values = { name: form.name, fields: form.fields, settings: form.settings, ruleSetId };
       await tx
         .insert(forms)
         .values({ orgId, slug: form.slug, ...values })

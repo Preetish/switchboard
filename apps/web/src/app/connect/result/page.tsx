@@ -1,6 +1,7 @@
 import styles from "../../admin.module.css";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Calendar connection · Switchboard" };
 
 const ERRORS: Record<string, string> = {
   link_invalid:

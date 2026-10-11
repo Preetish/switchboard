@@ -38,6 +38,7 @@ export async function POST(request: Request) {
           duplicate: result.duplicate,
           calendarFailed: result.calendarFailed,
           emailQueued: result.emailQueued,
+          invited: result.invited,
         },
         { status: result.duplicate ? 200 : 201 },
       );

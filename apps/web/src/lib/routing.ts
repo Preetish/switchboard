@@ -129,7 +129,7 @@ export async function finalizeOutcome(
     if (!pick.userId) {
       return {
         kind: "fallback_queue",
-        reason: `${draft.reason} Team: ${team.name}. ${pick.reason}`,
+        reason: `${team.name} team: ${pick.reason}`,
       };
     }
     return {
@@ -137,7 +137,7 @@ export async function finalizeOutcome(
       teamId: team.id,
       userId: pick.userId,
       strategy: draft.strategy,
-      reason: `${draft.reason} Team: ${team.name}. ${pick.reason}`,
+      reason: `${team.name} team: ${pick.reason}`,
     };
   }
   if (draft.kind === "route_user") {
@@ -160,10 +160,13 @@ export async function finalizeOutcome(
       return {
         kind: "route_user",
         userId: user.id,
-        reason: `${draft.reason} Rep: ${user.name}.`,
+        reason: `${user.name} (from ${draft.toSource}).`,
       };
     }
-    return { kind: "route_user", reason: `${draft.reason} Pending rep matching.` };
+    return {
+      kind: "route_user",
+      reason: `${draft.to} isn't a rep here yet (from ${draft.toSource}); waiting for a match.`,
+    };
   }
   return { kind: draft.kind, reason: draft.reason };
 }

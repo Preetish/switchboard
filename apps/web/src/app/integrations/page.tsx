@@ -13,6 +13,7 @@ import styles from "../admin.module.css";
 import CopyButton from "./CopyButton";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Integrations · Switchboard" };
 
 const ERRORS: Record<string, string> = {
   google_not_configured:

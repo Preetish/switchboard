@@ -10,6 +10,7 @@ import {
   type RuleSet,
   type WorkingHours,
 } from "@switchboard/core";
+import type { FormSettings } from "@switchboard/db";
 import { parse } from "yaml";
 import { DAY_NAMES, configSchema } from "./schema.js";
 
@@ -37,6 +38,7 @@ export type PlannedForm = {
   slug: string;
   name: string;
   fields: FormField[];
+  settings: FormSettings;
   ruleSet: RuleSet | null;
 };
 
@@ -170,7 +172,27 @@ export function loadConfig(text: string, configPath: string, readFile: ReadFile)
     } else {
       warnings.push(`${where}: no rules — every lead goes to the fallback queue`);
     }
-    return { slug: form.slug, name: form.name, fields: fields.ok ? fields.fields : [], ruleSet };
+    const sendsSelfServe =
+      ruleSet !== null &&
+      [...ruleSet.rules.map((rule) => rule.route), ruleSet.fallback].some(
+        (route) => "action" in route && route.action === "self_serve_link",
+      );
+    if (sendsSelfServe && !form.selfServeUrl) {
+      warnings.push(
+        `${where}: rules send some leads to self-serve but selfServeUrl isn't set — they'll see a plain thank-you`,
+      );
+    }
+    const settings: FormSettings = {
+      ...(form.submitLabel ? { submitLabel: form.submitLabel } : {}),
+      ...(form.selfServeUrl ? { selfServeUrl: form.selfServeUrl } : {}),
+    };
+    return {
+      slug: form.slug,
+      name: form.name,
+      fields: fields.ok ? fields.fields : [],
+      settings,
+      ruleSet,
+    };
   });
 
   if (errors.length > 0) return { ok: false, errors };

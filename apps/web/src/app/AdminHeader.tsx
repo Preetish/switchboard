@@ -3,6 +3,7 @@ import styles from "./AdminHeader.module.css";
 
 const LINKS = [
   { key: "routing-log", href: "/routing-log", label: "Routing log" },
+  { key: "setup", href: "/setup", label: "Setup" },
   { key: "integrations", href: "/integrations", label: "Integrations" },
 ] as const;
 

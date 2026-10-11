@@ -120,6 +120,8 @@ export type BookingSuccess = {
   calendarFailed: boolean;
   /** A confirmation email will be sent to the lead. */
   emailQueued: boolean;
+  /** A calendar event exists, so the lead got an invite from the rep's calendar. */
+  invited: boolean;
 };
 
 /** Serialize a stored row into the API shape. */
@@ -141,13 +143,16 @@ function toRecord(row: {
   };
 }
 
-function duplicateOf(row: Parameters<typeof toRecord>[0]): BookingSuccess {
+function duplicateOf(
+  row: Parameters<typeof toRecord>[0] & { calendarEventId: string | null },
+): BookingSuccess {
   return {
     status: "created",
     duplicate: true,
     booking: toRecord(row),
     calendarFailed: false,
     emailQueued: false,
+    invited: Boolean(row.calendarEventId),
   };
 }
 
@@ -268,6 +273,7 @@ export async function createBooking(
     booking: toRecord(row),
     calendarFailed: Boolean(calendar.error),
     emailQueued: Boolean(leadEmail) && smtpConfigured(),
+    invited: Boolean(calendar.eventId) && Boolean(leadEmail),
   };
 }
 

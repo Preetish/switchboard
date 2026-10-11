@@ -12,6 +12,7 @@ import admin from "../admin.module.css";
 import styles from "./RoutingLog.module.css";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Routing log · Switchboard" };
 
 const BADGE: Record<DecisionOutcome["kind"], string> = {
   route_user: styles.badgeRouted!,

@@ -1,0 +1,116 @@
+/* Instance home page — tokens only, per docs/design.md. */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sb-space-12);
+  padding: var(--sb-space-12) var(--sb-space-4);
+}
+
+.hero {
+  max-width: 40rem;
+  text-align: center;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--sb-accent-text);
+}
+
+.title {
+  margin-top: var(--sb-space-3);
+  font-size: clamp(var(--sb-text-3xl), 6vw, var(--sb-text-4xl));
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.lede {
+  margin-top: var(--sb-space-4);
+  font-size: var(--sb-text-lg);
+  color: var(--sb-text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sb-space-3);
+  margin-top: var(--sb-space-8);
+}
+
+.primary,
+.secondary {
+  padding: var(--sb-space-3) var(--sb-space-6);
+  border-radius: var(--sb-radius-md);
+  border: 1px solid transparent;
+  font-weight: 600;
+  transition: background var(--sb-duration-fast) var(--sb-ease-out);
+}
+
+.primary {
+  background: var(--sb-accent-strong);
+  color: var(--sb-text-on-accent);
+}
+
+.primary:hover {
+  background: color-mix(in oklab, var(--sb-accent-strong) 85%, black);
+}
+
+.secondary {
+  background: var(--sb-surface);
+  border-color: var(--sb-border);
+}
+
+.secondary:hover {
+  background: var(--sb-bg);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 2px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--sb-space-4);
+  width: 100%;
+  max-width: 60rem;
+  list-style: none;
+}
+
+.step {
+  padding: var(--sb-space-6);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-lg);
+}
+
+.stepNumber {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--sb-radius-full);
+  background: var(--sb-accent-soft);
+  color: var(--sb-accent-text);
+  font-weight: 700;
+  font-size: var(--sb-text-sm);
+}
+
+.stepTitle {
+  margin-top: var(--sb-space-3);
+  font-size: var(--sb-text-lg);
+  font-weight: 600;
+}
+
+.stepBody {
+  margin-top: var(--sb-space-1);
+  color: var(--sb-text-muted);
+}

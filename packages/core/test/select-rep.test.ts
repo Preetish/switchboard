@@ -85,7 +85,7 @@ describe("selectRep — round_robin", () => {
       member({ userId: "off", available: false }),
     ]);
     expect(pick.userId).toBeNull();
-    expect(pick.reason).toContain("No eligible rep");
+    expect(pick.reason).toContain("nobody eligible");
   });
 
   it("returns null for an empty team", () => {

@@ -1,101 +1,82 @@
-const features = [
+import { asc, eq } from "drizzle-orm";
+import { forms } from "@switchboard/db";
+import { getDb } from "@/lib/db";
+import { findOrg } from "@/lib/integrations";
+import styles from "./home.module.css";
+
+export const dynamic = "force-dynamic";
+
+const STEPS = [
   {
-    title: "Route in milliseconds",
-    body: "Rules evaluate on submit — CRM-aware, versioned in git, no dashboard clicking.",
+    title: "Qualify",
+    body: "A lead fills in your form. Rules you keep in git decide where they go, using form answers and your CRM.",
   },
   {
-    title: "Book before they leave",
-    body: "The matched rep's calendar renders inline on the form page. Zero redirects.",
+    title: "Route",
+    body: "The right rep is picked in milliseconds — existing owner, team round robin with weights, capacity, and time off.",
   },
   {
-    title: "Every decision on record",
-    body: "Inputs, matched rule, outcome, and latency for each submission. Searchable, exportable.",
+    title: "Book",
+    body: "That rep's real availability appears on the same page. One click, and the meeting is on their calendar.",
   },
 ];
 
-export default function Home() {
+/** The first form, so a fresh instance has an obvious "try it" link. */
+async function firstForm(): Promise<{ slug: string; name: string } | null> {
+  try {
+    const db = getDb();
+    const org = await findOrg(db);
+    if (!org) return null;
+    const [form] = await db
+      .select({ slug: forms.slug, name: forms.name })
+      .from(forms)
+      .where(eq(forms.orgId, org.id))
+      .orderBy(asc(forms.createdAt))
+      .limit(1);
+    return form ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function Home() {
+  const form = await firstForm();
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "var(--sb-space-8)",
-        gap: "var(--sb-space-6)",
-        textAlign: "center",
-      }}
-    >
-      <span
-        style={{
-          display: "inline-block",
-          padding: "var(--sb-space-1) var(--sb-space-3)",
-          borderRadius: "var(--sb-radius-full)",
-          background: "var(--sb-accent-soft)",
-          color: "var(--sb-accent-strong)",
-          fontSize: "var(--sb-text-sm)",
-          fontWeight: 600,
-        }}
-      >
-        v0.1 · early scaffold
-      </span>
-      <h1
-        style={{
-          fontSize: "var(--sb-text-4xl)",
-          fontWeight: 700,
-          letterSpacing: "-0.02em",
-          lineHeight: 1.1,
-          maxWidth: "40rem",
-        }}
-      >
-        Inbound routing that ends in a booked meeting.
-      </h1>
-      <p
-        style={{
-          color: "var(--sb-text-muted)",
-          fontSize: "var(--sb-text-lg)",
-          maxWidth: "36rem",
-        }}
-      >
-        Switchboard turns a form submission into a booked call in seconds:
-        qualify the lead, route it to the right rep, and show that rep&apos;s
-        calendar immediately. Self-hostable, no per-seat pricing.
-      </p>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
-          gap: "var(--sb-space-4)",
-          width: "100%",
-          maxWidth: "60rem",
-          marginTop: "var(--sb-space-8)",
-        }}
-      >
-        {features.map((feature) => (
-          <div
-            key={feature.title}
-            style={{
-              background: "var(--sb-surface)",
-              border: "1px solid var(--sb-border)",
-              borderRadius: "var(--sb-radius-lg)",
-              padding: "var(--sb-space-6)",
-              textAlign: "left",
-            }}
+    <main className={styles.page}>
+      <div className={styles.hero}>
+        <p className={styles.brand}>Switchboard</p>
+        <h1 className={styles.title}>Inbound routing that ends in a booked meeting.</h1>
+        <p className={styles.lede}>
+          Qualify a form submission, route it to the right rep, and let the lead book on that
+          rep&apos;s calendar before they leave the page. Open source and self-hosted.
+        </p>
+        <div className={styles.actions}>
+          {form ? (
+            <a className={styles.primary} href={`/f/${form.slug}`}>
+              Try “{form.name}”
+            </a>
+          ) : null}
+          <a className={styles.secondary} href="/routing-log">
+            Sign in
+          </a>
+          <a
+            className={styles.secondary}
+            href="https://github.com/Preetish/switchboard"
+            rel="noreferrer"
           >
-            <h2
-              style={{
-                fontSize: "var(--sb-text-lg)",
-                fontWeight: 600,
-                marginBottom: "var(--sb-space-2)",
-              }}
-            >
-              {feature.title}
-            </h2>
-            <p style={{ color: "var(--sb-text-muted)" }}>{feature.body}</p>
-          </div>
-        ))}
+            GitHub
+          </a>
+        </div>
       </div>
+      <ol className={styles.steps}>
+        {STEPS.map((step, i) => (
+          <li key={step.title} className={styles.step}>
+            <span className={styles.stepNumber}>{i + 1}</span>
+            <h2 className={styles.stepTitle}>{step.title}</h2>
+            <p className={styles.stepBody}>{step.body}</p>
+          </li>
+        ))}
+      </ol>
     </main>
   );
 }

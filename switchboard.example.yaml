@@ -38,6 +38,8 @@ teams:
 forms:
   - slug: book-a-demo
     name: Book a demo
+    submitLabel: Request a demo           # optional; default "Continue"
+    selfServeUrl: https://yourcompany.com/signup   # where self-serve leads go
     fields:
       - { key: name, label: Full name, type: text, required: true }
       - { key: email, label: Work email, type: email, required: true }

@@ -16,6 +16,14 @@ import type { FormField, WorkingHours } from "@switchboard/core";
 
 export type { FormField, WorkingHours };
 
+/** Per-form presentation settings (from switchboard.yaml). */
+export type FormSettings = {
+  /** Submit button label; defaults to "Continue". */
+  submitLabel?: string;
+  /** Where self-serve leads book (e.g. a scheduling page or signup). */
+  selfServeUrl?: string;
+};
+
 export type DecisionOutcome = {
   kind: "route_user" | "route_team" | "self_serve_link" | "fallback_queue";
   userId?: string;
@@ -113,6 +121,7 @@ export const forms = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     fields: jsonb("fields").$type<FormField[]>().notNull(),
+    settings: jsonb("settings").$type<FormSettings>().notNull().default({}),
     /** Rule set version this form routes with; null = fallback only. */
     ruleSetId: uuid("rule_set_id").references((): AnyPgColumn => ruleSets.id, {
       onDelete: "set null",

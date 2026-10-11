@@ -85,26 +85,26 @@ export function selectRep(
   if (members.length === 0) {
     return {
       userId: null,
-      reason: "Team has no members; sent to the fallback queue.",
+      reason: "no members; sent to the fallback queue.",
       credits: null,
     };
   }
   if (strategy === "existing_owner" && ownerUserId) {
     const owner = members.find((m) => m.userId === ownerUserId);
     if (owner && eligible(owner)) {
-      return { userId: owner.userId, reason: "Existing owner wins.", credits: null };
+      return { userId: owner.userId, reason: "existing CRM owner.", credits: null };
     }
     const result = roundRobin(members);
     return result
       ? {
           userId: result.picked.userId,
-          reason: "Existing owner unavailable; round robin picked the rep.",
+          reason: "CRM owner unavailable, so round robin.",
           credits: result.credits,
         }
       : {
           userId: null,
           reason:
-            "Existing owner unavailable; no eligible rep left; sent to the fallback queue.",
+            "CRM owner unavailable and nobody else eligible; sent to the fallback queue.",
           credits: null,
         };
   }
@@ -112,13 +112,13 @@ export function selectRep(
   if (!result) {
     return {
       userId: null,
-      reason: "No eligible rep (capacity or availability); sent to the fallback queue.",
+      reason: "nobody eligible (capacity or paused); sent to the fallback queue.",
       credits: null,
     };
   }
   return {
     userId: result.picked.userId,
-    reason: `Round robin picked the rep (weight ${normWeight(result.picked.weight)}).`,
+    reason: `round robin (weight ${normWeight(result.picked.weight)}).`,
     credits: result.credits,
   };
 }

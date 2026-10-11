@@ -48,6 +48,10 @@ const form = z.strictObject({
   slug: z.string().regex(SLUG_RE, "lowercase letters, digits, and dashes (it's the public URL)"),
   name: z.string().min(1).max(120),
   fields: z.array(z.unknown()).min(1),
+  /** Submit button label, e.g. "Request a demo" (default "Continue"). */
+  submitLabel: z.string().min(1).max(40).optional(),
+  /** Where `self_serve_link` leads go: a signup or scheduling page (https). */
+  selfServeUrl: z.url({ protocol: /^https?$/ }).optional(),
   /** A path to a rule file (relative to this file) or the rule set inline. */
   rules: z.union([z.string().min(1), z.record(z.string(), z.unknown())]).optional(),
 });

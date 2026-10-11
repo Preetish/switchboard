@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { turnstileSiteKey } from "@/lib/captcha";
 import { getDb } from "@/lib/db";
 import FormView from "./FormView";
+import styles from "./FormView.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -53,58 +54,28 @@ export default async function FormPage({
   const fields = validateFormFields(row.form.fields);
   if (!fields.ok) {
     return (
-      <main style={embedded ? embedMainStyle : mainStyle}>
-        <div
-          style={{
-            background: "var(--sb-surface)",
-            border: "1px solid var(--sb-border)",
-            borderRadius: "var(--sb-radius-lg)",
-            padding: "var(--sb-space-8)",
-            maxWidth: "34rem",
-            textAlign: "center",
-          }}
-        >
-          <h1 style={{ fontSize: "var(--sb-text-2xl)", fontWeight: 600 }}>
-            This form is misconfigured
-          </h1>
-          <p style={{ color: "var(--sb-text-muted)", marginTop: "var(--sb-space-2)" }}>
-            Its field definitions failed validation. Contact the team that owns this form.
+      <main className={embedded ? styles.embedPage : styles.page}>
+        <section className={styles.card}>
+          <h1 className={styles.cardTitle}>This form isn&apos;t available</h1>
+          <p className={styles.cardBody}>
+            It&apos;s being set up. Please try again later, or contact {row.orgName} directly.
           </p>
-        </div>
+        </section>
       </main>
     );
   }
 
   return (
-    <main style={embedded ? embedMainStyle : mainStyle}>
+    <main className={embedded ? styles.embedPage : styles.page}>
       <FormView
         slug={slug}
         orgName={row.orgName}
         formName={row.form.name}
         fields={fields.fields}
+        settings={row.form.settings ?? {}}
         embedded={embedded}
         turnstileSiteKey={turnstileSiteKey()}
       />
     </main>
   );
 }
-
-const mainStyle = {
-  minHeight: "100vh",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "var(--sb-space-6)",
-} as const;
-
-/**
- * Embed mode: no page chrome of its own — the iframe content height is
- * reported to the host page, so a min-height or 100vh padding would feed the
- * resize loop. The card keeps its own surface, border, and max-width.
- */
-const embedMainStyle = {
-  display: "flex",
-  justifyContent: "center",
-  padding: 0,
-} as const;
