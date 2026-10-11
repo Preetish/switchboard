@@ -43,7 +43,7 @@ describe("evaluate — routing precedence", () => {
     expect(evaluate(rs, {}).matchedRule).toBeNull();
   });
 
-  it("records a trace with the first failing path for every unmatched rule", () => {
+  it("records a trace: the first failing path per unmatched rule, then the match", () => {
     const rs = ruleSet([
       { name: "Owner", when: { "crm.contact.owner": "exists" }, route: { to: "crm.contact.owner" } },
       { name: "Enterprise", when: { "form.company_size": { gte: 500 } }, route: { team: "e", strategy: "round_robin" } },
@@ -53,6 +53,7 @@ describe("evaluate — routing precedence", () => {
     expect(result.trace).toEqual([
       { rule: "Owner", matched: false, failedOn: "crm.contact.owner" },
       { rule: "Enterprise", matched: false, failedOn: "form.company_size" },
+      { rule: "Always", matched: true },
     ]);
     expect(result.matchedRule).toBe("Always");
   });
@@ -73,7 +74,9 @@ describe("evaluate — operators", () => {
     { label: "numeric ops reject non-numeric strings", condition: { gte: 5 }, input: "big", matched: false },
     { label: "numeric ops reject empty strings", condition: { gte: 5 }, input: "", matched: false },
     { label: "eq matches exact string", condition: { eq: "US" }, input: "US", matched: true },
-    { label: "eq is case-sensitive", condition: { eq: "US" }, input: "us", matched: false },
+    { label: "eq is case-insensitive for strings", condition: { eq: "US" }, input: "us", matched: true },
+    { label: "in is case-insensitive for strings", condition: { in: ["DE", "AT"] }, input: "de", matched: true },
+    { label: "contains is case-insensitive", condition: { contains: "Demo" }, input: "Book a DEMO", matched: true },
     { label: "eq coerces string to number", condition: { eq: 500 }, input: "500", matched: true },
     { label: "eq coerces number to string", condition: { eq: "500" }, input: 500, matched: true },
     { label: "eq does not coerce empty string to zero", condition: { eq: 0 }, input: "", matched: false },

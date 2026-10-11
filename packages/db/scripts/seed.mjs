@@ -69,7 +69,7 @@ async function main() {
     const row = await one(
       `insert into users (org_id, email, name, timezone)
        values ($1, $2, $3, $4)
-       on conflict (org_id, email) do update set name = excluded.name
+       on conflict (org_id, lower(email)) do update set name = excluded.name
        returning id`,
       [orgId, member.email, member.name, member.timezone],
     );
@@ -127,7 +127,7 @@ async function main() {
   await client.query(
     `insert into forms (org_id, name, slug, fields, rule_set_id)
      values ($1, 'Book a demo', $2, $3, $4)
-     on conflict (org_id, slug) do update
+     on conflict (slug) do update
        set name = excluded.name, fields = excluded.fields, rule_set_id = excluded.rule_set_id`,
     [orgId, FORM_SLUG, JSON.stringify(fields), ruleSetId],
   );

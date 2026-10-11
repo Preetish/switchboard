@@ -58,6 +58,7 @@ export default async function IntegrationsPage({
           name: users.name,
           email: users.email,
           accountEmail: integrations.accountEmail,
+          status: integrations.status,
           updatedAt: integrations.updatedAt,
         })
         .from(users)
@@ -73,7 +74,7 @@ export default async function IntegrationsPage({
     : [];
   const [hubspot] = org
     ? await db
-        .select({ updatedAt: integrations.updatedAt })
+        .select({ updatedAt: integrations.updatedAt, status: integrations.status })
         .from(integrations)
         .where(
           and(
@@ -169,7 +170,12 @@ export default async function IntegrationsPage({
                         <div className={styles.rowName}>{rep.name}</div>
                         <div className={styles.muted}>{rep.email}</div>
                         <div className={styles.status}>
-                          {rep.updatedAt ? (
+                          {rep.status === "revoked" ? (
+                            <>
+                              <span className={styles.dotWarn} />
+                              Access was revoked — reconnect to restore live availability
+                            </>
+                          ) : rep.updatedAt ? (
                             <>
                               <span className={otherAccount ? styles.dotWarn : styles.dotOk} />
                               {otherAccount
@@ -233,7 +239,12 @@ export default async function IntegrationsPage({
               matched to HubSpot owners by email.
             </p>
             <div className={styles.status}>
-              {hubspot ? (
+              {hubspot?.status === "revoked" ? (
+                <>
+                  <span className={styles.dotWarn} />
+                  Access was revoked — reconnect HubSpot
+                </>
+              ) : hubspot ? (
                 <>
                   <span className={styles.dotOk} />
                   Connected · updated {formatUpdated(hubspot.updatedAt)}

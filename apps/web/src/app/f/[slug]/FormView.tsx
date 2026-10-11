@@ -40,7 +40,7 @@ type BookedResult = {
     meetLink: string | null;
   };
   calendarFailed: boolean;
-  emailSent: boolean;
+  emailQueued: boolean;
 };
 
 type PublicDecision = { kind: DecisionOutcome["kind"]; userId: string | null };
@@ -476,7 +476,7 @@ function BookingPanel({
             link instead.
           </p>
         ) : null}
-        {booked.emailSent ? (
+        {booked.emailQueued ? (
           <p className={styles.help}>A confirmation email is on its way.</p>
         ) : null}
         <p className={styles.reference}>

@@ -47,11 +47,12 @@ export async function loadTokens(
   owner: TokenOwner,
 ): Promise<TokenSet | null> {
   const [row] = await db
-    .select({ tokenCipher: integrations.tokenCipher })
+    .select({ tokenCipher: integrations.tokenCipher, status: integrations.status })
     .from(integrations)
     .where(ownerFilter(provider, owner))
     .limit(1);
-  if (!row) return null;
+  // A revoked grant can't be refreshed; it waits for a reconnect.
+  if (!row || row.status === "revoked") return null;
   try {
     const stored = decryptJson<StoredTokens>(row.tokenCipher, getEncryptionKey());
     return {
@@ -157,6 +158,14 @@ export async function getValidAccessToken(
     console.error(
       `${provider} token refresh failed: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
+    // The user revoked access (or the grant expired): flag the connection so
+    // /integrations asks for a reconnect instead of failing on every request.
+    if ((cause as { revoked?: boolean } | null)?.revoked) {
+      await db
+        .update(integrations)
+        .set({ status: "revoked", updatedAt: new Date() })
+        .where(ownerFilter(provider, owner));
+    }
     return null;
   }
 }

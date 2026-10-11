@@ -6,7 +6,7 @@ function member(overrides: Partial<RepCandidate> & { userId: string }): RepCandi
     weight: 1,
     weeklyCapacity: 0,
     bookingsThisWeek: 0,
-    assignments: 0,
+    credit: 0,
     available: true,
     ...overrides,
   };
@@ -16,34 +16,51 @@ const A = member({ userId: "a" });
 const B = member({ userId: "b" });
 const C = member({ userId: "c" });
 
+/** Run `n` picks, persisting credits between them like the app does. */
+function rotate(members: RepCandidate[], n: number): string[] {
+  const picks: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const pick = selectRep("round_robin", members);
+    if (!pick.userId) throw new Error("expected a pick");
+    picks.push(pick.userId);
+    for (const m of members) m.credit = pick.credits?.get(m.userId) ?? m.credit;
+  }
+  return picks;
+}
+
 describe("selectRep — round_robin", () => {
   it("picks the only eligible rep", () => {
     expect(selectRep("round_robin", [A]).userId).toBe("a");
   });
 
   it("rotates evenly when all weights are equal", () => {
-    const members = [A, B, C];
-    const picks: string[] = [];
-    for (let i = 0; i < 6; i++) {
-      const pick = selectRep("round_robin", members);
-      if (!pick.userId) throw new Error("expected a pick");
-      picks.push(pick.userId);
-      members.find((m) => m.userId === pick.userId)!.assignments += 1;
-    }
-    expect(picks).toEqual(["a", "b", "c", "a", "b", "c"]);
+    const members = [member({ userId: "a" }), member({ userId: "b" }), member({ userId: "c" })];
+    expect(rotate(members, 6)).toEqual(["a", "b", "c", "a", "b", "c"]);
   });
 
-  it("gives a weight-2 rep about twice the turns of a weight-1 rep", () => {
-    const heavy = member({ userId: "heavy", weight: 2 });
-    const light = member({ userId: "light", weight: 1 });
-    const counts: Record<string, number> = { heavy: 0, light: 0 };
-    for (let i = 0; i < 6; i++) {
-      const pick = selectRep("round_robin", [heavy, light]);
-      if (!pick.userId) throw new Error("expected a pick");
-      counts[pick.userId] += 1;
-      (pick.userId === "heavy" ? heavy : light).assignments += 1;
-    }
-    expect(counts).toEqual({ heavy: 4, light: 2 });
+  it("gives a weight-2 rep exactly twice the turns, interleaved", () => {
+    const members = [member({ userId: "heavy", weight: 2 }), member({ userId: "light" })];
+    const picks = rotate(members, 6);
+    expect(picks.filter((p) => p === "heavy")).toHaveLength(4);
+    expect(picks).toEqual(["heavy", "light", "heavy", "heavy", "light", "heavy"]);
+  });
+
+  it("gives a newly added rep a fair share instead of a catch-up flood", () => {
+    const veterans = [member({ userId: "a" }), member({ userId: "b" })];
+    rotate(veterans, 301); // long history: credits stay bounded, not 300 assignments
+    const team = [...veterans, member({ userId: "new" })];
+    const next = rotate(team, 9);
+    expect(next.filter((p) => p === "new")).toHaveLength(3);
+  });
+
+  it("keeps the total credit of eligible reps at zero", () => {
+    const members = [member({ userId: "a", weight: 3 }), member({ userId: "b" }), member({ userId: "c", weight: 2 })];
+    rotate(members, 50);
+    expect(members.reduce((sum, m) => sum + m.credit, 0)).toBe(0);
+  });
+
+  it("does not spend a rotation turn when the owner wins", () => {
+    expect(selectRep("existing_owner", [A, B], "b").credits).toBeNull();
   });
 
   it("skips reps at weekly capacity", () => {
@@ -78,8 +95,8 @@ describe("selectRep — round_robin", () => {
   });
 
   it("treats a non-positive weight as 1", () => {
-    const zero = member({ userId: "zero", weight: 0, assignments: 1 });
-    const one = member({ userId: "one", weight: 1, assignments: 1 });
+    const zero = member({ userId: "zero", weight: 0 });
+    const one = member({ userId: "one", weight: 1 });
     // zero-weighted is normalized to 1, so the tie is broken by caller order.
     expect(selectRep("round_robin", [zero, one]).userId).toBe("zero");
   });

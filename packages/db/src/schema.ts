@@ -44,7 +44,8 @@ export const users = pgTable(
     workingHours: jsonb("working_hours").$type<WorkingHours>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("users_org_email_uq").on(t.orgId, t.email)],
+  // Emails are matched case-insensitively (HubSpot owners, config files).
+  (t) => [uniqueIndex("users_org_email_uq").on(t.orgId, sql`lower(${t.email})`)],
 );
 
 export const teams = pgTable(
@@ -76,8 +77,15 @@ export const teamMembers = pgTable(
     /** Max bookings per week; 0 means unlimited. */
     weeklyCapacity: integer("weekly_capacity").notNull().default(0),
     active: boolean("active").notNull().default(true),
+    /** Smooth weighted round-robin credit (see selectRep in packages/core). */
+    rrCredit: integer("rr_credit").notNull().default(0),
   },
-  (t) => [uniqueIndex("team_members_team_user_uq").on(t.teamId, t.userId)],
+  (t) => [
+    uniqueIndex("team_members_team_user_uq").on(t.teamId, t.userId),
+    index("team_members_user_idx").on(t.userId),
+    check("team_members_weight_positive", sql`${t.weight} > 0`),
+    check("team_members_capacity_nonnegative", sql`${t.weeklyCapacity} >= 0`),
+  ],
 );
 
 export const ruleSets = pgTable(
@@ -112,11 +120,8 @@ export const forms = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   // Slug is the public key of a hosted/embedded form (`/f/:slug`), so it is
-  // globally unique; the org-scoped index keeps per-org lookups fast.
-  (t) => [
-    uniqueIndex("forms_slug_key_uq").on(t.slug),
-    uniqueIndex("forms_org_slug_uq").on(t.orgId, t.slug),
-  ],
+  // globally unique.
+  (t) => [uniqueIndex("forms_slug_key_uq").on(t.slug), index("forms_rule_set_idx").on(t.ruleSetId)],
 );
 
 export const submissions = pgTable(
@@ -133,13 +138,16 @@ export const submissions = pgTable(
     email: text("email"),
     /** Client-provided key for idempotent retries; unique per form. */
     idempotencyKey: text("idempotency_key"),
-    /** Set when the speed-to-lead alert for this lead was sent (at-most-once marker). */
+    /** Set when the speed-to-lead alert for this lead was delivered (send-once marker). */
     alertedAt: timestamp("alerted_at", { withTimezone: true }),
+    /** Set once the lead was written to the CRM. */
+    crmSyncedAt: timestamp("crm_synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("submissions_form_idempotency_uq").on(t.formId, t.idempotencyKey),
     index("submissions_created_at_idx").on(t.createdAt),
+    index("submissions_org_email_idx").on(t.orgId, t.email),
   ],
 );
 
@@ -203,6 +211,8 @@ export const bookings = pgTable(
      * keeping CRM write-back idempotent.
      */
     crmMeetingId: text("crm_meeting_id"),
+    /** When the lead's confirmation email went out (send-once marker for retries). */
+    confirmationSentAt: timestamp("confirmation_sent_at", { withTimezone: true }),
     /** Client key so booking retries return the original instead of duplicating. */
     idempotencyKey: text("idempotency_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

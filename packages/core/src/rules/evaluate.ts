@@ -2,7 +2,6 @@ import { isFreeEmail } from "./free-email.js";
 import type {
   Condition,
   Evaluation,
-  RouteAction,
   Rule,
   RuleSet,
   RuleTrace,
@@ -14,9 +13,16 @@ function isPresent(value: unknown): boolean {
   return value !== undefined && value !== null && value !== "";
 }
 
-/** Loose equality so string form values match numeric rule literals. */
+/**
+ * Loose equality so string form values match numeric rule literals, and
+ * strings compare case-insensitively (`DE` matches `de`; `Enterprise`
+ * matches `enterprise`) — form input and CRM data are rarely consistent.
+ */
 function looseEq(actual: unknown, expected: string | number | boolean): boolean {
   if (!isPresent(actual)) return false;
+  if (typeof actual === "string" && typeof expected === "string") {
+    return actual.toLowerCase() === expected.toLowerCase();
+  }
   if (typeof actual === typeof expected) return actual === expected;
   if (typeof actual === "number" || typeof expected === "number") {
     if (typeof actual === "string" && actual.trim() === "") return false;
@@ -83,7 +89,10 @@ export function matchCondition(actual: unknown, condition: Condition): boolean {
   if (condition.lte !== undefined && !compareToNumber(actual, "lte", condition.lte)) matched = false;
   if (condition.exists !== undefined && isPresent(actual) !== condition.exists) matched = false;
   if (condition.contains !== undefined) {
-    if (!isPresent(actual) || !String(actual).includes(String(condition.contains))) matched = false;
+    const haystack = String(actual).toLowerCase();
+    if (!isPresent(actual) || !haystack.includes(String(condition.contains).toLowerCase())) {
+      matched = false;
+    }
   }
   if (condition.matches !== undefined) {
     let regex: RegExp | null = null;
@@ -129,6 +138,7 @@ export function evaluate(ruleSet: RuleSet, inputs: Record<string, unknown>): Eva
   for (const rule of ruleSet.rules) {
     const failedOn = firstFailingPath(rule.when, inputs);
     if (failedOn === null) {
+      trace.push({ rule: rule.name, matched: true });
       return { matchedRule: rule.name, action: rule.route, trace };
     }
     trace.push({ rule: rule.name, matched: false, failedOn });
@@ -139,12 +149,4 @@ export function evaluate(ruleSet: RuleSet, inputs: Record<string, unknown>): Eva
 /** Rules whose `when` is empty match every submission. */
 export function isCatchAll(rule: Rule): boolean {
   return Object.keys(rule.when).length === 0;
-}
-
-/** Helpers used by callers to turn an action into a stored outcome. */
-export function actionKind(action: RouteAction): string {
-  if ("to" in action) return "route_user";
-  if ("team" in action) return "route_team";
-  if (action.action === "self_serve_link") return "self_serve_link";
-  return "fallback_queue";
 }

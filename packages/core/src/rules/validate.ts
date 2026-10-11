@@ -17,8 +17,8 @@ const conditionSchema = z
   .strictObject({
     eq: scalar.optional(),
     neq: scalar.optional(),
-    in: z.array(listable).optional(),
-    nin: z.array(listable).optional(),
+    in: z.array(listable).min(1, "in needs at least one value").optional(),
+    nin: z.array(listable).min(1, "nin needs at least one value").optional(),
     gt: z.number().optional(),
     gte: z.number().optional(),
     lt: z.number().optional(),
@@ -29,7 +29,14 @@ const conditionSchema = z
     freeEmail: z.boolean().optional(),
     workEmail: z.boolean().optional(),
   })
-  .refine((c) => Object.keys(c).length > 0, "condition must contain at least one operator");
+  .refine((c) => Object.keys(c).length > 0, "condition must contain at least one operator")
+  .refine(
+    (c) => c.exists !== false || Object.keys(c).length === 1,
+    "exists: false can't be combined with other operators (they need a value to compare)",
+  );
+
+/** Paths read `form.<field>` from the submission or `crm.<path>` from the CRM. */
+const PATH_RE = /^(form|crm)\.[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/;
 
 /**
  * Accepts a full operator object, the bare word `exists`
@@ -55,7 +62,17 @@ const routeActionSchema: z.ZodType<RouteAction> = z.union([
 
 const ruleSchema = z.strictObject({
   name: z.string().min(1),
-  when: z.record(z.string(), whenValueSchema),
+  when: z.record(z.string(), whenValueSchema).superRefine((when, ctx) => {
+    for (const path of Object.keys(when)) {
+      if (!PATH_RE.test(path)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [path],
+          message: "paths start with form. or crm. (e.g. form.country, crm.contact.owner)",
+        });
+      }
+    }
+  }),
   route: routeActionSchema,
 });
 
@@ -74,7 +91,26 @@ const ruleSetSchema = z
       return true;
     },
     { message: "rule names must be unique", path: ["rules"] },
-  );
+  )
+  .superRefine((rs, ctx) => {
+    // A rule with no conditions matches everything, so later rules never run.
+    const catchAll = rs.rules.findIndex((rule) => Object.keys(rule.when).length === 0);
+    if (catchAll !== -1 && catchAll < rs.rules.length - 1) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["rules", catchAll + 1],
+        message: `unreachable: rule "${rs.rules[catchAll]!.name}" above has no conditions and matches every lead`,
+      });
+    }
+    // The fallback must always land somewhere: a form./crm. path can be empty.
+    if ("to" in rs.fallback && PATH_RE.test(rs.fallback.to)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["fallback", "to"],
+        message: "fallback can't route to a form./crm. path (it may be empty); use a team or a rep's email",
+      });
+    }
+  });
 
 function formatIssuePath(path: PropertyKey[]): string {
   return path.length > 0 ? path.map(String).join(".") : "root";

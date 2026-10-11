@@ -37,7 +37,7 @@ export async function POST(request: Request) {
           booking: result.booking,
           duplicate: result.duplicate,
           calendarFailed: result.calendarFailed,
-          emailSent: result.emailSent,
+          emailQueued: result.emailQueued,
         },
         { status: result.duplicate ? 200 : 201 },
       );

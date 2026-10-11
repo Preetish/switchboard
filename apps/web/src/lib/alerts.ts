@@ -2,11 +2,8 @@
  * Speed-to-lead alerts: when a lead routed to a rep does not book within a
  * configurable window, the rep is notified by Slack or email. Scheduling and
  * delivery run on a Postgres-backed queue (pg-boss) — see queue.ts and
- * alerts-worker.ts; this module holds the pure pieces and the Slack sender.
+ * jobs.ts; this module holds the pure pieces and the Slack sender.
  */
-
-/** Job name in the pg-boss queue. */
-export const SPEED_TO_LEAD_JOB = "speed-to-lead-alert";
 
 export const DEFAULT_ALERT_MINUTES = 5;
 

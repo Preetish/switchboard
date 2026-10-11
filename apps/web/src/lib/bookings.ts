@@ -8,13 +8,12 @@ import {
 } from "@switchboard/calendar-google";
 import { and, eq } from "drizzle-orm";
 import { bookings, orgs, users, type Database } from "@switchboard/db";
-import { safeDisplayName } from "./display-name";
 import { isUuid } from "./http";
 import { getGoogleAccessToken, isOfferedSlot } from "./integrations";
+import { scheduleBookingFollowup } from "./jobs";
 import { findActiveBooking, findRoutedLead } from "./lead-access";
-import { logCrmMeeting } from "./crm";
+import { smtpConfigured } from "./email";
 import { releaseExpiredHolds } from "./holds";
-import { sendConfirmationEmail } from "./email";
 
 /**
  * Booking creation for a routed lead. The lead may only book the rep routing
@@ -95,11 +94,6 @@ export function parseBookingInput(body: unknown): ParsedBookingInput {
   };
 }
 
-/** Plain booking link offered by email when the calendar event cannot be created. */
-export function fallbackBookingUrl(): string | null {
-  return process.env.FALLBACK_BOOKING_URL ?? null;
-}
-
 function pgErrorCode(cause: unknown): string | undefined {
   return cause instanceof Error ? (cause as { code?: string }).code : undefined;
 }
@@ -124,7 +118,8 @@ export type BookingSuccess = {
   booking: BookingRecord;
   /** True when the calendar event could not be created (booked locally only). */
   calendarFailed: boolean;
-  emailSent: boolean;
+  /** A confirmation email will be sent to the lead. */
+  emailQueued: boolean;
 };
 
 /** Serialize a stored row into the API shape. */
@@ -152,7 +147,7 @@ function duplicateOf(row: Parameters<typeof toRecord>[0]): BookingSuccess {
     duplicate: true,
     booking: toRecord(row),
     calendarFailed: false,
-    emailSent: false,
+    emailQueued: false,
   };
 }
 
@@ -202,7 +197,6 @@ export async function createBooking(
   }
   const endAt = new Date(input.startAt.getTime() + input.durationMinutes * MINUTE_MS);
   const leadEmail = lead.email;
-  const leadName = safeDisplayName(lead.data?.name);
 
   await releaseExpiredHolds(db);
 
@@ -264,40 +258,16 @@ export async function createBooking(
     (await db.select().from(bookings).where(eq(bookings.id, hold.id)).limit(1))[0];
   if (!row) throw new Error(`Booking row disappeared after confirm: ${hold.id}`);
 
-  const emailSent = leadEmail
-    ? await sendConfirmationEmail({
-        to: leadEmail,
-        leadName,
-        orgName: rep.orgName,
-        repName: rep.name,
-        repEmail: rep.email,
-        startAt: input.startAt,
-        repTimeZone: rep.timezone,
-        meetLink: calendar.meetLink,
-        fallbackUrl: calendar.meetLink ? null : fallbackBookingUrl(),
-      })
-    : false;
-
-  // Write the meeting back to HubSpot (idempotent via bookings.crm_meeting_id);
-  // best-effort, like the email — a CRM failure never unbooks the meeting.
-  await logCrmMeeting(db, rep.orgId, {
-    id: row.id,
-    crmMeetingId: row.crmMeetingId,
-    startAt: input.startAt,
-    endAt,
-    leadEmail,
-    leadName,
-    repName: rep.name,
-    repEmail: rep.email,
-    meetLink: calendar.meetLink,
-  });
+  // Confirmation email and the CRM meeting log run on the job queue, with
+  // retries; a failure there never unbooks the meeting.
+  await scheduleBookingFollowup(db, row.id);
 
   return {
     status: "created",
     duplicate: false,
     booking: toRecord(row),
     calendarFailed: Boolean(calendar.error),
-    emailSent,
+    emailQueued: Boolean(leadEmail) && smtpConfigured(),
   };
 }
 

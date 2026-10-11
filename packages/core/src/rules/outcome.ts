@@ -39,11 +39,19 @@ export function draftOutcome(
         reason: `Matched target ${action.to}.`,
       };
     }
+    // An inputs path that didn't resolve (e.g. no CRM owner) has no rep to
+    // route to; a literal email/id target is kept for rep matching.
+    if (/^(form|crm)\./.test(action.to)) {
+      return {
+        kind: "fallback_queue",
+        reason: `Target ${action.to} has no value for this lead; sent to the fallback queue.`,
+      };
+    }
     return {
       kind: "route_user",
       to: action.to,
       toSource: action.to,
-      reason: `Target ${action.to} is not available on this submission.`,
+      reason: `Matched target ${action.to}.`,
     };
   }
   if ("team" in action) {

@@ -121,6 +121,7 @@ describe("schema definition", () => {
       "calendarEventId",
       "meetLink",
       "crmMeetingId",
+      "confirmationSentAt",
       "idempotencyKey",
       "createdAt",
     ]);

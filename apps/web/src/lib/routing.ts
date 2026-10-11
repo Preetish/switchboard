@@ -1,7 +1,7 @@
 import { selectRep, type OutcomeDraft, type RepCandidate } from "@switchboard/core";
 import type { Database, DecisionOutcome } from "@switchboard/db";
-import { and, asc, eq, gte, or, sql } from "drizzle-orm";
-import { bookings, routingDecisions, teams, teamMembers, users } from "@switchboard/db";
+import { and, asc, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
+import { bookings, teams, teamMembers, users } from "@switchboard/db";
 
 /** Monday 00:00 UTC of the week containing `now` (capacity window). */
 function startOfWeek(now: Date): Date {
@@ -45,75 +45,87 @@ export async function finalizeOutcome(
       };
     }
 
-    const weekStart = startOfWeek(new Date());
-    // Deterministic order so round-robin ties are stable across requests.
-    const members = await db
-      .select({
-        userId: teamMembers.userId,
-        weight: teamMembers.weight,
-        weeklyCapacity: teamMembers.weeklyCapacity,
-        active: teamMembers.active,
-      })
-      .from(teamMembers)
-      .innerJoin(users, eq(teamMembers.userId, users.id))
-      .where(eq(teamMembers.teamId, team.id))
-      .orderBy(asc(users.email));
-
-    // Rotation state: past team-routed decisions per rep. Bookings this week
-    // gate weekly capacity; calendar free/busy joins with the Google task.
-    const [assignmentRows, bookingRows] = await Promise.all([
-      db
-        .select({
-          userId: sql<string>`${routingDecisions.outcome} ->> 'userId'`,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(routingDecisions)
-        .where(
-          and(
-            eq(routingDecisions.orgId, orgId),
-            sql`${routingDecisions.outcome} ->> 'kind' = 'route_team'`,
-          ),
-        )
-        .groupBy(sql`${routingDecisions.outcome} ->> 'userId'`),
-      db
-        .select({ userId: bookings.userId, count: sql<number>`count(*)::int` })
-        .from(bookings)
-        .where(
-          and(
-            eq(bookings.orgId, orgId),
-            eq(bookings.status, "confirmed"),
-            gte(bookings.startAt, weekStart),
-          ),
-        )
-        .groupBy(bookings.userId),
-    ]);
-
-    const assignmentCount = new Map(
-      assignmentRows.filter((r) => r.userId !== null).map((r) => [r.userId, r.count]),
-    );
-    const bookingCount = new Map(bookingRows.map((r) => [r.userId, r.count]));
-    const candidates: RepCandidate[] = members.map((member) => ({
-      userId: member.userId,
-      weight: member.weight,
-      weeklyCapacity: member.weeklyCapacity,
-      bookingsThisWeek: bookingCount.get(member.userId) ?? 0,
-      assignments: assignmentCount.get(member.userId) ?? 0,
-      available: member.active,
-    }));
-
-    // The owner wins only when they are a known, eligible rep on this team;
-    // otherwise selectRep falls back to round robin inside the same call.
+    // The lead's CRM owner, when the strategy can use one. Read before the
+    // rotation lock so the locked section stays short.
     let ownerUserId: string | undefined;
     if (draft.strategy === "existing_owner" && options.ownerEmail) {
       const [owner] = await db
         .select({ id: users.id })
         .from(users)
-        .where(and(eq(users.orgId, orgId), eq(users.email, options.ownerEmail)))
+        .where(
+          and(eq(users.orgId, orgId), sql`lower(${users.email}) = ${options.ownerEmail.toLowerCase()}`),
+        )
         .limit(1);
       ownerUserId = owner?.id;
     }
 
-    const pick = selectRep(draft.strategy, candidates, ownerUserId);
+    const weekStart = startOfWeek(new Date());
+    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60_000);
+    // Lock the team's memberships so concurrent submissions take turns: each
+    // reads the credits the previous one wrote, and two leads can't land on
+    // the same rep because they read the same state.
+    const pick = await db.transaction(async (tx) => {
+      const members = await tx
+        .select({
+          membershipId: teamMembers.id,
+          userId: teamMembers.userId,
+          weight: teamMembers.weight,
+          weeklyCapacity: teamMembers.weeklyCapacity,
+          active: teamMembers.active,
+          credit: teamMembers.rrCredit,
+        })
+        .from(teamMembers)
+        .innerJoin(users, eq(teamMembers.userId, users.id))
+        .where(eq(teamMembers.teamId, team.id))
+        // Deterministic order so round-robin ties are stable across requests.
+        .orderBy(asc(users.email))
+        .for("update", { of: teamMembers });
+
+      // Weekly capacity counts held and confirmed bookings in this week only.
+      const bookingRows = members.length
+        ? await tx
+            .select({ userId: bookings.userId, count: sql<number>`count(*)::int` })
+            .from(bookings)
+            .where(
+              and(
+                inArray(
+                  bookings.userId,
+                  members.map((member) => member.userId),
+                ),
+                inArray(bookings.status, ["confirmed", "hold"]),
+                gte(bookings.startAt, weekStart),
+                lt(bookings.startAt, weekEnd),
+              ),
+            )
+            .groupBy(bookings.userId)
+        : [];
+      const bookingCount = new Map(bookingRows.map((r) => [r.userId, r.count]));
+      const candidates: RepCandidate[] = members.map((member) => ({
+        userId: member.userId,
+        weight: member.weight,
+        weeklyCapacity: member.weeklyCapacity,
+        bookingsThisWeek: bookingCount.get(member.userId) ?? 0,
+        credit: member.credit,
+        available: member.active,
+      }));
+
+      // The owner wins only when they are a known, eligible rep on this team;
+      // otherwise selectRep falls back to round robin inside the same call.
+      const selection = selectRep(draft.strategy, candidates, ownerUserId);
+      if (selection.credits) {
+        for (const member of members) {
+          const credit = selection.credits.get(member.userId);
+          if (credit !== undefined && credit !== member.credit) {
+            await tx
+              .update(teamMembers)
+              .set({ rrCredit: credit })
+              .where(eq(teamMembers.id, member.membershipId));
+          }
+        }
+      }
+      return selection;
+    });
+
     if (!pick.userId) {
       return {
         kind: "fallback_queue",
@@ -133,13 +145,14 @@ export async function finalizeOutcome(
     // anything else against the uuid column makes Postgres reject the query.
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const idTarget = UUID_RE.test(draft.to) ? eq(users.id, draft.to) : undefined;
+    const emailTarget = sql`lower(${users.email}) = ${draft.to.toLowerCase()}`;
     const [user] = await db
       .select({ id: users.id, name: users.name })
       .from(users)
       .where(
         and(
           eq(users.orgId, orgId),
-          idTarget ? or(eq(users.email, draft.to), idTarget) : eq(users.email, draft.to),
+          idTarget ? or(emailTarget, idTarget) : emailTarget,
         ),
       )
       .limit(1);

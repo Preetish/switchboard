@@ -52,9 +52,18 @@ export function missingCalendarScopes(granted: string | undefined): string[] {
 }
 
 export class GoogleAuthError extends Error {
-  constructor(message: string) {
+  /** OAuth error code from the token endpoint (e.g. `invalid_grant`), when given. */
+  readonly code: string | undefined;
+
+  constructor(message: string, code?: string) {
     super(message);
     this.name = "GoogleAuthError";
+    this.code = code;
+  }
+
+  /** The grant was revoked or expired: only reconnecting will fix it. */
+  get revoked(): boolean {
+    return this.code === "invalid_grant";
   }
 }
 
@@ -104,6 +113,7 @@ async function tokenRequest(
       payload?.error_description ??
         payload?.error ??
         `Google token endpoint returned HTTP ${response.status}.`,
+      payload?.error,
     );
   }
   return {

@@ -21,6 +21,11 @@ export type ConfirmationEmailInput = {
   fallbackUrl: string | null;
 };
 
+/** Plain booking link offered by email when the calendar event cannot be created. */
+export function fallbackBookingUrl(): string | null {
+  return process.env.FALLBACK_BOOKING_URL || null;
+}
+
 export function smtpConfigured(): boolean {
   return Boolean(process.env.SMTP_URL);
 }

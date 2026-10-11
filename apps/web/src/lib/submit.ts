@@ -12,8 +12,8 @@ import {
 import type { Database, DecisionOutcome, RoutingDecision } from "@switchboard/db";
 import { and, desc, eq } from "drizzle-orm";
 import { forms, routingDecisions, submissions, ruleSets, users } from "@switchboard/db";
-import { fetchCrmContext, upsertCrmContact, type CrmContext } from "./crm";
-import { scheduleSpeedToLeadAlert } from "./queue";
+import { fetchCrmContext, type CrmContext } from "./crm";
+import { scheduleCrmSync, scheduleSpeedToLeadAlert } from "./jobs";
 import { finalizeOutcome } from "./routing";
 
 export type SubmitOutcome =
@@ -68,41 +68,11 @@ export async function handleSubmission(
     };
   }
 
-  const inserted = await db
-    .insert(submissions)
-    .values({
-      orgId: form.orgId,
-      formId: form.id,
-      data: validated.data,
-      email,
-      idempotencyKey: idempotencyKey ?? null,
-    })
-    .onConflictDoNothing({ target: [submissions.formId, submissions.idempotencyKey] })
-    .returning({ id: submissions.id });
-
-  if (!inserted[0]) {
-    // Only reachable with an idempotency key: NULL keys are distinct under the
-    // unique index, so keyless inserts always succeed (and are never deduped).
-    const [existing] = await db
-      .select({ id: submissions.id })
-      .from(submissions)
-      .where(
-        and(
-          eq(submissions.formId, form.id),
-          eq(submissions.idempotencyKey, idempotencyKey ?? ""),
-        ),
-      )
-      .orderBy(desc(submissions.createdAt))
-      .limit(1);
-    const decision = existing ? await latestDecision(db, existing.id) : null;
-    return {
-      status: "duplicate",
-      submissionId: existing?.id ?? null,
-      decision: decision?.outcome ?? null,
-      repName: decision?.outcome.userId
-        ? await repName(db, decision.outcome.userId)
-        : null,
-    };
+  // An idempotent retry (double click, flaky network) gets the original
+  // decision back without routing again.
+  if (idempotencyKey) {
+    const duplicate = await findDuplicate(db, form.id, idempotencyKey);
+    if (duplicate) return duplicate;
   }
 
   const startedAt = performance.now();
@@ -110,6 +80,11 @@ export async function handleSubmission(
   const parsed = row.ruleSet
     ? validateRuleSet(row.ruleSet.rules)
     : { ok: true as const, ruleSet: EMPTY_RULE_SET };
+  if (!parsed.ok) {
+    console.error(
+      `Rule set for form "${form.slug}" is invalid; routing to the fallback queue: ${parsed.errors.join("; ")}`,
+    );
+  }
   const ruleSet = parsed.ok ? parsed.ruleSet : EMPTY_RULE_SET;
 
   // CRM lookups happen before evaluation and only for the paths the rule set
@@ -122,7 +97,6 @@ export async function handleSubmission(
   const inputs: Record<string, unknown> = buildRuleInputs(form.fields, validated.data, crm);
 
   const evaluation = evaluate(ruleSet, inputs);
-  const latencyMs = Math.max(1, Math.round(performance.now() - startedAt));
   const owner = crm?.contact.owner ?? null;
   const outcome = await finalizeOutcome(
     db,
@@ -130,35 +104,71 @@ export async function handleSubmission(
     draftOutcome(evaluation.action, inputs),
     { ownerEmail: owner },
   );
+  const latencyMs = Math.max(1, Math.round(performance.now() - startedAt));
 
-  const submissionId = inserted[0]!.id;
-  const insertedDecision = await db
-    .insert(routingDecisions)
-    .values({
+  // The submission and its decision are written together: a crash can't
+  // leave a lead without a decision (which would hide the booking step).
+  const submissionId = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(submissions)
+      .values({
+        orgId: form.orgId,
+        formId: form.id,
+        data: validated.data,
+        email,
+        idempotencyKey: idempotencyKey ?? null,
+      })
+      .onConflictDoNothing({ target: [submissions.formId, submissions.idempotencyKey] })
+      .returning({ id: submissions.id });
+    if (!inserted) return null;
+    await tx.insert(routingDecisions).values({
       orgId: form.orgId,
-      submissionId,
+      submissionId: inserted.id,
       inputs,
       matchedRule: evaluation.matchedRule,
       outcome,
       latencyMs,
-    })
-    .returning({ outcome: routingDecisions.outcome });
+    });
+    return inserted.id;
+  });
+  if (!submissionId) {
+    // A concurrent retry with the same key committed first; return its result.
+    const duplicate = await findDuplicate(db, form.id, idempotencyKey ?? "");
+    if (duplicate) return duplicate;
+    throw new Error(`Submission conflict without a stored original (form ${form.id}).`);
+  }
 
-  // Schedule the speed-to-lead alert: if this lead has not booked within the
-  // configured window, the routed rep is notified (the job re-checks bookings
-  // at fire time). Best-effort — a queue failure never loses the lead.
+  // Side effects run on the job queue so the lead isn't kept waiting and
+  // provider outages are retried: the speed-to-lead alert (re-checks
+  // bookings when it fires) and the CRM write-back.
   if (outcome.userId) await scheduleSpeedToLeadAlert(submissionId);
-
-  // Write the lead back to HubSpot so the CRM always has the contact. The
-  // routing decision is already durable, so a CRM failure cannot lose it;
-  // upsertCrmContact is idempotent (per submission) and logs its own errors.
-  await upsertCrmContact(db, form.orgId, { id: submissionId, email, data: validated.data });
+  if (email) await scheduleCrmSync(db, submissionId);
 
   return {
     status: "created",
     submissionId,
-    decision: insertedDecision[0]?.outcome ?? outcome,
+    decision: outcome,
     repName: outcome.userId ? await repName(db, outcome.userId) : null,
+  };
+}
+
+async function findDuplicate(
+  db: Database,
+  formId: string,
+  idempotencyKey: string,
+): Promise<SubmitOutcome | null> {
+  const [existing] = await db
+    .select({ id: submissions.id })
+    .from(submissions)
+    .where(and(eq(submissions.formId, formId), eq(submissions.idempotencyKey, idempotencyKey)))
+    .limit(1);
+  if (!existing) return null;
+  const decision = await latestDecision(db, existing.id);
+  return {
+    status: "duplicate",
+    submissionId: existing.id,
+    decision: decision?.outcome ?? null,
+    repName: decision?.outcome.userId ? await repName(db, decision.outcome.userId) : null,
   };
 }
 

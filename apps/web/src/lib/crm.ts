@@ -12,7 +12,7 @@ import {
   type HubspotOAuthConfig,
 } from "@switchboard/crm-hubspot";
 import { eq } from "drizzle-orm";
-import { bookings, type Database } from "@switchboard/db";
+import { bookings, submissions, type Database } from "@switchboard/db";
 import { appBaseUrl } from "./integrations";
 import { getValidAccessToken, saveTokens } from "./token-store";
 
@@ -184,18 +184,25 @@ function submissionToHubspotProperties(
 }
 
 /**
- * Upsert the lead into HubSpot (create-or-update keyed on email, so retries
- * never create duplicate CRM records), so every booked demo lands in the CRM.
- * Best-effort: failures are logged and never block the routing response.
+ * Write a lead to HubSpot (create-or-update keyed on email, so retries never
+ * create duplicate CRM records). Runs as a queued job: throws on failures
+ * worth retrying (rate limits, HubSpot outages) and returns quietly when
+ * there is nothing to do (no email, not connected, already synced).
  */
-export async function upsertCrmContact(
-  db: Database,
-  orgId: string,
-  submission: { id: string; email: string | null; data: Record<string, string> },
-): Promise<boolean> {
-  if (!submission.email) return false;
-  const accessToken = await getValidHubspotAccessToken(db, orgId);
-  if (!accessToken) return false;
+export async function syncLeadToCrm(db: Database, submissionId: string): Promise<void> {
+  const [submission] = await db
+    .select({
+      orgId: submissions.orgId,
+      email: submissions.email,
+      data: submissions.data,
+      crmSyncedAt: submissions.crmSyncedAt,
+    })
+    .from(submissions)
+    .where(eq(submissions.id, submissionId))
+    .limit(1);
+  if (!submission?.email || submission.crmSyncedAt) return;
+  const accessToken = await getValidHubspotAccessToken(db, submission.orgId);
+  if (!accessToken) return;
   try {
     await upsertContact({
       accessToken,
@@ -203,21 +210,24 @@ export async function upsertCrmContact(
       properties: submissionToHubspotProperties(submission.data),
       timeoutMs: DEFAULT_TIMEOUT_MS,
     });
-    return true;
   } catch (cause) {
-    console.error(
-      `HubSpot contact upsert failed (submission ${submission.id}): ${
-        cause instanceof HubspotApiError ? cause.message : String(cause)
-      }`,
-    );
-    return false;
+    if (cause instanceof HubspotApiError && !cause.retryable) {
+      console.error(`HubSpot rejected contact for submission ${submissionId}: ${cause.message}`);
+      return;
+    }
+    throw cause;
   }
+  await db
+    .update(submissions)
+    .set({ crmSyncedAt: new Date() })
+    .where(eq(submissions.id, submissionId));
 }
 
 /**
  * Log the confirmed booking on the contact's HubSpot timeline. Idempotent via
  * `bookings.crm_meeting_id`: once stored, repeat calls skip the API entirely.
- * Best-effort — a HubSpot failure never unbooks a confirmed meeting.
+ * Runs in the booking follow-up job: retryable HubSpot failures throw so the
+ * job retries; a failure never unbooks a confirmed meeting.
  */
 export async function logCrmMeeting(
   db: Database,
@@ -268,9 +278,10 @@ export async function logCrmMeeting(
       .where(eq(bookings.id, booking.id));
     return meetingId;
   } catch (cause) {
+    if (cause instanceof HubspotApiError && cause.retryable) throw cause;
     console.error(
       `HubSpot meeting log failed (booking ${booking.id}): ${
-        cause instanceof HubspotApiError ? cause.message : String(cause)
+        cause instanceof Error ? cause.message : String(cause)
       }`,
     );
     return null;
