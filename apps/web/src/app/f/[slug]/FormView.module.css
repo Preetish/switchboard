@@ -308,3 +308,15 @@
   outline: 2px solid var(--sb-accent);
   outline-offset: 2px;
 }
+
+/* Honeypot (task 13): rendered but invisible and unreachable, so a human
+   never fills it — a submitted value means a bot. Off-screen rather than
+   display:none because some naive bots skip hidden fields entirely. */
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

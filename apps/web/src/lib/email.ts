@@ -68,7 +68,11 @@ const BODY_OPTIONS: Intl.DateTimeFormatOptions = {
   timeZoneName: "long",
 };
 
-function formatWhen(date: Date, timeZone: string, options: Intl.DateTimeFormatOptions): string {
+function formatWhen(
+  date: Date,
+  timeZone: string,
+  options: Intl.DateTimeFormatOptions,
+): string {
   // timeZone is a constructor option, not a per-format option.
   return new Intl.DateTimeFormat("en", { ...options, timeZone }).format(date);
 }
@@ -96,9 +100,16 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): {
     if (input.fallbackUrl) {
       lines.push(`You can pick another time here: ${input.fallbackUrl}`);
     }
-    lines.push(`Or simply reply to this email and ${input.repName} will set it up with you.`);
+    lines.push(
+      `Or simply reply to this email and ${input.repName} will set it up with you.`,
+    );
   }
-  lines.push("", `Questions? Reach ${input.repName} at ${input.repEmail}.`, "", "— Switchboard");
+  lines.push(
+    "",
+    `Questions? Reach ${input.repName} at ${input.repEmail}.`,
+    "",
+    "— Switchboard",
+  );
 
   return {
     subject: `Confirmed: meeting with ${input.repName} — ${whenSubject}`,

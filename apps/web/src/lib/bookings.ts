@@ -37,8 +37,7 @@ export type BookingInput = {
 };
 
 export type ParsedBookingInput =
-  | { ok: true; input: BookingInput }
-  | { ok: false; error: string };
+  { ok: true; input: BookingInput } | { ok: false; error: string };
 
 /** Validate the API body shape before anything touches the database. */
 export function parseBookingInput(body: unknown): ParsedBookingInput {
@@ -70,7 +69,10 @@ export function parseBookingInput(body: unknown): ParsedBookingInput {
   }
   if (raw.idempotencyKey !== undefined && raw.idempotencyKey !== null) {
     if (typeof raw.idempotencyKey !== "string" || raw.idempotencyKey.length > 128) {
-      return { ok: false, error: "idempotencyKey must be a string of at most 128 characters." };
+      return {
+        ok: false,
+        error: "idempotencyKey must be a string of at most 128 characters.",
+      };
     }
   }
   return {
@@ -147,7 +149,9 @@ async function findByIdempotencyKey(
     .from(bookings)
     .where(eq(bookings.idempotencyKey, key))
     .limit(1);
-  return row ? { status: "created", duplicate: true, booking: toRecord(row), emailSent: false } : null;
+  return row
+    ? { status: "created", duplicate: true, booking: toRecord(row), emailSent: false }
+    : null;
 }
 
 export async function createBooking(
@@ -181,7 +185,11 @@ export async function createBooking(
   let leadName: string | null = null;
   if (input.submissionId) {
     const [submission] = await db
-      .select({ email: submissions.email, data: submissions.data, orgId: submissions.orgId })
+      .select({
+        email: submissions.email,
+        data: submissions.data,
+        orgId: submissions.orgId,
+      })
       .from(submissions)
       .where(eq(submissions.id, input.submissionId))
       .limit(1);
@@ -262,7 +270,11 @@ export async function createBooking(
   if (!row) {
     // Defensive: the hold cannot expire (it was just created) and nothing
     // else deletes it, so the update always returns the row.
-    const reselected = await db.select().from(bookings).where(eq(bookings.id, hold.id)).limit(1);
+    const reselected = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, hold.id))
+      .limit(1);
     row = reselected[0];
   }
   if (!row) throw new Error(`Booking row disappeared after confirm: ${hold.id}`);
@@ -355,7 +367,9 @@ async function reserveCalendar(
     );
   }
 
-  const attendees = event.leadEmail ? [event.leadEmail, event.repEmail] : [event.repEmail];
+  const attendees = event.leadEmail
+    ? [event.leadEmail, event.repEmail]
+    : [event.repEmail];
   try {
     const created = await createCalendarEvent({
       accessToken,

@@ -53,9 +53,9 @@ export function googleConfig(): GoogleOAuthConfig | null {
 }
 
 /**
- * Interim guard for the connect/callback routes until Auth.js lands
- * (roadmap task 13): only a holder of `ADMIN_SETUP_KEY` may start the
- * Google handshake that stores an integration for the org.
+ * Automation key for the CSV export route (docs/decisions.md, task 13):
+ * scripted exports authenticate with `ADMIN_SETUP_KEY` instead of the admin
+ * session cookie. The admin pages and OAuth handshakes use Auth.js sessions.
  */
 export function adminKeyOk(key: string | undefined | null): boolean {
   const expected = process.env.ADMIN_SETUP_KEY;
@@ -64,7 +64,9 @@ export function adminKeyOk(key: string | undefined | null): boolean {
 }
 
 /** The single org in single-org mode (see docs/decisions.md, task 5). */
-export async function findOrg(db: Database): Promise<{ id: string; name: string } | null> {
+export async function findOrg(
+  db: Database,
+): Promise<{ id: string; name: string } | null> {
   const [row] = await db
     .select({ id: orgs.id, name: orgs.name })
     .from(orgs)
@@ -138,7 +140,12 @@ async function saveGoogleTokens(
     })
     .onConflictDoUpdate({
       target: [integrations.orgId, integrations.provider],
-      set: { tokenCipher, scopes: tokens.scope ?? null, status: "connected", updatedAt: new Date() },
+      set: {
+        tokenCipher,
+        scopes: tokens.scope ?? null,
+        status: "connected",
+        updatedAt: new Date(),
+      },
     });
 }
 
@@ -151,7 +158,9 @@ export async function connectGoogle(
   db: Database,
   orgId: string,
   code: string,
-): Promise<{ ok: true } | { ok: false; error: "google_not_configured" | "exchange_failed" }> {
+): Promise<
+  { ok: true } | { ok: false; error: "google_not_configured" | "exchange_failed" }
+> {
   const config = googleConfig();
   if (!config) return { ok: false, error: "google_not_configured" };
   try {
@@ -263,7 +272,10 @@ export async function getAvailability(
       ),
     );
 
-  const busy = localBusy.map((interval) => ({ start: interval.start, end: interval.end }));
+  const busy = localBusy.map((interval) => ({
+    start: interval.start,
+    end: interval.end,
+  }));
   let source: Availability["source"] = "local";
   let calendarError: string | undefined;
 
@@ -303,6 +315,9 @@ export async function getAvailability(
     durationMinutes,
     source,
     calendarError,
-    slots: slots.map((slot) => ({ start: slot.start.toISOString(), end: slot.end.toISOString() })),
+    slots: slots.map((slot) => ({
+      start: slot.start.toISOString(),
+      end: slot.end.toISOString(),
+    })),
   };
 }

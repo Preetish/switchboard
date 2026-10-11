@@ -52,9 +52,7 @@ export async function fetchDecisionLog(
   options: DecisionLogOptions = {},
 ): Promise<DecisionLogEntry[]> {
   const limit = Math.min(Math.max(1, options.limit ?? 100), 10_000);
-  const search = options.q?.trim()
-    ? `%${escapeLikePattern(options.q.trim())}%`
-    : null;
+  const search = options.q?.trim() ? `%${escapeLikePattern(options.q.trim())}%` : null;
 
   const rows = await db
     .select({
@@ -103,10 +101,16 @@ export async function fetchDecisionLog(
 
   const [userRows, teamRows] = await Promise.all([
     userIds.length
-      ? db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, userIds))
+      ? db
+          .select({ id: users.id, name: users.name })
+          .from(users)
+          .where(inArray(users.id, userIds))
       : Promise.resolve([]),
     teamIds.length
-      ? db.select({ id: teams.id, name: teams.name }).from(teams).where(inArray(teams.id, teamIds))
+      ? db
+          .select({ id: teams.id, name: teams.name })
+          .from(teams)
+          .where(inArray(teams.id, teamIds))
       : Promise.resolve([]),
   ]);
   const userNames = new Map(userRows.map((user) => [user.id, user.name] as const));

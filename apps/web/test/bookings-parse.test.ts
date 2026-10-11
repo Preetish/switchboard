@@ -25,7 +25,10 @@ describe("parseBookingInput", () => {
   });
 
   it("rejects a non-object body", () => {
-    expect(parseBookingInput(null)).toEqual({ ok: false, error: "Expected a JSON body." });
+    expect(parseBookingInput(null)).toEqual({
+      ok: false,
+      error: "Expected a JSON body.",
+    });
   });
 
   it("rejects a non-UUID userId", () => {
@@ -38,28 +41,24 @@ describe("parseBookingInput", () => {
   });
 
   it("rejects durations outside 15–240 and non-integers", () => {
-    expect(
-      parseBookingInput({ ...validBody(), durationMinutes: 10 }).ok,
-    ).toBe(false);
-    expect(
-      parseBookingInput({ ...validBody(), durationMinutes: 300 }).ok,
-    ).toBe(false);
-    expect(
-      parseBookingInput({ ...validBody(), durationMinutes: 29.5 }).ok,
-    ).toBe(false);
+    expect(parseBookingInput({ ...validBody(), durationMinutes: 10 }).ok).toBe(false);
+    expect(parseBookingInput({ ...validBody(), durationMinutes: 300 }).ok).toBe(false);
+    expect(parseBookingInput({ ...validBody(), durationMinutes: 29.5 }).ok).toBe(false);
   });
 
   it("rejects a malformed submissionId or idempotencyKey", () => {
-    expect(
-      parseBookingInput({ ...validBody(), submissionId: "nope" }).ok,
-    ).toBe(false);
+    expect(parseBookingInput({ ...validBody(), submissionId: "nope" }).ok).toBe(false);
     expect(
       parseBookingInput({ ...validBody(), idempotencyKey: "x".repeat(129) }).ok,
     ).toBe(false);
   });
 
   it("accepts explicit nulls for optional fields", () => {
-    const parsed = parseBookingInput({ ...validBody(), submissionId: null, idempotencyKey: null });
+    const parsed = parseBookingInput({
+      ...validBody(),
+      submissionId: null,
+      idempotencyKey: null,
+    });
     expect(parsed.ok).toBe(true);
   });
 });

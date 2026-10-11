@@ -102,15 +102,20 @@ export default function FormView({
     };
   }, [embedded]);
 
-  async function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setErrors({});
     try {
+      const honeypot = new FormData(event.currentTarget).get("sb_website");
       const response = await fetch(`/api/f/${encodeURIComponent(slug)}/submit`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ data: values, idempotencyKey: idempotencyKey.current }),
+        body: JSON.stringify({
+          data: values,
+          honeypot: typeof honeypot === "string" ? honeypot : "",
+          idempotencyKey: idempotencyKey.current,
+        }),
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) {
@@ -177,6 +182,17 @@ export default function FormView({
         </div>
       ) : null}
       <form onSubmit={onSubmit} noValidate>
+        <div className={styles.honeypot} aria-hidden="true">
+          <label htmlFor="sb_website">Leave this field empty</label>
+          <input
+            id="sb_website"
+            name="sb_website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            defaultValue=""
+          />
+        </div>
         {fields.map((field) => (
           <div className={styles.field} key={field.key}>
             {field.type === "consent" ? (

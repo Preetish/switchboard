@@ -3,6 +3,7 @@ import {
   draftOutcome,
   emailFieldKey,
   evaluate,
+  isDisposableEmail,
   validateRuleSet,
   validateSubmission,
   type RuleSet,
@@ -53,6 +54,18 @@ export async function handleSubmission(
 
   const emailKey = emailFieldKey(form.fields);
   const email = emailKey ? (validated.data[emailKey] ?? null) : null;
+
+  // Abuse protection (task 13): bounce throwaway addresses with a field
+  // error like any other validation failure.
+  if (email && isDisposableEmail(email)) {
+    return {
+      status: "invalid",
+      errors: {
+        [emailKey!]:
+          "Disposable email addresses are not accepted — please use your work email.",
+      },
+    };
+  }
 
   const inserted = await db
     .insert(submissions)

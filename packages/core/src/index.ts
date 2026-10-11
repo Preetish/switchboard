@@ -20,6 +20,7 @@ export {
   validateSubmission,
 } from "./forms/validate.js";
 export { FREE_EMAIL_DOMAINS, isFreeEmail } from "./rules/free-email.js";
+export { DISPOSABLE_EMAIL_DOMAINS, isDisposableEmail } from "./rules/disposable-email.js";
 export { crmPathsIn } from "./rules/crm-lookups.js";
 export {
   actionKind,

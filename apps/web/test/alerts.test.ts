@@ -38,21 +38,21 @@ describe("alertWindowMinutes", () => {
 
 describe("decideSpeedToLeadAlert", () => {
   it("sends when the lead is unbooked and not yet alerted", () => {
-    expect(decideSpeedToLeadAlert({ hasActiveBooking: false, alreadyAlerted: false })).toBe(
-      "send",
-    );
+    expect(
+      decideSpeedToLeadAlert({ hasActiveBooking: false, alreadyAlerted: false }),
+    ).toBe("send");
   });
 
   it("skips when the lead booked within the window", () => {
-    expect(decideSpeedToLeadAlert({ hasActiveBooking: true, alreadyAlerted: false })).toBe(
-      "skip_booked",
-    );
+    expect(
+      decideSpeedToLeadAlert({ hasActiveBooking: true, alreadyAlerted: false }),
+    ).toBe("skip_booked");
   });
 
   it("skips when the alert already went out", () => {
-    expect(decideSpeedToLeadAlert({ hasActiveBooking: false, alreadyAlerted: true })).toBe(
-      "skip_already_alerted",
-    );
+    expect(
+      decideSpeedToLeadAlert({ hasActiveBooking: false, alreadyAlerted: true }),
+    ).toBe("skip_already_alerted");
   });
 
   it("reports booked-in-time over already-alerted (never a duplicate send)", () => {
@@ -88,7 +88,11 @@ describe("buildSpeedToLeadAlert", () => {
   });
 
   it("copes with a lead that has neither name nor email", () => {
-    const { subject } = buildSpeedToLeadAlert({ ...base, leadName: null, leadEmail: null });
+    const { subject } = buildSpeedToLeadAlert({
+      ...base,
+      leadName: null,
+      leadEmail: null,
+    });
     expect(subject).toContain("An unnamed lead");
   });
 

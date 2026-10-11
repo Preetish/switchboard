@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAvailability } from "@/lib/integrations";
 import { getDb } from "@/lib/db";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,13 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ userId: string }> },
 ) {
+  const limit = checkRateLimit("availability", clientIp(request));
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests — please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
   const { userId } = await params;
   if (!UUID_RE.test(userId)) {
     return NextResponse.json({ error: "Rep not found." }, { status: 404 });

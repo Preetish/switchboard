@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { adminKeyOk, findOrg } from "@/lib/integrations";
 import {
@@ -14,12 +15,16 @@ const EXPORT_LIMIT = 5000;
 
 /**
  * CSV export of the routing log — same guard and shape as /routing-log,
- * honoring the same `q` search. Columns are flat and machine-readable;
- * null matched_rule renders as `fallback` (only the fallback fired).
+ * honoring the same `q` search. The admin session guards browser use;
+ * `ADMIN_SETUP_KEY` stays accepted as an alternative so scripted exports
+ * (cron, curl) can pull the CSV without a cookie jar. Columns are flat and
+ * machine-readable; null matched_rule renders as `fallback` (only the
+ * fallback fired).
  */
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  if (!adminKeyOk(params.get("key"))) {
+  const session = await auth();
+  if (!session && !adminKeyOk(params.get("key"))) {
     return NextResponse.json({ error: "admin_key" }, { status: 401 });
   }
   const db = getDb();

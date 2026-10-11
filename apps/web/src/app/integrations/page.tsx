@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { integrations } from "@switchboard/db";
+import { auth, signOut } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { findOrg } from "@/lib/integrations";
 
@@ -13,8 +15,6 @@ const BANNER_STYLES = {
 } as const;
 
 const ERRORS: Record<string, string> = {
-  admin_key:
-    "That admin key was not accepted. Set ADMIN_SETUP_KEY in your environment and try again.",
   google_not_configured:
     "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (self-hosters bring their own OAuth client — see the README).",
   hubspot_not_configured:
@@ -57,6 +57,8 @@ export default async function IntegrationsPage({
 }: {
   searchParams: Promise<{ connected?: string; error?: string }>;
 }) {
+  const session = await auth();
+  if (!session) redirect("/login");
   const { connected, error } = await searchParams;
   const db = getDb();
   const org = await findOrg(db);
@@ -110,6 +112,29 @@ export default async function IntegrationsPage({
           </p>
         )}
 
+        <form
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/login" });
+          }}
+          style={{ marginTop: "var(--sb-space-2)" }}
+        >
+          <button
+            type="submit"
+            style={{
+              background: "var(--sb-surface)",
+              color: "var(--sb-text)",
+              border: "1px solid var(--sb-border)",
+              borderRadius: "var(--sb-radius-sm)",
+              padding: "var(--sb-space-1) var(--sb-space-3)",
+              fontSize: "var(--sb-text-sm)",
+              cursor: "pointer",
+            }}
+          >
+            Sign out
+          </button>
+        </form>
+
         {banner ? (
           <p
             style={{
@@ -154,29 +179,11 @@ export default async function IntegrationsPage({
               <form
                 action={`/api/integrations/${provider.provider === "google_calendar" ? "google" : "hubspot"}/connect`}
                 method="get"
-                style={{
-                  marginTop: "var(--sb-space-4)",
-                  display: "flex",
-                  gap: "var(--sb-space-2)",
-                  flexWrap: "wrap",
-                }}
+                style={{ marginTop: "var(--sb-space-4)" }}
               >
-                <label style={{ flex: "1 1 16rem", fontSize: "var(--sb-text-sm)" }}>
-                  <span style={{ display: "block", marginBottom: "var(--sb-space-1)" }}>
-                    Admin key
-                  </span>
-                  <input
-                    type="password"
-                    name="key"
-                    autoComplete="off"
-                    required
-                    style={inputStyle}
-                  />
-                </label>
                 <button
                   type="submit"
                   style={{
-                    alignSelf: "flex-end",
                     background: "var(--sb-accent)",
                     color: "var(--sb-text-on-accent)",
                     border: "none",
@@ -187,7 +194,8 @@ export default async function IntegrationsPage({
                     cursor: "pointer",
                   }}
                 >
-                  Connect {provider.name}
+                  {status ? "Reconnect " : "Connect "}
+                  {provider.name}
                 </button>
               </form>
               <p
@@ -197,8 +205,7 @@ export default async function IntegrationsPage({
                   fontSize: "var(--sb-text-sm)",
                 }}
               >
-                The admin key comes from <code>ADMIN_SETUP_KEY</code> and protects this
-                handshake until admin auth (Auth.js) lands. {provider.hint}
+                {provider.hint}
               </p>
             </section>
           );
@@ -219,14 +226,4 @@ const mainStyle = {
 const cardStyle = {
   width: "100%",
   maxWidth: "36rem",
-} as const;
-
-const inputStyle = {
-  width: "100%",
-  background: "var(--sb-surface)",
-  border: "1px solid var(--sb-border)",
-  borderRadius: "var(--sb-radius-sm)",
-  padding: "var(--sb-space-2) var(--sb-space-3)",
-  fontSize: "var(--sb-text-sm)",
-  color: "var(--sb-text)",
 } as const;

@@ -9,9 +9,9 @@ in seconds. Self-hostable.
 The core loop is complete: hosted forms, the rules engine, CRM-aware routing
 with team strategies, Google Calendar availability, booking creation, the
 inline instant-booking UI, the embeddable snippet, HubSpot write-back, the
-searchable routing log with CSV export, and speed-to-lead alerts. Remaining
-for v0.1: admin auth with abuse protection, and launch hardening (one-command
-setup, self-hosting docs, release).
+searchable routing log with CSV export, speed-to-lead alerts, admin auth, and
+abuse protection. Remaining for v0.1: launch hardening (one-command setup,
+self-hosting docs, release).
 
 ## Hosted forms
 
@@ -96,8 +96,8 @@ Availability is computed per rep from three inputs: their working hours
 (local to their IANA time zone), confirmed local bookings, and — when
 connected — Google Calendar free/busy:
 
-- **Connect**: `/integrations` starts the OAuth handshake (guarded by
-  `ADMIN_SETUP_KEY` until admin auth lands). Tokens are stored AES-256-GCM
+- **Connect**: `/integrations` starts the OAuth handshake (requires the admin
+  login — see "Admin & security"). Tokens are stored AES-256-GCM
   encrypted (`TOKEN_ENCRYPTION_KEY`), never in plaintext, and refreshed
   lazily before expiry. Self-hosters bring their own Google OAuth client
   (Google requires app verification for calendar scopes on public apps) with
@@ -194,8 +194,8 @@ Full integration guide: `docs/embed.md`. The source lives in
 
 ## HubSpot CRM
 
-Connecting HubSpot (`/integrations`, same admin-key guard as Google) activates
-the CRM-aware half of the routing brief:
+Connecting HubSpot (`/integrations`, admin login required, same as Google)
+activates the CRM-aware half of the routing brief:
 
 - **Owner lookup before routing**: when a rule set reads `crm.*` paths (e.g.
   `when: { crm.contact.owner: exists }`), the submission's email is looked up
@@ -227,20 +227,34 @@ the CRM-aware half of the routing brief:
 
 ## Routing log
 
-`/routing-log` (guarded by the admin key until admin auth lands) shows every
-routing decision with its inputs, the matched rule, the outcome, and the
-evaluation latency:
+`/routing-log` (requires the admin login) shows every routing decision with
+its inputs, the matched rule, the outcome, and the evaluation latency:
 
 - **Search** filters case-insensitively across the lead's email, the matched
   rule name, and the outcome reason (`?q=`).
 - **Inputs** expand per row — the full `{ form, crm }` payload the engine
   evaluated, exactly as stored in `routing_decisions.inputs`.
-- **CSV export** (`GET /api/decisions/export?key=…&q=…`) downloads the current
+- **CSV export** (`GET /api/decisions/export?q=…`) downloads the current
   search as flat, machine-readable rows (CRLF, RFC 4180): `decided_at,
   lead_email, form, matched_rule, outcome, rep, team, latency_ms, reason`. A
   null matched rule renders as `fallback`, cells that could be read as
   formulas by spreadsheet apps (`=`, `+`, `-`, `@` prefixes) are neutralized,
-  and the export is capped at 5,000 rows.
+  and the export is capped at 5,000 rows. Scripted exports (cron, curl) can
+  authenticate with `ADMIN_SETUP_KEY` instead of a session cookie.
+
+## Admin & security
+
+- **Admin auth** (Auth.js): the admin account comes from the environment —
+  set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `AUTH_SECRET`
+  (`openssl rand -hex 32`). `/login` issues a JWT session cookie; the
+  integrations and routing-log pages, the OAuth handshakes, and the CSV
+  export all require it. Login attempts are rate-limited per IP.
+- **Abuse protection** on the public lead-facing surfaces (submit, delete,
+  booking, availability): an off-screen honeypot field that bots fill and
+  humans never see (a filled value is rejected), a disposable-email check on
+  the form's email field (static list in `packages/core`), and a per-IP
+  sliding-window rate limiter (in-memory, per instance — see
+  `docs/decisions.md`). Over-limit requests get `429` with `Retry-After`.
 
 ## Speed-to-lead alerts
 
@@ -263,7 +277,7 @@ have been waiting, and the submission reference.
 ```bash
 npm install
 docker compose up -d   # Postgres 16
-cp .env.example .env
+cp .env.example .env   # set ADMIN_EMAIL, ADMIN_PASSWORD, AUTH_SECRET
 npm run db:migrate     # create tables from packages/db/migrations
 npm run db:seed        # optional: demo org + form at /f/book-a-demo
 npm run dev            # web app on http://localhost:3000

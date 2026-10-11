@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { decryptJson, encryptJson, getEncryptionKey, secretsMatch } from "../src/lib/crypto.js";
+import {
+  decryptJson,
+  encryptJson,
+  getEncryptionKey,
+  secretsMatch,
+} from "../src/lib/crypto.js";
 
 const key = Buffer.alloc(32, 7);
 
@@ -27,9 +32,7 @@ describe("token encryption", () => {
     const blob = Buffer.from(encryptJson({ secret: 1 }, key), "base64");
     const last = blob.length - 1;
     blob[last] = blob[last]! ^ 0xff;
-    expect(() =>
-      decryptJson(blob.toString("base64"), key),
-    ).toThrow();
+    expect(() => decryptJson(blob.toString("base64"), key)).toThrow();
   });
 
   it("refuses blobs from another key", () => {
@@ -44,7 +47,8 @@ describe("token encryption", () => {
       expect(() => getEncryptionKey()).toThrow(/TOKEN_ENCRYPTION_KEY is not set/);
       process.env.TOKEN_ENCRYPTION_KEY = "short";
       expect(() => getEncryptionKey()).toThrow(/64 hex/);
-      process.env.TOKEN_ENCRYPTION_KEY = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+      process.env.TOKEN_ENCRYPTION_KEY =
+        "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
       expect(getEncryptionKey()).toHaveLength(32);
     } finally {
       if (previous === undefined) delete process.env.TOKEN_ENCRYPTION_KEY;

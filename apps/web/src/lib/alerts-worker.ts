@@ -72,7 +72,9 @@ export async function handleSpeedToLeadAlert(
     alreadyAlerted: row.submission.alertedAt !== null,
   });
   if (decision === "skip_booked") {
-    console.log(`Speed-to-lead alert skipped: submission ${data.submissionId} booked in time.`);
+    console.log(
+      `Speed-to-lead alert skipped: submission ${data.submissionId} booked in time.`,
+    );
     return;
   }
   if (decision === "skip_already_alerted") {
@@ -97,7 +99,8 @@ export async function handleSpeedToLeadAlert(
   );
   const alert = buildSpeedToLeadAlert({
     repName: rep.name,
-    leadName: typeof row.submission.data?.name === "string" ? row.submission.data.name : null,
+    leadName:
+      typeof row.submission.data?.name === "string" ? row.submission.data.name : null,
     leadEmail: row.submission.email,
     formName: row.formName,
     waitedMinutes,

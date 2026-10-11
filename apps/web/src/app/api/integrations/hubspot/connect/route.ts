@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  OAUTH_STATE_COOKIE_HUBSPOT,
-  adminKeyOk,
-  findOrg,
-  newStateValue,
-} from "@/lib/integrations";
+import { OAUTH_STATE_COOKIE_HUBSPOT, findOrg, newStateValue } from "@/lib/integrations";
+import { auth } from "@/lib/auth";
 import { hubspotConfig } from "@/lib/crm";
 import { authorizationUrl } from "@switchboard/crm-hubspot";
 import { getDb } from "@/lib/db";
@@ -12,17 +8,16 @@ import { getDb } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 /**
- * Start the HubSpot OAuth handshake (admin-only via `ADMIN_SETUP_KEY` until
- * Auth.js lands): verify the key, stash a CSRF state cookie, redirect to
- * HubSpot's consent screen.
+ * Start the HubSpot OAuth handshake (admin-only, task 13): require a
+ * signed-in admin session, stash a CSRF state cookie, redirect to HubSpot's
+ * consent screen.
  */
 export async function GET(request: Request) {
-  const key = new URL(request.url).searchParams.get("key");
   const baseUrl = new URL(request.url).origin;
   const fail = (error: string) =>
     NextResponse.redirect(`${baseUrl}/integrations?error=${error}`);
 
-  if (!adminKeyOk(key)) return fail("admin_key");
+  if (!(await auth())) return NextResponse.redirect(`${baseUrl}/login`);
   const config = hubspotConfig();
   if (!config) return fail("hubspot_not_configured");
 

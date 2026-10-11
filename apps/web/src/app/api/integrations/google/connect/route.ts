@@ -1,28 +1,27 @@
 import { NextResponse } from "next/server";
 import {
   OAUTH_STATE_COOKIE,
-  adminKeyOk,
   findOrg,
   googleConfig,
   newStateValue,
 } from "@/lib/integrations";
+import { auth } from "@/lib/auth";
 import { authorizationUrl } from "@switchboard/calendar-google";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Start the Google OAuth handshake (admin-only via `ADMIN_SETUP_KEY` until
- * Auth.js lands): verify the key, stash a CSRF state cookie, redirect to
- * Google's consent screen.
+ * Start the Google OAuth handshake (admin-only, task 13): require a signed-in
+ * admin session, stash a CSRF state cookie, redirect to Google's consent
+ * screen.
  */
 export async function GET(request: Request) {
-  const key = new URL(request.url).searchParams.get("key");
   const baseUrl = new URL(request.url).origin;
   const fail = (error: string) =>
     NextResponse.redirect(`${baseUrl}/integrations?error=${error}`);
 
-  if (!adminKeyOk(key)) return fail("admin_key");
+  if (!(await auth())) return NextResponse.redirect(`${baseUrl}/login`);
   const config = googleConfig();
   if (!config) return fail("google_not_configured");
 

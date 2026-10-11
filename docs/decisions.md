@@ -360,3 +360,37 @@ committed normally now.
   `serverExternalPackages` and the instrumentation import sits inside the
   `NEXT_RUNTIME === "nodejs"` check so the Node-only graph is never bundled
   for the edge runtime.
+
+## 2026-10-10 — Admin auth + abuse protection (task 13)
+
+- **Auth.js credentials, env-configured admin**: the single self-hosted admin
+  account comes from `ADMIN_EMAIL` + `ADMIN_PASSWORD` (never the database —
+  no seed secret, nothing to rotate in a UI), with a JWT session cookie
+  signed by `AUTH_SECRET`. Chosen over a hand-rolled cookie session because
+  the brief mandates Auth.js and it handles the CSRF/cookie/session
+  machinery; chosen over an OAuth-provider login because a self-hoster's
+  admin should not depend on a third-party identity to manage their own
+  instance. Guarded surfaces: `/integrations`, `/routing-log`, both OAuth
+  connect routes, and the CSV export (which also accepts `ADMIN_SETUP_KEY`
+  so cron/curl exports work without a cookie jar — the key's only remaining
+  job). Login attempts are rate-limited per IP.
+- **Honeypot before CAPTCHA**: the hosted form renders an off-screen,
+  autocomplete-off field ("leave this field empty"); a filled value means a
+  bot and the submission is rejected with a generic error. No third-party
+  script, no challenge for humans, and the embed inherits it automatically
+  because the iframe hosts the same form.
+- **Disposable-email check is a static, exact-domain list** in
+  `packages/core` (`isDisposableEmail`, next to the free-email list). It
+  only needs to catch the common throwaway services bots rotate through;
+  subdomain and lookalike hosts are deliberately not matched (same contract
+  as `isFreeEmail`). Enforced on the form's email field with an ordinary
+  field error, so it degrades to normal validation UX.
+- **Rate limiting is in-memory, per instance**: a sliding-window log keyed
+  by `x-forwarded-for` (first hop) / `x-real-ip` / "unknown", with limits
+  per route purpose (submit 30/5min, delete 10/5min, booking 20/5min,
+  availability 60/5min, login 10/5min). Rejected over-limit requests get
+  `429` + `Retry-After`. Chosen over a Postgres counter table to keep every
+  public request cheap and avoid a migration; the documented tradeoff is
+  that limits reset on restart and are per instance (a load-balanced
+  deployment multiplies them — acceptable for v0.1 single-node self-hosting;
+  revisit with a real multi-node story).

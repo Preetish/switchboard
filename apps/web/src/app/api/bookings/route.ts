@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
 import { createBooking, parseBookingInput } from "@/lib/bookings";
 import { getDb } from "@/lib/db";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Create a booking for one rep at one slot. The instant-booking UI (roadmap
- * task 9) calls this after a routing decision picks the rep; the embed uses
- * the same surface. Public by design — the lead books themselves, and abuse
- * protection (honeypot, rate limiting) lands with task 15.
+ * Create a booking for one rep at one slot. The instant-booking UI calls
+ * this after a routing decision picks the rep; the embed uses the same
+ * surface. Public by design — the lead books themselves; the slot-hold
+ * uniqueness plus the per-IP rate limiter are the abuse guards.
  */
 export async function POST(request: Request) {
+  const limit = checkRateLimit("booking", clientIp(request));
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many booking attempts — please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
   let body: unknown;
   try {
     body = await request.json();

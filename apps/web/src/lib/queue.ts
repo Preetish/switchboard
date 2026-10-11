@@ -79,7 +79,9 @@ export async function scheduleSpeedToLeadAlert(submissionId: string): Promise<vo
       },
     );
     if (!jobId) {
-      console.warn(`Speed-to-lead alert for submission ${submissionId} was deduplicated.`);
+      console.warn(
+        `Speed-to-lead alert for submission ${submissionId} was deduplicated.`,
+      );
     }
   } catch (cause) {
     console.error(
