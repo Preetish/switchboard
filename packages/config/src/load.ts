@@ -2,6 +2,8 @@ import path from "node:path";
 import {
   ATTRIBUTION_RULE_PATHS,
   COOKIE_IDS,
+  validateCustomCss,
+  validateTheme,
   DERIVED_FORM_KEYS,
   emailFieldKey,
   isValidTimeZone,
@@ -184,9 +186,20 @@ export function loadConfig(text: string, configPath: string, readFile: ReadFile)
         `${where}: rules send some leads to self-serve but selfServeUrl isn't set — they'll see a plain thank-you`,
       );
     }
+    const formTheme = validateTheme(form.theme, { allowFont: true, where: `${where} theme` });
+    if (!formTheme.ok) errors.push(...formTheme.errors);
+    else warnings.push(...formTheme.warnings);
+    let formCss: string | undefined;
+    if (form.customCss !== undefined) {
+      const checked = validateCustomCss(form.customCss, `${where} customCss`);
+      if (checked.ok) formCss = checked.css;
+      else errors.push(checked.error);
+    }
     const settings: FormSettings = {
       ...(form.submitLabel ? { submitLabel: form.submitLabel } : {}),
       ...(form.selfServeUrl ? { selfServeUrl: form.selfServeUrl } : {}),
+      ...(formTheme.ok && Object.keys(formTheme.theme).length > 0 ? { theme: formTheme.theme } : {}),
+      ...(formCss ? { customCss: formCss } : {}),
     };
     return {
       slug: form.slug,
@@ -211,9 +224,22 @@ export function loadConfig(text: string, configPath: string, readFile: ReadFile)
     }
   }
 
+  const orgTheme = validateTheme(config.theme, { allowFont: true, where: "theme" });
+  if (!orgTheme.ok) errors.push(...orgTheme.errors);
+  else warnings.push(...orgTheme.warnings);
+  let orgCss: string | undefined;
+  if (config.customCss !== undefined) {
+    const checked = validateCustomCss(config.customCss, "customCss");
+    if (checked.ok) orgCss = checked.css;
+    else errors.push(checked.error);
+  }
+
   if (errors.length > 0) return { ok: false, errors };
-  const settings: OrgSettings =
-    Object.keys(hubspotProperties).length > 0 ? { hubspotProperties } : {};
+  const settings: OrgSettings = {
+    ...(Object.keys(hubspotProperties).length > 0 ? { hubspotProperties } : {}),
+    ...(orgTheme.ok && Object.keys(orgTheme.theme).length > 0 ? { theme: orgTheme.theme } : {}),
+    ...(orgCss ? { customCss: orgCss } : {}),
+  };
   return {
     ok: true,
     plan: { org: { ...config.org, settings }, reps, teams, forms },

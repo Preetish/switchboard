@@ -518,3 +518,32 @@ decisions. Each item notes what it supersedes.
   properties differently and reject unknown ones, so `switchboard.yaml`
   states the mapping.
 
+## 2026-10-11: Matching the customer's site
+
+- **Themes are tokens, not stylesheets.** Every form surface already reads
+  `--sb-*` custom properties, so a theme is a handful of validated values
+  turned into those properties (packages/core/src/theme.ts). No component
+  changes per theme, and nothing a theme says is pasted into CSS as-is.
+- **Contrast is computed, not trusted.** Button text is white or near-black,
+  whichever is readable on the accent; accent-colored text is nudged toward
+  black or white until it meets AA on the surface. A brand color can make
+  the form look different but not unreadable.
+- **Three layers, last wins:** org theme, form theme, embed snippet. The
+  snippet layer excludes fonts, because a font is an external stylesheet and
+  snippet values come from whatever page the embed is on.
+- **`plain` layout over more knobs.** Most "match my site" requests are
+  "stop looking like a separate widget". Dropping the panel, filling the
+  width, and tinting fields with `color-mix` against the text color makes the
+  form sit on any background without asking for every color.
+- **Custom CSS from config only, with no `@import`/`url()`.** It's trusted
+  admin input, but a form collects personal data, so the page shouldn't load
+  anything that wasn't declared. Stable `sb-*` class names give it targets
+  that survive CSS-module hashing.
+- **No auto-detection of the host's styles.** The loader could read computed
+  colors and fonts, but it can't load the host's font files into the iframe,
+  and a guessed brand color is often the wrong one. Explicit settings plus a
+  live preview are more dependable.
+- **Build-your-own-form is a first-class path**, so the public endpoints send
+  CORS headers (any site, or `EMBED_ALLOWED_ORIGINS`). They use no cookies,
+  so this exposes nothing a direct request couldn't.
+

@@ -139,12 +139,95 @@ script-src https://switchboard.yourcompany.com;
 frame-src  https://switchboard.yourcompany.com;
 ```
 
-## Styling
+## Matching your site
 
-The form uses Switchboard's design tokens, including dark mode that follows
-the visitor's system setting. Control the width by sizing the placeholder;
-the form is at most 34rem wide inside it. Styles inside the iframe can't be
-changed from your page; that isolation is what keeps your CSS and ours apart.
+The form runs in an iframe, so your page's CSS can't reach it (which also
+means it can't break it). You style it with a theme instead.
+
+**Set a theme in `switchboard.yaml`** for every form, and override it per
+form ([reference](configuration.md#theme-optional)):
+
+```yaml
+theme:
+  accent: "#0B5FFF"                 # buttons, selected day and time, focus rings
+  radius: 4                         # px, 0 to 24
+  font:
+    family: "Inter, system-ui, sans-serif"
+    stylesheet: https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap
+  colorScheme: light                # light, dark, or auto (follow the visitor)
+  layout: plain                     # card (bordered panel) or plain (fields only)
+  background: transparent           # or a hex color
+
+forms:
+  - slug: book-a-demo
+    theme: { accent: "#E4002B" }    # just this form
+```
+
+**Override it on one page** with attributes on the placeholder. These take
+the same values, except fonts:
+
+```html
+<div data-switchboard-form="book-a-demo"
+     data-switchboard-accent="#E4002B"
+     data-switchboard-scheme="dark"
+     data-switchboard-layout="plain"
+     data-switchboard-radius="2"
+     data-switchboard-background="transparent"></div>
+```
+
+The embed snippet's settings win over the form's, and the form's win over
+the top-level theme. Invalid values are ignored rather than breaking the form.
+
+**Check it on the Setup page.** Each form shows a live preview with its
+theme, in light and dark if it follows the visitor's setting. The preview
+can't submit, so you can click around freely.
+
+A few things to know:
+
+- **Fonts.** Your page's web fonts aren't available inside the iframe. Give
+  the same font as `font.family` and load it with `font.stylesheet`; system
+  fonts work without a stylesheet.
+- **Plain layout** drops the panel, fills the placeholder's width, and tints
+  fields so they read on any background. Use it when the form sits inside a
+  section you've already designed; use `card` when it stands alone.
+- **Readable by design.** Button text turns white or near-black, whichever
+  is readable on your accent, and accent-colored text is adjusted to meet
+  WCAG AA. `npm run config:check` warns if an accent is too faint to see
+  against the background.
+- **Width** follows the placeholder in `plain` layout; `card` is at most
+  34rem wide, centered.
+
+### Custom CSS
+
+For anything a theme doesn't cover, add `customCss` (top level and/or per
+form) in `switchboard.yaml`. It's added after the theme, and it can target
+these stable class names:
+
+| Class | Element |
+| --- | --- |
+| `sb-card` | The form panel |
+| `sb-org`, `sb-title`, `sb-heading`, `sb-text` | Company name, form title, step headings, body text |
+| `sb-field`, `sb-label`, `sb-input`, `sb-help`, `sb-error` | A field and its parts |
+| `sb-button` | Primary buttons |
+| `sb-day`, `sb-slot` (plus `sb-active` when selected) | Day tabs and time slots |
+| `sb-summary`, `sb-notice`, `sb-alert`, `sb-privacy` | Booking summary, notices, errors, the data link |
+
+```yaml
+customCss: |
+  .sb-title { font-weight: 600; letter-spacing: -0.01em; }
+  .sb-button { text-transform: uppercase; letter-spacing: 0.04em; }
+```
+
+Custom CSS can't use `@import` or `url()` (forms collect personal data, so
+the page doesn't load resources you didn't declare); load fonts with
+`theme.font.stylesheet`. It's only accepted from `switchboard.yaml`, never
+from an embed snippet. Structure, focus states, and keyboard behavior stay
+the same whatever the styling.
+
+### Building your own form
+
+If you need full control over the markup, skip the iframe and build the form
+yourself against the API: see [Building your own form](custom-form.md).
 
 ## Behavior notes
 

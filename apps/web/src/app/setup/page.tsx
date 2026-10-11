@@ -1,5 +1,5 @@
-import { validateRuleSet, type RouteAction } from "@switchboard/core";
-import { forms, integrations, ruleSets, teamMembers, teams, users } from "@switchboard/db";
+import { mergeThemes, validateRuleSet, type RouteAction } from "@switchboard/core";
+import { forms, integrations, orgs, ruleSets, teamMembers, teams, users } from "@switchboard/db";
 import { and, asc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { adminSession } from "@/lib/auth";
@@ -8,6 +8,7 @@ import { appBaseUrl, findOrg } from "@/lib/integrations";
 import AdminHeader from "../AdminHeader";
 import styles from "../admin.module.css";
 import CopyButton from "../integrations/CopyButton";
+import PreviewFrame from "./PreviewFrame";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Setup · Switchboard" };
@@ -30,6 +31,9 @@ export default async function SetupPage() {
   const db = getDb();
   const org = await findOrg(db);
   const base = appBaseUrl();
+  const [orgRow] = org
+    ? await db.select({ settings: orgs.settings }).from(orgs).where(eq(orgs.id, org.id)).limit(1)
+    : [];
 
   const formRows = org
     ? await db
@@ -92,6 +96,7 @@ export default async function SetupPage() {
             const url = `${base}/f/${form.slug}`;
             const snippet = `<div data-switchboard-form="${form.slug}"></div>\n<script src="${base}/embed.js" data-switchboard-consent="granted" defer></script>`;
             const parsed = rules ? validateRuleSet(rules) : null;
+            const scheme = mergeThemes(orgRow?.settings.theme, form.settings?.theme).colorScheme;
             return (
               <section key={form.id} className={styles.section} aria-labelledby={`form-${form.slug}`}>
                 <h3 id={`form-${form.slug}`} className={styles.sectionTitle}>
@@ -105,6 +110,17 @@ export default async function SetupPage() {
                 <div className={styles.actions}>
                   <CopyButton value={url} label="Copy link" />
                   <CopyButton value={snippet} label="Copy embed code" />
+                </div>
+                <h4 className={styles.subheading}>Preview</h4>
+                <div className={styles.previews}>
+                  {scheme === "light" || scheme === "dark" ? (
+                    <PreviewFrame slug={form.slug} scheme={null} label={scheme === "light" ? "Light" : "Dark"} />
+                  ) : (
+                    <>
+                      <PreviewFrame slug={form.slug} scheme="light" label="Light (visitors in light mode)" />
+                      <PreviewFrame slug={form.slug} scheme="dark" label="Dark (visitors in dark mode)" />
+                    </>
+                  )}
                 </div>
                 <h4 className={styles.subheading}>
                   Rules {version ? <span className={styles.muted}>· version {version}</span> : null}

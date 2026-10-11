@@ -35,6 +35,26 @@ org:
 One instance serves one org. If a database ever holds several, `ORG_SLUG`
 selects which one the app uses.
 
+## `theme` (optional)
+
+How every form looks; a form can override any of it with its own `theme`.
+See [Matching your site](embed.md#matching-your-site) for examples and the
+embed-snippet overrides.
+
+| Setting | Values | Default |
+| --- | --- | --- |
+| `accent` | Hex color, `#RGB` or `#RRGGBB` | Switchboard orange |
+| `radius` | Whole pixels, 0 to 24 | 8 |
+| `font.family` | CSS font list, e.g. `"Inter, system-ui, sans-serif"` | System fonts |
+| `font.stylesheet` | https URL of a stylesheet that loads the font | None |
+| `colorScheme` | `light`, `dark`, `auto` (follow the visitor) | `auto` |
+| `layout` | `card` (bordered panel), `plain` (fields only, full width) | `card` |
+| `background` | `transparent` or a hex color, behind the form | Page background (hosted), transparent (embed) |
+
+`customCss` (top level and per form) adds CSS after the theme; see
+[custom CSS](embed.md#custom-css) for the class names it can target and what
+isn't allowed.
+
 ## `hubspot` (optional)
 
 Write a lead's attribution onto their HubSpot contact. Map each field to a
@@ -100,6 +120,8 @@ forms:
     name: Book a demo                      # heading on the form
     submitLabel: Request a demo            # optional; default "Continue"
     selfServeUrl: https://acme.com/signup  # where self-serve leads go
+    theme: { accent: "#E4002B" }           # optional; overrides the top-level theme
+    customCss: ".sb-title { font-weight: 600 }"  # optional
     fields: [...]
     rules: rules/book-a-demo.yaml          # a file (relative to this one) or inline
 ```

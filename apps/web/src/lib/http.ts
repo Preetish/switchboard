@@ -40,3 +40,49 @@ export async function readJsonBody(
     return undefined;
   }
 }
+
+/**
+ * CORS for the public lead endpoints (submit, availability, booking, data
+ * deletion), so customers can build their own form on their own site (see
+ * docs/custom-form.md). These endpoints use no cookies, so allowing
+ * cross-origin calls exposes nothing a direct request couldn't. The same
+ * EMBED_ALLOWED_ORIGINS list that limits who can frame forms limits who can
+ * call these; unset means any site.
+ */
+function allowedOrigin(request: Request): string | null {
+  const origin = request.headers.get("origin");
+  const list = process.env.EMBED_ALLOWED_ORIGINS?.trim();
+  if (!list) return "*";
+  if (!origin) return null;
+  return list.split(/\s+/).includes(origin) ? origin : null;
+}
+
+function corsHeaders(origin: string): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "content-type",
+    "Access-Control-Max-Age": "86400",
+    ...(origin === "*" ? {} : { Vary: "Origin" }),
+  };
+}
+
+/** The preflight answer for a public endpoint. */
+export function corsPreflight(request: Request): Response {
+  const origin = allowedOrigin(request);
+  return new Response(null, { status: 204, headers: origin ? corsHeaders(origin) : {} });
+}
+
+/** Wrap a public endpoint's handler so its responses carry CORS headers. */
+export function withCors<Args extends unknown[]>(
+  handler: (request: Request, ...args: Args) => Promise<Response>,
+) {
+  return async (request: Request, ...args: Args): Promise<Response> => {
+    const response = await handler(request, ...args);
+    const origin = allowedOrigin(request);
+    if (origin) {
+      for (const [key, value] of Object.entries(corsHeaders(origin))) response.headers.set(key, value);
+    }
+    return response;
+  };
+}

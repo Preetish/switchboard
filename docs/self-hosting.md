@@ -62,7 +62,7 @@ known-default secret, and lists what to fix.
 | `SLACK_WEBHOOK_URL` | no | Speed-to-lead alerts to Slack (email is the fallback) |
 | `SPEED_TO_LEAD_MINUTES` | no | Alert a rep when a routed lead hasn't booked after this many minutes (default 5) |
 | `FALLBACK_BOOKING_URL` | no | Booking link included in confirmations when the calendar event couldn't be created |
-| `EMBED_ALLOWED_ORIGINS` | no | Space-separated origins allowed to embed forms, e.g. `https://acme.com https://www.acme.com`. Default: any site |
+| `EMBED_ALLOWED_ORIGINS` | no | Space-separated origins allowed to embed forms or call the public API from a browser, e.g. `https://acme.com https://www.acme.com`. Default: any site |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | no | Turn on a Cloudflare Turnstile check on forms |
 | `ADMIN_SETUP_KEY` | no | Bearer token for scripted CSV exports ([API](api.md#export-the-routing-log)) |
 | `ORG_SLUG` | no | Pick the org when a database holds several |

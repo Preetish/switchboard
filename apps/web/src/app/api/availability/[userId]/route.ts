@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { MAX_HORIZON_DAYS, getAvailability } from "@/lib/integrations";
 import { findRoutedLead } from "@/lib/lead-access";
 import { checkRateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit";
-import { isUuid } from "@/lib/http";
+import { corsPreflight, isUuid, withCors } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ function intParam(
  * routed to this rep, so rep calendars can't be browsed by anyone holding a
  * rep id. Returns the rep's name and zone plus slot times only.
  */
-export async function GET(
+async function handleGET(
   request: Request,
   { params }: { params: Promise<{ userId: string }> },
 ) {
@@ -52,3 +52,6 @@ export async function GET(
   if (!availability) return notFound();
   return NextResponse.json(availability, { headers: { "Cache-Control": "no-store" } });
 }
+
+export const GET = withCors(handleGET);
+export const OPTIONS = corsPreflight;

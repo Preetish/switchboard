@@ -16,6 +16,15 @@ Notable changes to Switchboard. The format follows
 - Rules can route on `attribution.*`; the routing log shows each lead's
   source, the CSV export has attribution columns, and `hubspot.properties`
   writes attribution to HubSpot contacts.
+- Themes: `theme` in `switchboard.yaml` (org-wide and per form) sets the
+  accent, corner radius, font (with a stylesheet URL), light/dark/auto, a
+  borderless `plain` layout, and the background. Embed snippets can override
+  them with `data-switchboard-accent`, `-scheme`, `-layout`, `-radius`, and
+  `-background`. Button text and accent-colored text stay readable.
+- `customCss` in `switchboard.yaml`, with stable `sb-*` class names to target.
+- Live, non-submitting previews of each form on the Setup page.
+- CORS on the public endpoints and a guide to building your own form on the
+  API.
 - Conversion events on the host page: `switchboard_submitted` and
   `switchboard_booked` in `window.dataLayer`, plus matching DOM events.
 

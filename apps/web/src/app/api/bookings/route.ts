@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createBooking, parseBookingInput } from "@/lib/bookings";
 import { getDb } from "@/lib/db";
-import { readJsonBody } from "@/lib/http";
+import { corsPreflight, readJsonBody, withCors } from "@/lib/http";
 import { checkRateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  * the overlap constraint, and the per-address rate limit are the guards
  * (see lib/bookings.ts).
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const limit = checkRateLimit("booking", clientIp(request));
   if (!limit.allowed) {
     return tooManyRequests(limit.retryAfterSeconds, {
@@ -44,3 +44,6 @@ export async function POST(request: Request) {
       );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

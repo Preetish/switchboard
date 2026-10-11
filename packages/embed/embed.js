@@ -22,6 +22,9 @@
  * `window.dataLayer` (GTM, GA4) and dispatches `switchboard:submitted` /
  * `switchboard:booked` DOM events, so your own tags fire on your page.
  *
+ * Theming: `data-switchboard-accent`, `-radius`, `-scheme`, `-layout`, and
+ * `-background` on a placeholder override the form's look for that embed.
+ *
  * Placeholders added later (single-page apps, modals) are mounted
  * automatically; `window.Switchboard.mount()` mounts on demand.
  *
@@ -166,6 +169,9 @@
     }
   }
 
+  // data-switchboard-<attribute> on a placeholder -> form query parameter.
+  var THEME_ATTRIBUTES = { accent: "accent", radius: "radius", scheme: "scheme", layout: "layout", background: "bg" };
+
   var OUTCOMES = ["route_user", "route_team", "self_serve_link", "fallback_queue"];
 
   /** Tell the host page about a conversion: GTM/GA4 dataLayer and a DOM event. */
@@ -221,7 +227,13 @@
       if (!slug || node.__sbEmbed) return;
       node.__sbEmbed = true;
       var iframe = document.createElement("iframe");
-      iframe.src = base + "/f/" + encodeURIComponent(slug) + "?embed=1";
+      // Look overrides for this placeholder (the server validates each).
+      var query = "?embed=1";
+      Object.keys(THEME_ATTRIBUTES).forEach(function (attribute) {
+        var value = node.getAttribute("data-switchboard-" + attribute);
+        if (value) query += "&" + THEME_ATTRIBUTES[attribute] + "=" + encodeURIComponent(value);
+      });
+      iframe.src = base + "/f/" + encodeURIComponent(slug) + query;
       iframe.title = node.getAttribute("data-switchboard-title") || "Book a meeting";
       iframe.style.cssText =
         "width:100%;border:0;color-scheme:normal;display:block;height:600px;transition:height .2s ease-out";

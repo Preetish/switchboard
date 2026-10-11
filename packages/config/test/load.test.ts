@@ -164,3 +164,32 @@ describe("attribution in config", () => {
     expect(!result.ok && result.errors.join()).toMatch(/HubSpot property names are lowercase/);
   });
 });
+
+describe("themes in config", () => {
+  it("stores the org theme and per-form overrides and custom CSS", () => {
+    const yaml = MINIMAL.replace(
+      "    rules: rules/demo.yaml",
+      '    rules: rules/demo.yaml\n    theme: { accent: "#e4002b", layout: plain }\n    customCss: ".sb-title { font-weight: 600 }"',
+    ) + 'theme: { accent: "#0b5fff", radius: 4, font: { family: "Inter, sans-serif" } }\n';
+    const result = load(yaml, { "/cfg/rules/demo.yaml": RULES });
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    expect(result.plan.org.settings.theme).toEqual({ accent: "#0B5FFF", radius: 4, font: { family: "Inter, sans-serif" } });
+    expect(result.plan.forms[0]!.settings).toMatchObject({
+      theme: { accent: "#E4002B", layout: "plain" },
+      customCss: ".sb-title { font-weight: 600 }",
+    });
+  });
+
+  it("reports theme and custom CSS problems with their location", () => {
+    const yaml = MINIMAL.replace(
+      "    rules: rules/demo.yaml",
+      '    rules: rules/demo.yaml\n    theme: { accent: blue }\n    customCss: "@import url(https://x)"',
+    ) + "theme: { radius: 99 }\n";
+    const result = load(yaml, { "/cfg/rules/demo.yaml": RULES });
+    if (result.ok) throw new Error("expected errors");
+    const text = result.errors.join("\n");
+    expect(text).toMatch(/forms\[0\] \(demo\) theme\.accent: use a hex color/);
+    expect(text).toMatch(/forms\[0\] \(demo\) customCss: @import, url\(\)/);
+    expect(text).toMatch(/theme\.radius: a whole number of pixels/);
+  });
+});

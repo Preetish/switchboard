@@ -50,6 +50,7 @@ export default function FormView({
   fields,
   settings,
   embedded = false,
+  preview = false,
   turnstileSiteKey = null,
 }: {
   slug: string;
@@ -58,6 +59,8 @@ export default function FormView({
   fields: FormField[];
   settings: FormSettings;
   embedded?: boolean;
+  /** Admin preview: shows the form as leads see it, but can't submit. */
+  preview?: boolean;
   /** Cloudflare Turnstile site key when the optional bot check is on. */
   turnstileSiteKey?: string | null;
 }) {
@@ -77,6 +80,7 @@ export default function FormView({
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (preview) return;
     setSubmitting(true);
     setErrors({});
     try {
@@ -120,7 +124,7 @@ export default function FormView({
 
   if (result) {
     return (
-      <section className={styles.card}>
+      <section className={`${styles.card} sb-card`}>
         <Outcome
           result={result}
           orgName={orgName}
@@ -139,11 +143,14 @@ export default function FormView({
     setValues((current) => ({ ...current, [key]: value }));
 
   return (
-    <section className={styles.card}>
-      <p className={styles.org}>{orgName}</p>
-      <h1 className={styles.title}>{formName}</h1>
+    <section className={`${styles.card} sb-card`}>
+      {preview ? (
+        <p className={styles.previewNote}>Preview: submitting is turned off here.</p>
+      ) : null}
+      <p className={`${styles.org} sb-org`}>{orgName}</p>
+      <h1 className={`${styles.title} sb-title`}>{formName}</h1>
       {formErrors.length > 0 ? (
-        <div role="alert" className={styles.alert}>
+        <div role="alert" className={`${styles.alert} sb-alert`}>
           {formErrors.map(([, message]) => (
             <p key={message}>{message}</p>
           ))}
@@ -162,7 +169,7 @@ export default function FormView({
           />
         </div>
         {fields.map((field) => (
-          <div className={styles.field} key={field.key}>
+          <div className={`${styles.field} sb-field`} key={field.key}>
             {field.type === "consent" ? (
               <label className={styles.consent}>
                 <input
@@ -176,14 +183,14 @@ export default function FormView({
               </label>
             ) : (
               <>
-                <label className={styles.label} htmlFor={field.key}>
+                <label className={`${styles.label} sb-label`} htmlFor={field.key}>
                   {field.label}
                   {field.required ? null : <span className={styles.optional}> (optional)</span>}
                 </label>
                 {field.type === "select" ? (
                   <select
                     id={field.key}
-                    className={styles.input}
+                    className={`${styles.input} sb-input`}
                     value={(values[field.key] as string) ?? ""}
                     onChange={(e) => setValue(field.key, e.target.value)}
                     aria-invalid={Boolean(errors[field.key])}
@@ -200,7 +207,7 @@ export default function FormView({
                 ) : field.type === "textarea" ? (
                   <textarea
                     id={field.key}
-                    className={styles.input}
+                    className={`${styles.input} sb-input`}
                     rows={3}
                     value={(values[field.key] as string) ?? ""}
                     onChange={(e) => setValue(field.key, e.target.value)}
@@ -210,7 +217,7 @@ export default function FormView({
                 ) : (
                   <input
                     id={field.key}
-                    className={styles.input}
+                    className={`${styles.input} sb-input`}
                     type={field.type === "email" ? "email" : "text"}
                     inputMode={field.type === "number" ? "numeric" : undefined}
                     autoComplete={autocompleteFor(field)}
@@ -224,12 +231,12 @@ export default function FormView({
               </>
             )}
             {field.type !== "consent" && field.helpText ? (
-              <p className={styles.help} id={`${field.key}-help`}>
+              <p className={`${styles.help} sb-help`} id={`${field.key}-help`}>
                 {field.helpText}
               </p>
             ) : null}
             {errors[field.key] ? (
-              <p className={styles.error} id={`${field.key}-error`}>
+              <p className={`${styles.error} sb-error`} id={`${field.key}-error`}>
                 {errors[field.key]}
               </p>
             ) : null}
@@ -244,7 +251,7 @@ export default function FormView({
             <div className={`cf-turnstile ${styles.captcha}`} data-sitekey={turnstileSiteKey} />
           </>
         ) : null}
-        <button type="submit" className={styles.button} disabled={!ready || submitting}>
+        <button type="submit" className={`${styles.button} sb-button`} disabled={!ready || submitting}>
           {submitting ? "Sending…" : (settings.submitLabel ?? "Continue")}
         </button>
       </form>
@@ -289,12 +296,12 @@ function Outcome({
   if (result.decision?.kind === "self_serve_link" && settings.selfServeUrl) {
     return (
       <>
-        <h1 className={styles.cardTitle}>You can get started right away</h1>
-        <p className={styles.cardBody}>
+        <h1 className={`${styles.cardTitle} sb-heading`}>You can get started right away</h1>
+        <p className={`${styles.cardBody} sb-text`}>
           Thanks for reaching out. You can set things up yourself on the next page, without
           waiting for a call.
         </p>
-        <a className={styles.linkButton} href={settings.selfServeUrl} target="_top">
+        <a className={`${styles.linkButton} sb-button`} href={settings.selfServeUrl} target="_top">
           Get started
         </a>
       </>
@@ -303,8 +310,8 @@ function Outcome({
   const who = result.repName ?? `Someone from ${orgName}`;
   return (
     <>
-      <h1 className={styles.cardTitle}>Thanks, we have your request</h1>
-      <p className={styles.cardBody}>
+      <h1 className={`${styles.cardTitle} sb-heading`}>Thanks, we have your request</h1>
+      <p className={`${styles.cardBody} sb-text`}>
         {who} will be in touch
         {result.email ? (
           <>
@@ -482,19 +489,19 @@ function BookingPanel({
           </span>
           Booked
         </p>
-        <h1 className={styles.cardTitle}>You&apos;re meeting {repName}</h1>
-        <div className={styles.summary}>
+        <h1 className={`${styles.cardTitle} sb-heading`}>You&apos;re meeting {repName}</h1>
+        <div className={`${styles.summary} sb-summary`}>
           <p className={styles.summaryWhen}>{formatLongDay(b.startAt)}</p>
           <p>
             {formatTime(b.startAt)} to {formatTime(b.endAt)}, {friendlyZone(zone)}
           </p>
         </div>
         {b.meetLink ? (
-          <a className={styles.linkButton} href={b.meetLink} target="_blank" rel="noreferrer">
+          <a className={`${styles.linkButton} sb-button`} href={b.meetLink} target="_blank" rel="noreferrer">
             Join with Google Meet
           </a>
         ) : null}
-        <p className={styles.cardBody}>
+        <p className={`${styles.cardBody} sb-text`}>
           {booked.invited
             ? "A calendar invite is on its way to your inbox."
             : `${repName} will send you a calendar invite.`}
@@ -508,8 +515,8 @@ function BookingPanel({
 
   return (
     <>
-      <h1 className={styles.cardTitle}>Pick a time with {repName}</h1>
-      <p className={styles.cardBody}>
+      <h1 className={`${styles.cardTitle} sb-heading`}>Pick a time with {repName}</h1>
+      <p className={`${styles.cardBody} sb-text`}>
         Choose a time for a {MEETING_MINUTES}‑minute call. {repName} handles requests like
         yours.
       </p>
@@ -524,7 +531,7 @@ function BookingPanel({
           </div>
         </div>
       ) : loadError ? (
-        <div role="alert" className={styles.alert}>
+        <div role="alert" className={`${styles.alert} sb-alert`}>
           <p>{loadError}</p>
           <button
             type="button"
@@ -535,20 +542,20 @@ function BookingPanel({
           </button>
         </div>
       ) : days.length === 0 ? (
-        <p role="status" className={styles.notice}>
+        <p role="status" className={`${styles.notice} sb-notice`}>
           {repName} has no open times in the next {AVAILABILITY_DAYS} days, so they&apos;ll
           reach out to find one that works.
         </p>
       ) : (
         <>
           {availability?.degraded ? (
-            <p className={styles.notice}>
+            <p className={`${styles.notice} sb-notice`}>
               We couldn&apos;t reach {repName}&apos;s calendar. If the time you pick clashes with
               something, they&apos;ll suggest another.
             </p>
           ) : null}
           {bookingError ? (
-            <div role="alert" className={styles.alert}>
+            <div role="alert" className={`${styles.alert} sb-alert`}>
               <p>{bookingError}</p>
             </div>
           ) : null}
@@ -560,7 +567,7 @@ function BookingPanel({
                 <button
                   key={group.dateKey}
                   type="button"
-                  className={active ? styles.dayTabActive : styles.dayTab}
+                  className={`${active ? styles.dayTabActive : styles.dayTab} sb-day${active ? " sb-active" : ""}`}
                   aria-pressed={active}
                   onClick={() => {
                     setSelectedDay(group.dateKey);
@@ -580,7 +587,7 @@ function BookingPanel({
                 <button
                   key={slot.start}
                   type="button"
-                  className={active ? styles.slotActive : styles.slot}
+                  className={`${active ? styles.slotActive : styles.slot} sb-slot${active ? " sb-active" : ""}`}
                   aria-pressed={active}
                   onClick={() => setSelectedSlot(slot.start)}
                 >
@@ -589,10 +596,10 @@ function BookingPanel({
               );
             })}
           </div>
-          <p className={styles.help}>Times are in {friendlyZone(zone)}.</p>
+          <p className={`${styles.help} sb-help`}>Times are in {friendlyZone(zone)}.</p>
           <button
             type="button"
-            className={styles.button}
+            className={`${styles.button} sb-button`}
             onClick={() => void confirmBooking()}
             disabled={!selectedSlot || booking}
           >
@@ -639,17 +646,17 @@ function PrivacyFooter({ slug }: { slug: string }) {
   }
 
   return (
-    <div className={styles.privacy}>
+    <div className={`${styles.privacy} sb-privacy`}>
       {open ? (
         <form onSubmit={onRequest}>
-          <label htmlFor={`${slug}-delete-email`} className={styles.help}>
+          <label htmlFor={`${slug}-delete-email`} className={`${styles.help} sb-help`}>
             Enter the email you used. We&apos;ll send a link to confirm deleting your data.
           </label>
           <div className={styles.deleteRow}>
             <input
               id={`${slug}-delete-email`}
               type="email"
-              className={styles.input}
+              className={`${styles.input} sb-input`}
               placeholder="you@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -660,7 +667,7 @@ function PrivacyFooter({ slug }: { slug: string }) {
             </button>
           </div>
           {message ? (
-            <p className={styles.help} role="status">
+            <p className={`${styles.help} sb-help`} role="status">
               {message}
             </p>
           ) : null}

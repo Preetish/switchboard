@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { DecisionOutcome } from "@switchboard/db";
 import { verifyTurnstile } from "@/lib/captcha";
 import { getDb } from "@/lib/db";
-import { readJsonBody } from "@/lib/http";
+import { corsPreflight, readJsonBody, withCors } from "@/lib/http";
 import { checkRateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { handleSubmission } from "@/lib/submit";
 
@@ -17,7 +17,7 @@ function publicDecision(decision: DecisionOutcome | null) {
   return decision ? { kind: decision.kind, userId: decision.userId ?? null } : null;
 }
 
-export async function POST(
+async function handlePOST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
@@ -83,3 +83,6 @@ export async function POST(
       );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

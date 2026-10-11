@@ -7,10 +7,12 @@
 .embedPage {
   display: flex;
   justify-content: center;
+  background: var(--sb-page-bg, transparent);
 }
 
 .page {
   min-height: 100vh;
+  background: var(--sb-page-bg, var(--sb-bg));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -18,13 +20,16 @@
   padding: var(--sb-space-6);
 }
 
+/* Theme hooks: `layout: plain` sets the --sb-form-* variables (theme.ts). */
 .card {
   width: 100%;
-  max-width: 34rem;
-  background: var(--sb-surface);
-  border: 1px solid var(--sb-border);
+  max-width: var(--sb-form-max-width, 34rem);
+  background: var(--sb-form-surface, var(--sb-surface));
+  border: 1px solid var(--sb-form-border, var(--sb-border));
   border-radius: var(--sb-radius-lg);
-  padding: var(--sb-space-8);
+  padding: var(--sb-form-padding, var(--sb-space-8));
+  font-family: var(--sb-font-sans);
+  color: var(--sb-text);
 }
 
 .cardTitle {
@@ -466,4 +471,12 @@
 .deleteButton:disabled {
   opacity: 0.6;
   cursor: progress;
+}
+
+.previewNote {
+  margin-bottom: var(--sb-space-4);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border-radius: var(--sb-radius-sm);
+  background: color-mix(in oklab, var(--sb-info) 12%, transparent);
+  font-size: var(--sb-text-sm);
 }
