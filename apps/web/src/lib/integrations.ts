@@ -9,7 +9,7 @@ import {
   refreshAccessToken,
   type GoogleOAuthConfig,
 } from "@switchboard/calendar-google";
-import { and, eq, gt, lt, or } from "drizzle-orm";
+import { and, asc, eq, gt, lt, or } from "drizzle-orm";
 import { bookings, orgs, users, type Database, type WorkingHours } from "@switchboard/db";
 import { secretsMatch } from "@/lib/crypto";
 import { releaseExpiredHolds } from "./holds";
@@ -22,7 +22,6 @@ import { getValidAccessToken, saveTokens, type TokenOwner } from "./token-store"
  * creation always act as the rep the lead was routed to.
  */
 
-export const DEFAULT_ORG_SLUG = process.env.ORG_SLUG ?? "acme";
 
 export function appBaseUrl(): string {
   return (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
@@ -50,14 +49,20 @@ export function adminKeyOk(key: string | undefined | null): boolean {
   return secretsMatch(key, expected);
 }
 
-/** The single org in single-org mode (`ORG_SLUG`). */
+/**
+ * The org this instance serves. One instance serves one org (the one in
+ * switchboard.yaml); `ORG_SLUG` picks one explicitly when a database holds
+ * several. Without it, the first org created wins.
+ */
 export async function findOrg(
   db: Database,
 ): Promise<{ id: string; name: string } | null> {
+  const slug = process.env.ORG_SLUG?.trim();
   const [row] = await db
     .select({ id: orgs.id, name: orgs.name })
     .from(orgs)
-    .where(eq(orgs.slug, DEFAULT_ORG_SLUG))
+    .where(slug ? eq(orgs.slug, slug) : undefined)
+    .orderBy(asc(orgs.createdAt))
     .limit(1);
   return row ?? null;
 }

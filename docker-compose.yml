@@ -1,5 +1,6 @@
 # One-command setup: `docker compose up` starts Postgres, applies migrations,
-# loads the demo data, and serves the app on http://localhost:3000.
+# loads your config (./config/switchboard.yaml) or the demo, and serves the
+# app on http://localhost:3000.
 #
 # Secrets you leave unset (AUTH_SECRET, TOKEN_ENCRYPTION_KEY, ADMIN_PASSWORD)
 # are generated on first start and kept in the `appdata` volume; the admin
@@ -33,9 +34,12 @@ services:
       - "${PORT:-3000}:3000"
     volumes:
       - appdata:/var/lib/switchboard
+      # Your setup: put switchboard.yaml (and any rule files) in ./config.
+      - ./config:/app/config:ro
     environment:
       DATABASE_URL: postgres://switchboard:${POSTGRES_PASSWORD:-switchboard}@db:5432/switchboard
-      # Demo form, reps, and rules at /f/book-a-demo. Set false for real use.
+      # Demo form, reps, and rules at /f/book-a-demo — used only when there is
+      # no ./config/switchboard.yaml.
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
@@ -43,7 +47,7 @@ services:
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
-      ORG_SLUG: ${ORG_SLUG:-acme}
+      ORG_SLUG: ${ORG_SLUG:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       HUBSPOT_CLIENT_ID: ${HUBSPOT_CLIENT_ID:-}

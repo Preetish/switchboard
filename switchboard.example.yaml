@@ -1,0 +1,55 @@
+# switchboard.yaml — your reps, teams, forms, and routing rules in one file.
+#
+#   cp switchboard.example.yaml switchboard.yaml
+#   npm run config:check       # validate (no database needed; good for CI)
+#   npm run config:apply       # write it to DATABASE_URL
+#
+# With Docker, put it at ./config/switchboard.yaml — it's applied on every
+# container start. Changes are applied in one transaction: all or nothing.
+
+org:
+  name: Your Company
+  slug: your-company
+
+# Everyone who can be routed a lead. Emails must match their Google account
+# (to connect their calendar) and, if you use HubSpot, their HubSpot owner.
+reps:
+  - email: ana@yourcompany.com
+    name: Ana Lopez
+    timezone: America/New_York          # IANA zone
+    workingHours:                       # optional; default Mon–Fri 09:00–17:00
+      days: [mon, tue, wed, thu, fri]
+      hours: "09:00-17:00"
+  - email: ben@yourcompany.com
+    name: Ben Ito
+    timezone: America/Los_Angeles
+
+# Teams rules route to. Members take turns by weight (weight 2 gets twice
+# the leads). weeklyCapacity caps bookings per week (0 = no cap); set
+# active: false while someone is out.
+teams:
+  - key: sales
+    name: Sales
+    members:
+      - { rep: ana@yourcompany.com, weight: 2 }
+      - { rep: ben@yourcompany.com, weeklyCapacity: 15 }
+
+# Each form gets a hosted page at /f/<slug> and an embed snippet.
+forms:
+  - slug: book-a-demo
+    name: Book a demo
+    fields:
+      - { key: name, label: Full name, type: text, required: true }
+      - { key: email, label: Work email, type: email, required: true }
+      - { key: company_size, label: Company size, type: number, required: true }
+      - key: consent
+        label: I agree that my details are stored to process this request.
+        type: consent
+        required: true
+    # Rules can live inline (below) or in their own file: `rules: rules/demo.yaml`.
+    rules:
+      rules:
+        - name: Personal email goes self-serve
+          when: { form.email: { freeEmail: true } }
+          route: { action: self_serve_link }
+      fallback: { team: sales, strategy: round_robin }

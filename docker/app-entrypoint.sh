@@ -46,9 +46,18 @@ export ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.com}"
 echo "[switchboard] applying database migrations..."
 npm run --silent db:migrate
 
-if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
-  echo "[switchboard] loading demo data (SEED_DEMO_DATA=true)..."
-  node packages/db/scripts/seed.mjs
+# Your setup (reps, teams, forms, rules) from switchboard.yaml, applied on
+# every start so editing the file and restarting is the whole workflow. An
+# invalid file stops the container with a list of what to fix.
+CONFIG_FILE="${SWITCHBOARD_CONFIG:-/app/config/switchboard.yaml}"
+if [ -f "$CONFIG_FILE" ]; then
+  echo "[switchboard] applying $CONFIG_FILE..."
+  node packages/config/dist/cli.mjs apply "$CONFIG_FILE"
+elif [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
+  echo "[switchboard] no config at $CONFIG_FILE — loading the demo (SEED_DEMO_DATA=true)..."
+  node packages/config/dist/cli.mjs apply examples/switchboard.demo.yaml
+else
+  echo "[switchboard] no config at $CONFIG_FILE — copy switchboard.example.yaml there to set up your forms."
 fi
 
 echo "[switchboard] starting web app on port ${PORT:-3000}..."

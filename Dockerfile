@@ -14,12 +14,14 @@ COPY packages/ui/package.json packages/ui/
 COPY packages/calendar-google/package.json packages/calendar-google/
 COPY packages/crm-hubspot/package.json packages/crm-hubspot/
 COPY packages/embed/package.json packages/embed/
+COPY packages/config/package.json packages/config/
 RUN npm ci
 
 # Workspace packages ship TypeScript source and are compiled by Next via
 # transpilePackages — no per-package build step.
 COPY . .
 RUN npm run build --workspace @switchboard/web \
+  && npm run build --workspace @switchboard/config \
   && npm prune --omit=dev \
   && npm cache clean --force
 

@@ -27,3 +27,7 @@ next-env.d.ts
 # OS files
 .DS_Store
 Thumbs.db
+
+# Your own setup (see switchboard.example.yaml)
+/switchboard.yaml
+/config/
