@@ -15,6 +15,7 @@ import { forms, routingDecisions, submissions, ruleSets, users } from "@switchbo
 import { fetchCrmContext, type CrmContext } from "./crm";
 import { scheduleCrmSync, scheduleSpeedToLeadAlert } from "./jobs";
 import { finalizeOutcome } from "./routing";
+import { log } from "./log";
 
 export type SubmitOutcome =
   | { status: "not_found" }
@@ -81,7 +82,7 @@ export async function handleSubmission(
     ? validateRuleSet(row.ruleSet.rules)
     : { ok: true as const, ruleSet: EMPTY_RULE_SET };
   if (!parsed.ok) {
-    console.error(
+    log.error(
       `Rule set for form "${form.slug}" is invalid; routing to the fallback queue: ${parsed.errors.join("; ")}`,
     );
   }

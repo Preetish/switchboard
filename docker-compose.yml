@@ -26,6 +26,8 @@ services:
       retries: 10
 
   app:
+    # Uses the published image when available, otherwise builds this checkout.
+    image: ghcr.io/preetish/switchboard:${SWITCHBOARD_VERSION:-latest}
     build: .
     depends_on:
       db:

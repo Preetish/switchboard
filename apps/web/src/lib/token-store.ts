@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { integrations, type Database, type Integration } from "@switchboard/db";
 import { decryptJson, encryptJson, getEncryptionKey } from "./crypto";
+import { log } from "./log";
 
 /**
  * Encrypted OAuth token storage shared by every provider. A connection is
@@ -65,7 +66,7 @@ export async function loadTokens(
     // Unreadable blob: TOKEN_ENCRYPTION_KEY was rotated or lost. Treated as
     // not connected (an admin reconnects and overwrites the row), but logged
     // loudly — silently looking disconnected is a miserable thing to debug.
-    console.error(
+    log.error(
       `Stored ${provider} tokens could not be decrypted (was TOKEN_ENCRYPTION_KEY changed?): ${
         cause instanceof Error ? cause.message : String(cause)
       }`,
@@ -155,7 +156,7 @@ export async function getValidAccessToken(
     await saveTokens(db, provider, owner, merged);
     return merged.accessToken;
   } catch (cause) {
-    console.error(
+    log.error(
       `${provider} token refresh failed: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
     // The user revoked access (or the grant expired): flag the connection so

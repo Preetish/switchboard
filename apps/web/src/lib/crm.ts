@@ -15,6 +15,7 @@ import { eq } from "drizzle-orm";
 import { bookings, submissions, type Database } from "@switchboard/db";
 import { appBaseUrl } from "./integrations";
 import { getValidAccessToken, saveTokens } from "./token-store";
+import { log } from "./log";
 
 /**
  * HubSpot integration plumbing: env config, OAuth handshake completion, and
@@ -50,7 +51,7 @@ export async function connectHubspot(
     await saveTokens(db, "hubspot", { orgId, userId: null }, tokens);
     return { ok: true };
   } catch (cause) {
-    console.error(
+    log.error(
       `HubSpot token exchange failed: ${cause instanceof HubspotAuthError ? cause.message : String(cause)}`,
     );
     return { ok: false, error: "exchange_failed" };
@@ -95,7 +96,7 @@ function withDeadline<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   let deadlineHit = false;
   promise.catch((cause: unknown) => {
     if (!deadlineHit) return;
-    console.error(
+    log.error(
       `HubSpot lookup finished late: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
   });
@@ -152,13 +153,13 @@ export async function fetchCrmContext(
       CRM_CONTEXT_BUDGET_MS,
     );
     if (!context && !lookupFinished) {
-      console.error(
+      log.error(
         "HubSpot contact lookup did not finish in time; routing continues without CRM data.",
       );
     }
     return context;
   } catch (cause) {
-    console.error(
+    log.error(
       `HubSpot contact lookup failed: ${
         cause instanceof HubspotApiError ? cause.message : String(cause)
       }`,
@@ -212,7 +213,7 @@ export async function syncLeadToCrm(db: Database, submissionId: string): Promise
     });
   } catch (cause) {
     if (cause instanceof HubspotApiError && !cause.retryable) {
-      console.error(`HubSpot rejected contact for submission ${submissionId}: ${cause.message}`);
+      log.error(`HubSpot rejected contact for submission ${submissionId}: ${cause.message}`);
       return;
     }
     throw cause;
@@ -279,7 +280,7 @@ export async function logCrmMeeting(
     return meetingId;
   } catch (cause) {
     if (cause instanceof HubspotApiError && cause.retryable) throw cause;
-    console.error(
+    log.error(
       `HubSpot meeting log failed (booking ${booking.id}): ${
         cause instanceof Error ? cause.message : String(cause)
       }`,

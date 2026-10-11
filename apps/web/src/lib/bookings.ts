@@ -14,6 +14,7 @@ import { scheduleBookingFollowup } from "./jobs";
 import { findActiveBooking, findRoutedLead } from "./lead-access";
 import { smtpConfigured } from "./email";
 import { releaseExpiredHolds } from "./holds";
+import { log } from "./log";
 
 /**
  * Booking creation for a routed lead. The lead may only book the rep routing
@@ -334,7 +335,7 @@ async function reserveCalendar(
     );
     if (clash) return { slotTaken: true, eventId: null, meetLink: null };
   } catch (cause) {
-    console.error(
+    log.error(
       `Booking slot re-check against Google failed (booking proceeds): ${
         cause instanceof GoogleApiError || cause instanceof GoogleAuthError
           ? cause.message
@@ -362,7 +363,7 @@ async function reserveCalendar(
       cause instanceof GoogleEventError || cause instanceof GoogleApiError
         ? cause.message
         : "Google Calendar event creation failed.";
-    console.error(`Booking calendar event failed: ${error}`);
+    log.error(`Booking calendar event failed: ${error}`);
     return { slotTaken: false, eventId: null, meetLink: null, error };
   }
 }

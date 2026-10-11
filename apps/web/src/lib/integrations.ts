@@ -14,6 +14,7 @@ import { bookings, orgs, users, type Database, type WorkingHours } from "@switch
 import { secretsMatch } from "@/lib/crypto";
 import { releaseExpiredHolds } from "./holds";
 import { getValidAccessToken, saveTokens, type TokenOwner } from "./token-store";
+import { log } from "./log";
 
 /**
  * Google Calendar integration: configuration from env, completing the OAuth
@@ -90,7 +91,7 @@ export async function connectGoogle(
     await saveTokens(db, "google_calendar", owner, tokens, tokens.email ?? null);
     return { ok: true };
   } catch (cause) {
-    console.error(
+    log.error(
       `Google token exchange failed: ${cause instanceof GoogleAuthError ? cause.message : String(cause)}`,
     );
     return { ok: false, error: "exchange_failed" };
@@ -224,7 +225,7 @@ export async function getAvailability(
       busy.push(...freeBusy.busy);
     } catch (cause) {
       degraded = true;
-      console.error(
+      log.error(
         `Google free/busy failed for rep ${userId}; offering times from local bookings only: ${
           cause instanceof GoogleApiError || cause instanceof GoogleAuthError
             ? cause.message

@@ -1,6 +1,7 @@
 import { isEmailAddress } from "@switchboard/core";
 import type { DecisionOutcome } from "@switchboard/db";
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { adminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
@@ -108,7 +109,7 @@ export default async function RoutingLogPage({
               ) : (
                 <>
                   No routing decisions yet. Submit one of your forms (try{" "}
-                  <a href="/f/book-a-demo">the demo form</a>) and it shows up here.
+                  <Link href="/f/book-a-demo">the demo form</Link>) and it shows up here.
                 </>
               )}
             </p>

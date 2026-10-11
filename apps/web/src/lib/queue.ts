@@ -1,4 +1,5 @@
 import { PgBoss } from "pg-boss";
+import { log } from "./log";
 
 /**
  * Postgres-backed job queue (pg-boss) for work that should not hold up a
@@ -41,13 +42,13 @@ async function startBoss(): Promise<PgBoss | null> {
   const url = process.env.DATABASE_URL;
   if (!url) {
     disabled = true;
-    console.warn("DATABASE_URL is not set — the job queue is disabled.");
+    log.warn("DATABASE_URL is not set — the job queue is disabled.");
     return null;
   }
   try {
     const instance = new PgBoss({ connectionString: url });
     instance.on("error", (error: unknown) =>
-      console.error(
+      log.error(
         `Job queue error: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
       ),
     );
@@ -59,7 +60,7 @@ async function startBoss(): Promise<PgBoss | null> {
     boss = instance;
     return instance;
   } catch (cause) {
-    console.error(
+    log.error(
       `Job queue failed to start (will retry): ${
         cause instanceof Error ? cause.message : String(cause)
       }`,
@@ -89,17 +90,17 @@ export async function enqueue(
       return;
     }
   } catch (cause) {
-    console.error(
+    log.error(
       `Queueing ${name} failed: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
   }
   if (options.inline) {
     await options.inline().catch((cause: unknown) =>
-      console.error(
+      log.error(
         `${name} failed inline: ${cause instanceof Error ? cause.message : String(cause)}`,
       ),
     );
   } else {
-    console.warn(`${name} skipped: the job queue is unavailable.`);
+    log.warn(`${name} skipped: the job queue is unavailable.`);
   }
 }

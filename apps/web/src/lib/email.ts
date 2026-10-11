@@ -1,4 +1,5 @@
 import { createTransport } from "nodemailer";
+import { log } from "./log";
 
 /**
  * Confirmation email (bring-your-own SMTP): `SMTP_URL` like
@@ -148,7 +149,7 @@ export async function sendEmail(
 ): Promise<boolean> {
   const url = process.env.SMTP_URL;
   if (!url) {
-    console.warn(`SMTP_URL is not set — ${context} skipped.`);
+    log.warn(`SMTP_URL is not set — ${context} skipped.`);
     return false;
   }
   try {
@@ -164,7 +165,7 @@ export async function sendEmail(
     });
     return true;
   } catch (cause) {
-    console.error(
+    log.error(
       `Email (${context}) to ${maskEmail(message.to)} failed: ${
         cause instanceof Error ? cause.message : String(cause)
       }`,

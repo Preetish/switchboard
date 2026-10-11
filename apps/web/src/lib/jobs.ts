@@ -20,6 +20,7 @@ import { safeDisplayName } from "./display-name";
 import { fallbackBookingUrl, sendConfirmationEmail, sendEmail, smtpConfigured } from "./email";
 import { releaseExpiredHolds } from "./holds";
 import { JOBS, enqueue, getQueue } from "./queue";
+import { log } from "./log";
 
 /**
  * Queued side effects and the in-process worker that runs them. Every
@@ -173,7 +174,7 @@ export async function handleSpeedToLeadAlert(
 
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   if (!webhookUrl && !smtpConfigured()) {
-    console.warn(
+    log.warn(
       `Speed-to-lead alert for submission ${submissionId} skipped: set SLACK_WEBHOOK_URL or SMTP_URL to receive alerts.`,
     );
     return;
@@ -234,11 +235,11 @@ export async function startJobWorker(attempt = 0): Promise<void> {
       for (const job of jobs) await followUpBooking(getDb(), job.data.bookingId);
     });
     workerRunning = true;
-    console.log("[switchboard] job worker is running.");
+    log.info("job worker is running");
   } catch (cause) {
     const delayMs = Math.min(60_000, 2_000 * 2 ** attempt);
-    console.error(
-      `[switchboard] job worker failed to start (retrying in ${delayMs / 1000}s): ${
+    log.error(
+      `job worker failed to start (retrying in ${delayMs / 1000}s): ${
         cause instanceof Error ? cause.message : String(cause)
       }`,
     );

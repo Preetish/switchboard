@@ -73,7 +73,7 @@ describe("sendConfirmationEmail", () => {
     });
     expect(sent).toBe(false);
     expect(warn).toHaveBeenCalledWith(
-      "SMTP_URL is not set — confirmation email skipped.",
+      expect.stringContaining("SMTP_URL is not set — confirmation email skipped."),
     );
   });
 

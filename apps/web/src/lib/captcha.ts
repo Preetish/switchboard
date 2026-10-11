@@ -1,3 +1,5 @@
+import { log } from "./log";
+
 /**
  * Optional bot check for the public form: Cloudflare Turnstile. Off unless
  * `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set; the honeypot,
@@ -30,7 +32,7 @@ export async function verifyTurnstile(token: unknown, remoteIp: string): Promise
   } catch (cause) {
     // Fail closed: when the check is configured, an unverifiable submission
     // is not accepted. The lead sees a retry message.
-    console.error(
+    log.error(
       `Turnstile verification failed: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
     return false;

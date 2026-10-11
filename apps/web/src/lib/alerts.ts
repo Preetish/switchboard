@@ -1,3 +1,5 @@
+import { log } from "./log";
+
 /**
  * Speed-to-lead alerts: when a lead routed to a rep does not book within a
  * configurable window, the rep is notified by Slack or email. Scheduling and
@@ -104,12 +106,12 @@ export async function sendSlackAlert(
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
-      console.error(`Slack alert webhook responded ${response.status}.`);
+      log.error(`Slack alert webhook responded ${response.status}.`);
       return false;
     }
     return true;
   } catch (cause) {
-    console.error(
+    log.error(
       `Slack alert failed: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
     return false;
