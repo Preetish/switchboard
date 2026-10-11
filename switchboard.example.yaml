@@ -11,6 +11,14 @@ org:
   name: Your Company
   slug: your-company
 
+# Optional: copy attribution onto HubSpot contacts (the properties must
+# exist in your portal). See docs/configuration.md.
+# hubspot:
+#   properties:
+#     utm_source: utm_source
+#     utm_campaign: utm_campaign
+#     gclid: google_click_id
+
 # Everyone who can be routed a lead. Emails must match their Google account
 # (to connect their calendar) and, if you use HubSpot, their HubSpot owner.
 reps:

@@ -18,6 +18,12 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
+    launchOptions: {
+      // The embed tests serve a fake customer site that loads the app from
+      // localhost. Chrome's local-network-access check blocks that pairing;
+      // real sites load Switchboard from a public HTTPS host and never hit it.
+      args: ["--disable-features=LocalNetworkAccessChecks,PrivateNetworkAccessRespectPreflightResults"],
+    },
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },

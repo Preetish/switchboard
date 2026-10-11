@@ -35,8 +35,11 @@ const conditionSchema = z
     "exists: false can't be combined with other operators (they need a value to compare)",
   );
 
-/** Paths read `form.<field>` from the submission or `crm.<path>` from the CRM. */
-const PATH_RE = /^(form|crm)\.[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/;
+/**
+ * Paths read `form.<field>` from the submission, `crm.<path>` from the CRM,
+ * or `attribution.<field>` from the lead's campaign and click data.
+ */
+const PATH_RE = /^(form|crm|attribution)\.[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/;
 
 /**
  * Accepts a full operator object, the bare word `exists`
@@ -68,7 +71,7 @@ const ruleSchema = z.strictObject({
         ctx.addIssue({
           code: "custom",
           path: [path],
-          message: "paths start with form. or crm. (e.g. form.country, crm.contact.owner)",
+          message: "paths start with form., crm., or attribution. (e.g. form.country, crm.contact.owner, attribution.utm_source)",
         });
       }
     }
@@ -107,7 +110,7 @@ const ruleSetSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["fallback", "to"],
-        message: "fallback can't route to a form./crm. path (it may be empty); use a team or a rep's email",
+        message: "fallback can't route to a form./crm./attribution. path (it may be empty); use a team or a rep's email",
       });
     }
   });

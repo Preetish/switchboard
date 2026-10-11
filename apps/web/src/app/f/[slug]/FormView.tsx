@@ -2,7 +2,13 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { groupSlotsByDay, type FormField, type SlotGroup } from "@switchboard/core/client";
+import {
+  groupSlotsByDay,
+  touchFromUrl,
+  type Attribution,
+  type FormField,
+  type SlotGroup,
+} from "@switchboard/core/client";
 import type { DecisionOutcome, FormSettings } from "@switchboard/db";
 import styles from "./FormView.module.css";
 
@@ -65,7 +71,7 @@ export default function FormView({
   useEffect(() => setReady(true), []);
   // Stable per page load, so retries reuse the same key (idempotent submits).
   const idempotencyKey = useRef<string>(crypto.randomUUID());
-  useEmbedResize(embedded);
+  const { attribution, notifyHost } = useEmbed(embedded);
 
   const emailKey = fields.find((field) => field.type === "email")?.key;
 
@@ -85,6 +91,7 @@ export default function FormView({
           honeypot: typeof honeypot === "string" ? honeypot : "",
           captchaToken: typeof captchaToken === "string" ? captchaToken : undefined,
           idempotencyKey: idempotencyKey.current,
+          attribution,
         }),
       });
       const body = await response.json().catch(() => null);
@@ -96,6 +103,7 @@ export default function FormView({
         );
         return;
       }
+      notifyHost("submitted", body.decision?.kind);
       setResult({
         submissionId: body.submissionId ?? null,
         decision: body.decision ?? null,
@@ -113,7 +121,12 @@ export default function FormView({
   if (result) {
     return (
       <section className={styles.card}>
-        <Outcome result={result} orgName={orgName} settings={settings} />
+        <Outcome
+          result={result}
+          orgName={orgName}
+          settings={settings}
+          onBooked={() => notifyHost("booked", result.decision?.kind)}
+        />
         <PrivacyFooter slug={slug} />
       </section>
     );
@@ -254,10 +267,12 @@ function Outcome({
   result,
   orgName,
   settings,
+  onBooked,
 }: {
   result: Result;
   orgName: string;
   settings: FormSettings;
+  onBooked: () => void;
 }) {
   const repId = result.decision?.userId;
   if (repId && result.submissionId) {
@@ -267,6 +282,7 @@ function Outcome({
         routedName={result.repName}
         submissionId={result.submissionId}
         orgName={orgName}
+        onBooked={onBooked}
       />
     );
   }
@@ -357,11 +373,13 @@ function BookingPanel({
   routedName,
   submissionId,
   orgName,
+  onBooked,
 }: {
   repId: string;
   routedName: string | null;
   submissionId: string;
   orgName: string;
+  onBooked: () => void;
 }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -441,6 +459,7 @@ function BookingPanel({
       const body = await response.json().catch(() => null);
       if (response.ok && body?.booking) {
         setBooked(body as BookedResult);
+        if (!body.duplicate) onBooked();
         return;
       }
       setBookingError(body?.error ?? "We couldn't book that time. Please try again.");
@@ -656,41 +675,79 @@ function PrivacyFooter({ slug }: { slug: string }) {
 }
 
 /**
- * Embed mode (packages/embed): make the iframe blend into the host page and
- * report the content height so the host can resize with no scrollbars. The
- * host loader validates the message's origin and source; the payload is
- * only a height number.
+ * Embed mode (packages/embed) and attribution.
+ *
+ * - Makes the iframe blend into the host page and reports the content height
+ *   so the host can resize it with no scrollbars.
+ * - Attribution starts from this page's own URL and referrer (direct links
+ *   to /f/<slug>?utm_source=…). Inside the embed it asks the loader on the
+ *   host page, which knows the visitor's real landing URL, first touch, and
+ *   (with consent) cookie IDs. The server sanitizes whatever arrives.
+ * - `notifyHost` tells the loader about conversions so the host page's own
+ *   analytics tags can fire. Payloads never carry personal data.
  */
-function useEmbedResize(embedded: boolean) {
+function useEmbed(embedded: boolean): {
+  attribution: Attribution | null;
+  notifyHost: (name: "submitted" | "booked", outcome: string | undefined) => void;
+} {
+  const [attribution, setAttribution] = useState<Attribution | null>(null);
+  const target = useRef("*");
+
   useEffect(() => {
+    const own = touchFromUrl(window.location.href, document.referrer);
+    // In the embed, document.referrer is the host page itself, not a touch;
+    // the loader supplies the real one below.
+    if (own && !(embedded && !hasCampaignParams(window.location.href))) {
+      setAttribution({ ...own, page_url: own.landing_page });
+    }
     if (!embedded) return;
+
     document.body.style.background = "transparent";
     document.documentElement.style.background = "transparent";
     const inIframe = window.parent !== window;
-    let target = "*";
     try {
-      target = new URL(document.referrer).origin;
+      target.current = new URL(document.referrer).origin;
     } catch {
       // Referrer blocked (strict referrer policy); the loader still
-      // validates origin and source, and the payload is a height number.
+      // validates origin and source, and payloads carry no personal data.
     }
-    const post = () => {
-      if (!inIframe) return;
-      // The body's own height, not documentElement.scrollHeight: inside an
-      // iframe scrollHeight is floored by the viewport, so the iframe could
-      // grow but never shrink back.
-      window.parent.postMessage(
-        { type: "switchboard:resize", height: document.body.getBoundingClientRect().height },
-        target,
-      );
+    const post = (message: Record<string, unknown>) => {
+      if (inIframe) window.parent.postMessage(message, target.current);
     };
-    post();
-    const observer = new ResizeObserver(post);
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window.parent) return;
+      const data = event.data as { type?: unknown; attribution?: unknown } | null;
+      if (data?.type === "switchboard:attribution" && data.attribution && typeof data.attribution === "object") {
+        setAttribution(data.attribution as Attribution);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    post({ type: "switchboard:ready" });
+
+    // The body's own height, not documentElement.scrollHeight: inside an
+    // iframe scrollHeight is floored by the viewport, so the iframe could
+    // grow but never shrink back.
+    const resize = () =>
+      post({ type: "switchboard:resize", height: document.body.getBoundingClientRect().height });
+    resize();
+    const observer = new ResizeObserver(resize);
     observer.observe(document.body);
     return () => {
       observer.disconnect();
+      window.removeEventListener("message", onMessage);
       document.body.style.background = "";
       document.documentElement.style.background = "";
     };
   }, [embedded]);
+
+  const notifyHost = (name: "submitted" | "booked", outcome: string | undefined) => {
+    if (!embedded || window.parent === window) return;
+    window.parent.postMessage({ type: "switchboard:event", name, outcome }, target.current);
+  };
+
+  return { attribution, notifyHost };
+}
+
+function hasCampaignParams(href: string): boolean {
+  return touchFromUrl(href, "") !== null;
 }

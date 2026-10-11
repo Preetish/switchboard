@@ -61,6 +61,20 @@ export const configSchema = z.strictObject({
     name: z.string().min(1).max(120),
     slug: z.string().regex(SLUG_RE, "lowercase letters, digits, and dashes"),
   }),
+  hubspot: z
+    .strictObject({
+      /**
+       * Attribution field -> HubSpot contact property to write it to, e.g.
+       * `utm_source: utm_source` or `first.utm_campaign: first_utm_campaign`.
+       */
+      properties: z
+        .record(
+          z.string(),
+          z.string().regex(/^[a-z0-9_]+$/, "HubSpot property names are lowercase letters, digits, and underscores"),
+        )
+        .default({}),
+    })
+    .optional(),
   reps: z.array(rep).min(1, "add at least one rep"),
   teams: z.array(team).default([]),
   forms: z.array(form).min(1, "add at least one form"),

@@ -170,7 +170,7 @@ describe("validateRuleSet — catches mistakes before they misroute leads", () =
       ...base,
       rules: [{ name: "Typo", when: { "from.country": "DE" }, route: { action: "self_serve_link" } }],
     });
-    expect(errors.join("\n")).toMatch(/paths start with form\. or crm\./);
+    expect(errors.join("\n")).toMatch(/paths start with form\., crm\., or attribution\./);
   });
 
   it("rejects empty in/nin lists", () => {
@@ -204,7 +204,7 @@ describe("validateRuleSet — catches mistakes before they misroute leads", () =
 
   it("rejects a fallback that routes to a path which may be empty", () => {
     const errors = errorsFor({ rules: [], fallback: { to: "crm.contact.owner" } });
-    expect(errors.join("\n")).toMatch(/fallback can't route to a form\.\/crm\. path/);
+    expect(errors.join("\n")).toMatch(/fallback can't route to a form\.\/crm\.\/attribution\. path/);
   });
 
   it("still accepts a catch-all as the last rule", () => {

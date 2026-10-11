@@ -6,3 +6,5 @@
 export { groupSlotsByDay } from "./calendar/group-slots.js";
 export type { SlotGroup, SlotInterval } from "./calendar/group-slots.js";
 export type { FormField, FormFieldType } from "./forms/types.js";
+export { URL_PARAMS, touchFromUrl } from "./attribution.js";
+export type { Attribution, Touch } from "./attribution.js";

@@ -35,6 +35,26 @@ org:
 One instance serves one org. If a database ever holds several, `ORG_SLUG`
 selects which one the app uses.
 
+## `hubspot` (optional)
+
+Write a lead's attribution onto their HubSpot contact. Map each field to a
+contact property; the properties must already exist in your portal (create
+them under Settings → Properties), or HubSpot rejects the update.
+
+```yaml
+hubspot:
+  properties:
+    utm_source: utm_source
+    utm_medium: utm_medium
+    utm_campaign: utm_campaign
+    gclid: google_click_id
+    first.utm_source: first_touch_source
+    cookies.ga: ga_client_id
+```
+
+Fields are the attribution names from [rules](#what-a-rule-can-read) without
+the `attribution.` prefix, plus `cookies.<id>` for the consented cookie IDs.
+
 ## `reps`
 
 ```yaml
@@ -135,9 +155,13 @@ Rules run top to bottom and **the first match wins**; if none match,
 | `form.email_domain` | Derived from the form's email field, e.g. `gmail.com` |
 | `crm.contact.owner` | The HubSpot owner's email for this lead's contact (needs HubSpot) |
 | `crm.contact.id` | The HubSpot contact id |
+| `attribution.utm_source` … `attribution.utm_id` | Last-touch campaign parameters ([embed tracking](embed.md#tracking-and-attribution)) |
+| `attribution.gclid`, `.gbraid`, `.wbraid`, `.fbclid`, `.msclkid`, `.li_fat_id`, `.ttclid`, `.twclid` | Ad click IDs |
+| `attribution.referrer`, `attribution.landing_page`, `attribution.page_url` | Where the visit came from and where the form was |
+| `attribution.first.<field>` | The same fields for the first touch (needs consent on your site) |
 
 Paths are checked when the file is applied: `form.*` must be a field of that
-form (or a derived key). A typo like `from.country` fails validation instead of
+form (or a derived key), and `attribution.*` must be one of the fields above. A typo like `from.country` fails validation instead of
 becoming a rule that never matches.
 
 ### Operators
@@ -174,6 +198,14 @@ The validator also rejects rules that can never run (anything after a rule
 with an empty `when`), empty `in` lists, `exists: false` mixed with value
 operators, and a `fallback` that routes to a `form.`/`crm.` path (which may be
 empty).
+
+For example, send paid search to the team that calls back fastest:
+
+```yaml
+- name: Paid search
+  when: { attribution.utm_medium: { in: [cpc, ppc, paid] } }
+  route: { team: inbound-fast, strategy: round_robin }
+```
 
 ### Testing rule changes
 

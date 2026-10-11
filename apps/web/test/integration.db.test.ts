@@ -46,6 +46,7 @@ forms:
       rules:
         - { name: Personal, when: { form.email_domain: { in: [gmail.com] } }, route: { action: self_serve_link } }
         - { name: Enterprise, when: { form.size: { gte: 500 } }, route: { team: enterprise, strategy: round_robin } }
+        - { name: Paid search, when: { attribution.utm_medium: cpc }, route: { to: bob@test.co } }
       fallback: { team: default, strategy: round_robin }
 `;
 
@@ -60,8 +61,8 @@ describe.skipIf(!TEST_URL)("against Postgres", () => {
     schema: typeof import("@switchboard/db");
   };
 
-  const submit = (data: Record<string, unknown>, key?: string) =>
-    mods.handleSubmission(db, "demo", { name: "Lead", size: "900", ...data }, key);
+  const submit = (data: Record<string, unknown>, key?: string, attribution?: unknown) =>
+    mods.handleSubmission(db, "demo", { name: "Lead", size: "900", ...data }, key, attribution);
   const repId = async (email: string) => {
     const [row] = await db
       .select({ id: mods.schema.users.id })
@@ -146,6 +147,37 @@ describe.skipIf(!TEST_URL)("against Postgres", () => {
       const picks = results.map((r) => (r.status === "created" ? r.decision.userId : null));
       expect(picks.filter((id) => id === alice)).toHaveLength(8);
       expect(picks.filter((id) => id !== alice)).toHaveLength(4);
+    });
+  });
+
+  describe("attribution", () => {
+    it("stores sanitized attribution and routes on it", async () => {
+      const result = await submit({ email: "paid@smallco.com", size: "10" }, undefined, {
+        utm_source: "google",
+        utm_medium: "CPC",
+        gclid: "Cj0abc",
+        landing_page: "https://acme.example/pricing?email=leak@x.com",
+        injected: "<script>",
+        first: { utm_source: "linkedin" },
+      });
+      if (result.status !== "created") throw new Error(result.status);
+      expect(result.decision).toMatchObject({ kind: "route_user", userId: await repId("bob@test.co") });
+      const [row] = await db
+        .select({ attribution: mods.schema.submissions.attribution })
+        .from(mods.schema.submissions)
+        .where(eq(mods.schema.submissions.id, result.submissionId));
+      expect(row!.attribution).toEqual({
+        utm_source: "google",
+        utm_medium: "CPC",
+        gclid: "Cj0abc",
+        landing_page: "https://acme.example/pricing",
+        first: { utm_source: "linkedin" },
+      });
+    });
+
+    it("never rejects a lead over bad attribution", async () => {
+      const result = await submit({ email: "odd@bigcorp.com" }, undefined, "not an object");
+      expect(result.status).toBe("created");
     });
   });
 

@@ -6,6 +6,7 @@ import {
   decisionToCsvRow,
   escapeLikePattern,
   outcomeLabel,
+  sourceLabel,
   type DecisionLogEntry,
 } from "../src/lib/decisions-log.js";
 
@@ -13,6 +14,13 @@ const entry: DecisionLogEntry = {
   id: "0c38f4e2-0000-4000-8000-000000000001",
   createdAt: new Date("2026-10-10T12:34:56Z"),
   leadEmail: "jane@corp.com",
+  attribution: {
+    utm_source: "google",
+    utm_medium: "cpc",
+    utm_campaign: "spring",
+    gclid: "Cj0abc",
+    first: { utm_source: "linkedin" },
+  },
   inputs: { form: { name: "Jane Doe" }, crm: {} },
   matchedRule: "Enterprise",
   outcome: {
@@ -93,7 +101,7 @@ describe("decisionRowsToCsv", () => {
     const csv = decisionRowsToCsv([decisionToCsvRow(entry)]);
     const lines = csv.split("\r\n");
     expect(lines[0]).toBe(
-      "decided_at,lead_email,form,matched_rule,outcome,rep,team,latency_ms,reason",
+      "decided_at,lead_email,form,matched_rule,outcome,rep,team,latency_ms,reason,utm_source,utm_medium,utm_campaign,utm_term,utm_content,click_id,referrer,landing_page,first_utm_source,first_utm_campaign",
     );
     expect(lines[1]).toContain("2026-10-10T12:34:56.000Z");
     expect(lines[1]).toContain("jane@corp.com");
@@ -136,7 +144,24 @@ describe("decisionRowsToCsv", () => {
   it("emits only the header for an empty log", () => {
     const csv = decisionRowsToCsv([]);
     expect(csv).toBe(
-      "decided_at,lead_email,form,matched_rule,outcome,rep,team,latency_ms,reason\r\n",
+      "decided_at,lead_email,form,matched_rule,outcome,rep,team,latency_ms,reason,utm_source,utm_medium,utm_campaign,utm_term,utm_content,click_id,referrer,landing_page,first_utm_source,first_utm_campaign\r\n",
     );
+  });
+});
+
+describe("attribution in the log", () => {
+  it("exports campaign, click ID, and first-touch columns", () => {
+    const [, line] = decisionRowsToCsv([decisionToCsvRow(entry)]).split("\r\n");
+    expect(line).toContain("google,cpc,spring,,,gclid:Cj0abc,,,linkedin,");
+  });
+
+  it("labels the source: UTMs first, then a click platform, then the referrer", () => {
+    expect(sourceLabel({ utm_source: "google", utm_medium: "cpc", utm_campaign: "spring" })).toBe(
+      "google / cpc · spring",
+    );
+    expect(sourceLabel({ fbclid: "x" })).toBe("Meta ad click");
+    expect(sourceLabel({ gbraid: "x" })).toBe("Google Ads click");
+    expect(sourceLabel({ referrer: "https://www.reddit.com/r/sales" })).toBe("reddit.com");
+    expect(sourceLabel(null)).toBeNull();
   });
 });

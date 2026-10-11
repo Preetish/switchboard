@@ -487,3 +487,31 @@ decisions. Each item notes what it supersedes.
   sharp PNGs of each step from a running instance, so the README can't drift
   from the product again.
 
+## 2026-10-11: Attribution and conversion tracking
+
+- **The loader collects attribution, not the iframe.** Only the script on
+  the customer's page can see the landing URL, the real referrer, and
+  first-party cookies. The form asks for it with a postMessage handshake
+  (`switchboard:ready` → `switchboard:attribution`) rather than through the
+  iframe URL, which keeps click IDs out of access logs and Referer headers.
+- **Consent gates storage and cookies, not URL parameters.** Reading the
+  current page's UTMs stores nothing on the device. Keeping first touch in
+  localStorage and reading `_ga`/`_fbp`/`_fbc`/`_gcl_aw`/`hubspotutk` does,
+  so it waits for `data-switchboard-consent="granted"` or
+  `Switchboard.setConsent(true)`. The default is the privacy-safe one.
+- **Last touch flat, first touch nested.** Rules mostly care about the visit
+  that converted (`attribution.utm_medium`); first touch is there for
+  reporting and ABM rules (`attribution.first.utm_source`).
+- **The server trusts nothing.** Attribution comes from the browser, so it is
+  allowlisted, length-capped, and URL-stripped (origin and path only), and a
+  malformed payload never blocks a lead.
+- **Conversions fire on the host page.** The iframe can't run the
+  customer's tags, so the loader pushes `switchboard_submitted` /
+  `switchboard_booked` to `dataLayer` and dispatches DOM events; ad platforms
+  then match them to their own cookies. Payloads carry the form and outcome,
+  never personal data. Offline conversion uploads (Google Ads, Meta CAPI)
+  are left for later; the stored click IDs make them possible.
+- **HubSpot properties are mapped, not guessed.** Portals name custom UTM
+  properties differently and reject unknown ones, so `switchboard.yaml`
+  states the mapping.
+

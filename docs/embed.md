@@ -13,7 +13,7 @@ host and the form's slug:
 <script src="https://switchboard.yourcompany.com/embed.js" defer></script>
 ```
 
-The loader (about 1.5 KB, no dependencies) turns every
+The loader (about 4 KB, no dependencies) turns every
 `data-switchboard-form` placeholder into the form. Several placeholders on one
 page each get their own form.
 
@@ -44,6 +44,71 @@ The form reports its height with
 message only when it comes from the Switchboard origin **and** from one of
 its own iframes, and clamps heights to 200 to 4000 px, so there are no nested
 scrollbars.
+
+## Tracking and attribution
+
+The loader runs on your page, so it sees what the iframe can't: your
+landing URL, the referrer, and your first-party cookies. When the form
+loads, it asks the loader for that data and sends it with the submission.
+
+**What's captured**
+
+| Data | Source | Needs consent |
+| --- | --- | --- |
+| `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, `utm_id` | Page URL | No |
+| Click IDs: `gclid`, `gbraid`, `wbraid` (Google), `fbclid` (Meta), `msclkid` (Microsoft), `li_fat_id` (LinkedIn), `ttclid` (TikTok), `twclid` (X) | Page URL | No |
+| Referrer and landing page (origin and path only, never the query string) | Browser | No |
+| First touch, kept across pages and visits for 90 days | localStorage on your site | Yes |
+| Cookie IDs: `_ga`, `_fbp`, `_fbc`, `_gcl_aw`, `hubspotutk` | Your site's cookies | Yes |
+
+Without consent, the loader reads only the current page's URL and referrer
+and stores nothing. So if a visitor lands on `/pricing?utm_source=google` and
+then clicks to `/demo`, the campaign is lost unless you've granted consent.
+Grant it in one of two ways:
+
+```html
+<!-- Your site doesn't need a consent banner (or consent is implied): -->
+<script src="https://switchboard.yourcompany.com/embed.js" data-switchboard-consent="granted" defer></script>
+```
+
+```js
+// Your consent banner calls this once the visitor accepts analytics or marketing cookies:
+window.Switchboard.setConsent(true);
+```
+
+Each lead stores a last touch (the visit that converted) and a first touch.
+Rules can route on them (`attribution.utm_medium`,
+`attribution.first.utm_source`; see [configuration](configuration.md#what-a-rule-can-read)),
+the routing log shows the source, and the CSV export has a column for each.
+With `hubspot.properties` in `switchboard.yaml`, they're also written to the
+HubSpot contact.
+
+Direct links to the hosted form work too:
+`https://switchboard.yourcompany.com/f/book-a-demo?utm_source=newsletter`.
+
+**Conversion events on your page**
+
+The iframe can't run your analytics tags, so the form tells the loader when a
+lead submits or books, and the loader reports it on your page:
+
+```js
+// Pushed to window.dataLayer (Google Tag Manager, GA4):
+{ event: "switchboard_submitted", switchboard_form: "book-a-demo", switchboard_outcome: "route_team" }
+{ event: "switchboard_booked",    switchboard_form: "book-a-demo", switchboard_outcome: "route_team" }
+
+// And dispatched as DOM events on the placeholder (they bubble to document):
+document.addEventListener("switchboard:booked", (event) => {
+  fbq("track", "Schedule");            // Meta Pixel
+  gtag("event", "conversion", { send_to: "AW-XXXX/YYYY" });  // Google Ads
+});
+```
+
+In GTM, add a Custom Event trigger on `switchboard_booked` (and
+`switchboard_submitted` if you count form fills) and attach your GA4, Google
+Ads, or Meta tags to it. The events fire in your page's context, so the ad
+platforms match them to the visitor's cookies as usual. `switchboard_outcome`
+is `route_user`, `route_team`, `self_serve_link`, or `fallback_queue`; the
+events never include the lead's name or email.
 
 ## Restricting who can embed
 
@@ -90,5 +155,6 @@ npm run build -w @switchboard/embed
 ```
 
 `apps/web/test/embed.test.ts` keeps the artifact under 10 KB and identical to
-a fresh build, and runs the loader against a fake DOM to check mounting and
-message validation.
+a fresh build, and runs the loader against a fake DOM to check mounting,
+message validation, attribution, consent, and conversion events.
+`e2e/attribution.spec.ts` runs the whole journey in a browser.

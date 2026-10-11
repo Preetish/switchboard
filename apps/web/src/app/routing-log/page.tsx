@@ -5,7 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { adminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { fetchDecisionLog, outcomeLabel } from "@/lib/decisions-log";
+import { fetchDecisionLog, outcomeLabel, sourceLabel } from "@/lib/decisions-log";
 import { eraseOrgSubmissions } from "@/lib/erasure";
 import { findOrg } from "@/lib/integrations";
 import AdminHeader from "../AdminHeader";
@@ -59,8 +59,8 @@ export default async function RoutingLogPage({
         <div className={admin.containerWide}>
           <h1 className={admin.title}>Routing log</h1>
           <p className={admin.subtitle}>
-            Every routing decision: what the lead submitted, which rule matched, where
-            they went, and how long it took.
+            Every routing decision: what the lead submitted, where they came from, which
+            rule matched, where they went, and how long it took.
           </p>
 
           {erased === "invalid" ? (
@@ -81,7 +81,7 @@ export default async function RoutingLogPage({
                 type="search"
                 name="q"
                 defaultValue={q ?? ""}
-                placeholder="Search by lead email, rule, or reason"
+                placeholder="Search by email, rule, reason, or campaign"
                 aria-label="Search the routing log"
                 className={admin.input}
               />
@@ -120,6 +120,7 @@ export default async function RoutingLogPage({
                   <tr>
                     <th scope="col">Decided (UTC)</th>
                     <th scope="col">Lead</th>
+                    <th scope="col">Source</th>
                     <th scope="col">Rule</th>
                     <th scope="col">Outcome</th>
                     <th scope="col">Rep / team</th>
@@ -134,6 +135,11 @@ export default async function RoutingLogPage({
                     <tr key={entry.id}>
                       <td className={styles.mono}>{formatUtc(entry.createdAt)}</td>
                       <td>{entry.leadEmail ?? <span className={styles.muted}>(no email)</span>}</td>
+                      <td>
+                        {sourceLabel(entry.attribution) ?? (
+                          <span className={styles.muted}>Direct</span>
+                        )}
+                      </td>
                       <td>{entry.matchedRule ?? <span className={styles.muted}>Fallback</span>}</td>
                       <td>
                         <span className={BADGE[entry.outcome.kind]}>
