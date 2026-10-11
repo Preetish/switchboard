@@ -18,12 +18,11 @@ describe("draftOutcome", () => {
     });
   });
 
-  it("carries the raw target when the path is missing", () => {
+  it("sends the lead to the fallback queue when a path target has no value", () => {
     const action: RouteAction = { to: "crm.contact.owner" };
     const draft = draftOutcome(action, { form: {}, crm: {} });
-    expect(draft.kind).toBe("route_user");
-    expect(draft.to).toBe("crm.contact.owner");
-    expect(draft.reason).toContain("not available");
+    expect(draft.kind).toBe("fallback_queue");
+    expect(draft.reason).toContain("no value");
   });
 
   it("treats a literal target as-is", () => {

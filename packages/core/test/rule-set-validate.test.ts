@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { loadRuleSetYaml, parseRuleSetYaml, validateRuleSet } from "../src/rules/index.js";
 
 describe("validateRuleSet", () => {
-  it("accepts the brief's example rule set", () => {
+  it("accepts the README example rule set", () => {
     const result = validateRuleSet({
       rules: [
         { name: "Existing owner wins", when: { "crm.contact.owner": "exists" }, route: { to: "crm.contact.owner" } },
@@ -155,5 +155,67 @@ describe("loadRuleSetYaml", () => {
     const parsed = parseRuleSetYaml("rules: []\nfallback: { team: d, strategy: round_robin }\n");
     expect(parsed.ok).toBe(true);
     expect(validateRuleSet(parsed.value).ok).toBe(true);
+  });
+});
+
+describe("validateRuleSet — catches mistakes before they misroute leads", () => {
+  const base = { fallback: { team: "default", strategy: "round_robin" } };
+  const errorsFor = (value: unknown) => {
+    const result = validateRuleSet(value);
+    return result.ok ? [] : result.errors;
+  };
+
+  it("rejects paths that aren't form.* or crm.* (typos never match)", () => {
+    const errors = errorsFor({
+      ...base,
+      rules: [{ name: "Typo", when: { "from.country": "DE" }, route: { action: "self_serve_link" } }],
+    });
+    expect(errors.join("\n")).toMatch(/paths start with form\. or crm\./);
+  });
+
+  it("rejects empty in/nin lists", () => {
+    const errors = errorsFor({
+      ...base,
+      rules: [{ name: "Empty", when: { "form.country": { in: [] } }, route: { action: "self_serve_link" } }],
+    });
+    expect(errors.join("\n")).toMatch(/at least one value/);
+  });
+
+  it("rejects exists: false combined with value operators", () => {
+    const errors = errorsFor({
+      ...base,
+      rules: [
+        { name: "Contradiction", when: { "form.country": { exists: false, eq: "DE" } }, route: { action: "self_serve_link" } },
+      ],
+    });
+    expect(errors.join("\n")).toMatch(/exists: false/);
+  });
+
+  it("rejects rules that a catch-all above makes unreachable", () => {
+    const errors = errorsFor({
+      ...base,
+      rules: [
+        { name: "Everyone", when: {}, route: { action: "self_serve_link" } },
+        { name: "Never runs", when: { "form.country": "DE" }, route: { team: "dach", strategy: "round_robin" } },
+      ],
+    });
+    expect(errors.join("\n")).toMatch(/unreachable: rule "Everyone"/);
+  });
+
+  it("rejects a fallback that routes to a path which may be empty", () => {
+    const errors = errorsFor({ rules: [], fallback: { to: "crm.contact.owner" } });
+    expect(errors.join("\n")).toMatch(/fallback can't route to a form\.\/crm\. path/);
+  });
+
+  it("still accepts a catch-all as the last rule", () => {
+    expect(
+      validateRuleSet({
+        ...base,
+        rules: [
+          { name: "DACH", when: { "form.country": "DE" }, route: { team: "dach", strategy: "round_robin" } },
+          { name: "Everyone else", when: {}, route: { action: "self_serve_link" } },
+        ],
+      }).ok,
+    ).toBe(true);
   });
 });

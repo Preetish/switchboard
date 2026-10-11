@@ -3,7 +3,7 @@ import { bookings, type Database } from "@switchboard/db";
 
 /**
  * Slot holds: a `hold` booking row claims a slot while the calendar event is
- * created. Holds expire after ~5 minutes (per the routing brief) and are
+ * created. Holds expire after ~5 minutes and are
  * released by lazy cleanup — every reader (availability, booking) deletes the
  * expired ones first, so no background job is needed.
  */

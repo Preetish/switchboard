@@ -129,3 +129,46 @@ describe("createCalendarEvent", () => {
     expect(stub).toHaveBeenCalledOnce();
   });
 });
+
+describe("createCalendarEvent with a client event id", () => {
+  it("sends the id and reuses it as the conference request id", async () => {
+    const stub = successStub();
+    vi.stubGlobal("fetch", stub);
+    await createCalendarEvent({
+      accessToken: "at-1",
+      summary: "Meeting",
+      start: new Date("2026-10-07T13:00:00Z"),
+      end: new Date("2026-10-07T13:30:00Z"),
+      attendeeEmails: [],
+      eventId: "sb0123456789abcdef",
+    });
+    const body = JSON.parse((stub.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
+    expect(body.id).toBe("sb0123456789abcdef");
+    expect(body.conferenceData.createRequest.requestId).toBe("sb0123456789abcdef");
+  });
+
+  it("returns the existing event when a retry hits 409 instead of inviting twice", async () => {
+    const stub = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: { message: "The requested identifier already exists." } }), {
+          status: 409,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(createdPayload), { status: 200 }));
+    vi.stubGlobal("fetch", stub);
+    const result = await createCalendarEvent({
+      accessToken: "at-1",
+      summary: "Meeting",
+      start: new Date("2026-10-07T13:00:00Z"),
+      end: new Date("2026-10-07T13:30:00Z"),
+      attendeeEmails: [],
+      eventId: "sb0123456789abcdef",
+    });
+    expect(result.eventId).toBe("evt_1");
+    expect(stub).toHaveBeenCalledTimes(2);
+    const [url, init] = stub.mock.calls[1] as [string, RequestInit];
+    expect(url).toMatch(/\/events\/sb0123456789abcdef$/);
+    expect(init.method ?? "GET").toBe("GET");
+  });
+});

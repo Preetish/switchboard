@@ -1,44 +1,39 @@
 import { NextResponse } from "next/server";
-import { OAUTH_STATE_COOKIE_HUBSPOT, findOrg } from "@/lib/integrations";
+import { adminSession } from "@/lib/auth";
 import { connectHubspot } from "@/lib/crm";
 import { getDb } from "@/lib/db";
+import { appBaseUrl, findOrg } from "@/lib/integrations";
+import { STATE_COOKIE, readCookie, verifyOAuthState } from "@/lib/oauth-state";
 
 export const dynamic = "force-dynamic";
 
-function readCookie(cookieHeader: string | null, name: string): string | undefined {
-  for (const cookie of cookieHeader?.split(";") ?? []) {
-    const [key, ...rest] = cookie.trim().split("=");
-    if (key === name) return rest.join("=");
-  }
-  return undefined;
-}
-
 /** HubSpot redirects here with `code` + `state`; verify, exchange, store. */
 export async function GET(request: Request) {
+  const base = appBaseUrl();
   const url = new URL(request.url);
-  const baseUrl = url.origin;
-  const fail = (error: string) =>
-    NextResponse.redirect(`${baseUrl}/integrations?error=${error}`);
+  const done = (query: string) => {
+    const response = NextResponse.redirect(`${base}/integrations?${query}`);
+    response.cookies.delete(STATE_COOKIE.hubspot);
+    return response;
+  };
 
-  const state = url.searchParams.get("state");
-  const code = url.searchParams.get("code");
-
-  // CSRF guard: the state must round-trip through HubSpot and the cookie.
-  const expectedState = readCookie(
-    request.headers.get("cookie"),
-    OAUTH_STATE_COOKIE_HUBSPOT,
+  // Org-wide connection: only the admin may complete it.
+  if (!(await adminSession())) return NextResponse.redirect(`${base}/login`);
+  // CSRF guard: the signed state must round-trip through HubSpot and the cookie.
+  const verified = verifyOAuthState(
+    "hubspot",
+    url.searchParams.get("state"),
+    readCookie(request.headers.get("cookie"), STATE_COOKIE.hubspot),
   );
-  if (!state || !expectedState || state !== expectedState) return fail("state_mismatch");
+  if (!verified || verified.userId !== null) return done("error=state_mismatch");
   // State valid but no code means the admin declined consent.
-  if (!code) return fail("denied");
+  const code = url.searchParams.get("code");
+  if (!code) return done("error=denied");
 
-  const org = await findOrg(getDb());
-  if (!org) return fail("org_missing");
-
-  const result = await connectHubspot(getDb(), org.id, code);
-  if (!result.ok) return fail(result.error);
-
-  const success = NextResponse.redirect(`${baseUrl}/integrations?connected=hubspot`);
-  success.cookies.delete(OAUTH_STATE_COOKIE_HUBSPOT);
-  return success;
+  const db = getDb();
+  const org = await findOrg(db);
+  if (!org) return done("error=org_missing");
+  const result = await connectHubspot(db, org.id, code);
+  if (!result.ok) return done(`error=${result.error}`);
+  return done("connected=hubspot");
 }

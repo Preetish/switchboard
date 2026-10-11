@@ -1,12 +1,11 @@
+import { log } from "./log";
+
 /**
  * Speed-to-lead alerts: when a lead routed to a rep does not book within a
  * configurable window, the rep is notified by Slack or email. Scheduling and
  * delivery run on a Postgres-backed queue (pg-boss) — see queue.ts and
- * alerts-worker.ts; this module holds the pure pieces and the Slack sender.
+ * jobs.ts; this module holds the pure pieces and the Slack sender.
  */
-
-/** Job name in the pg-boss queue. */
-export const SPEED_TO_LEAD_JOB = "speed-to-lead-alert";
 
 export const DEFAULT_ALERT_MINUTES = 5;
 
@@ -34,6 +33,15 @@ export function leadDisplay(leadName: string | null, leadEmail: string | null): 
   return leadName ?? leadEmail ?? "An unnamed lead";
 }
 
+/**
+ * Slack treats `<…>` as links and mentions (`<!channel>`, `<https://x|Click>`)
+ * and `&` as an entity start, so lead-supplied text is escaped before it is
+ * posted to an internal channel.
+ */
+export function escapeSlack(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 export function buildSpeedToLeadAlert(input: SpeedToLeadAlertInput): {
   subject: string;
   text: string;
@@ -53,11 +61,11 @@ export function buildSpeedToLeadAlert(input: SpeedToLeadAlertInput): {
       "",
       `Reference: ${input.submissionId}`,
       "",
-      "Reach out soon — speed to lead wins deals.",
+      "Reach out while the request is fresh.",
       "",
-      "— Switchboard",
+      "Switchboard",
     ].join("\n"),
-    slackText: `:hourglass: *Speed-to-lead* — ${body} Rep: ${input.repName}. Reference: ${input.submissionId}`,
+    slackText: `:hourglass: *Speed-to-lead:* ${escapeSlack(body)} Rep: ${escapeSlack(input.repName)}. Reference: ${input.submissionId}`,
   };
 }
 
@@ -98,12 +106,12 @@ export async function sendSlackAlert(
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
-      console.error(`Slack alert webhook responded ${response.status}.`);
+      log.error(`Slack alert webhook responded ${response.status}.`);
       return false;
     }
     return true;
   } catch (cause) {
-    console.error(
+    log.error(
       `Slack alert failed: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
     return false;

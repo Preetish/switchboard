@@ -14,8 +14,11 @@ export type { CalendarDate, ZonedParts } from "./calendar/tz.js";
 export type { BusyInterval, WorkingHours } from "./calendar/types.js";
 export type { FormField, FormFieldType } from "./forms/types.js";
 export {
+  EMAIL_RE,
+  MAX_EMAIL_LENGTH,
   MAX_FIELDS,
   emailFieldKey,
+  isEmailAddress,
   validateFormFields,
   validateSubmission,
 } from "./forms/validate.js";
@@ -23,7 +26,6 @@ export { FREE_EMAIL_DOMAINS, isFreeEmail } from "./rules/free-email.js";
 export { DISPOSABLE_EMAIL_DOMAINS, isDisposableEmail } from "./rules/disposable-email.js";
 export { crmPathsIn } from "./rules/crm-lookups.js";
 export {
-  actionKind,
   evaluate,
   isCatchAll,
   matchCondition,
@@ -31,6 +33,7 @@ export {
   resolvePath,
 } from "./rules/evaluate.js";
 export { loadRuleSetYaml, parseRuleSetYaml } from "./rules/parse-yaml.js";
+export { DERIVED_FORM_KEYS, buildRuleInputs } from "./rules/inputs.js";
 export { draftOutcome } from "./rules/outcome.js";
 export type { OutcomeDraft, OutcomeKind } from "./rules/outcome.js";
 export { selectRep } from "./strategies/select-rep.js";

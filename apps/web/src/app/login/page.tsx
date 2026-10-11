@@ -1,15 +1,18 @@
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
-import { signIn } from "@/lib/auth";
+import { adminSession, signIn } from "@/lib/auth";
 import { adminConfigured } from "@/lib/admin-credentials";
+import styles from "../admin.module.css";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Sign in · Switchboard" };
 
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  if (await adminSession()) redirect("/routing-log");
   const { error } = await searchParams;
   const configured = adminConfigured();
 
@@ -19,7 +22,7 @@ export default async function LoginPage({
       await signIn("credentials", {
         email: formData.get("email"),
         password: formData.get("password"),
-        redirectTo: "/integrations",
+        redirectTo: "/routing-log",
       });
     } catch (cause) {
       // Wrong credentials (or a rate-limited attempt) surface as AuthError;
@@ -31,126 +34,57 @@ export default async function LoginPage({
   }
 
   return (
-    <main style={mainStyle}>
-      <div style={cardStyle}>
-        <h1 style={{ fontSize: "var(--sb-text-2xl)", fontWeight: 600 }}>
-          Switchboard admin
-        </h1>
-        <p style={{ color: "var(--sb-text-muted)", marginTop: "var(--sb-space-1)" }}>
-          Sign in to manage integrations and the routing log.
-        </p>
-
-        {!configured ? (
-          <p
-            style={{
-              marginTop: "var(--sb-space-4)",
-              padding: "var(--sb-space-4)",
-              borderRadius: "var(--sb-radius-md)",
-              fontSize: "var(--sb-text-sm)",
-              background: "color-mix(in oklab, var(--sb-warning) 12%, transparent)",
-              border: "1px solid var(--sb-warning)",
-              color: "var(--sb-text)",
-            }}
-            role="status"
-          >
-            Admin auth is not configured. Set <code>ADMIN_EMAIL</code>,{" "}
-            <code>ADMIN_PASSWORD</code>, and <code>AUTH_SECRET</code> in your environment
-            (see <code>.env.example</code>) and restart.
+    <main className={styles.page}>
+      <div className={styles.containerNarrow}>
+        <section className={styles.section}>
+          <h1 className={styles.title}>Sign in to Switchboard</h1>
+          <p className={styles.sectionBody}>
+            Manage calendars, integrations, and the routing log.
           </p>
-        ) : (
-          <form action={login} style={{ marginTop: "var(--sb-space-4)" }}>
-            {error ? (
-              <div
-                role="alert"
-                style={{
-                  marginBottom: "var(--sb-space-3)",
-                  padding: "var(--sb-space-3)",
-                  borderRadius: "var(--sb-radius-md)",
-                  fontSize: "var(--sb-text-sm)",
-                  background: "color-mix(in oklab, var(--sb-danger) 12%, transparent)",
-                  border: "1px solid var(--sb-danger)",
-                  color: "var(--sb-text)",
-                }}
-              >
-                Invalid email or password.
-              </div>
-            ) : null}
-            <label style={{ display: "block", fontSize: "var(--sb-text-sm)" }}>
-              <span style={{ display: "block", marginBottom: "var(--sb-space-1)" }}>
+
+          {!configured ? (
+            <p className={styles.bannerError} role="status">
+              Admin sign-in isn&apos;t set up. Set <code className={styles.code}>ADMIN_EMAIL</code>,{" "}
+              <code className={styles.code}>ADMIN_PASSWORD</code>, and{" "}
+              <code className={styles.code}>AUTH_SECRET</code>, then restart. With Docker these
+              are generated on first start, and the password is printed in the startup log.
+            </p>
+          ) : (
+            <form action={login} className={styles.stack}>
+              {error ? (
+                <p className={styles.bannerError} role="alert">
+                  That email and password don&apos;t match. Too many attempts are paused for a
+                  few minutes.
+                </p>
+              ) : null}
+              <label className={styles.fieldLabel}>
                 Email
-              </span>
-              <input
-                type="email"
-                name="email"
-                autoComplete="username"
-                required
-                autoFocus
-                style={inputStyle}
-              />
-            </label>
-            <label
-              style={{
-                display: "block",
-                fontSize: "var(--sb-text-sm)",
-                marginTop: "var(--sb-space-3)",
-              }}
-            >
-              <span style={{ display: "block", marginBottom: "var(--sb-space-1)" }}>
+                <input
+                  type="email"
+                  name="email"
+                  autoComplete="username"
+                  required
+                  autoFocus
+                  className={styles.input}
+                />
+              </label>
+              <label className={styles.fieldLabel}>
                 Password
-              </span>
-              <input
-                type="password"
-                name="password"
-                autoComplete="current-password"
-                required
-                style={inputStyle}
-              />
-            </label>
-            <button
-              type="submit"
-              style={{ ...buttonStyle, marginTop: "var(--sb-space-4)" }}
-            >
-              Sign in
-            </button>
-          </form>
-        )}
+                <input
+                  type="password"
+                  name="password"
+                  autoComplete="current-password"
+                  required
+                  className={styles.input}
+                />
+              </label>
+              <button type="submit" className={styles.buttonBlock}>
+                Sign in
+              </button>
+            </form>
+          )}
+        </section>
       </div>
     </main>
   );
 }
-
-const mainStyle = {
-  minHeight: "100vh",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "var(--sb-space-8) var(--sb-space-4)",
-} as const;
-
-const cardStyle = {
-  width: "100%",
-  maxWidth: "22rem",
-} as const;
-
-const inputStyle = {
-  width: "100%",
-  background: "var(--sb-surface)",
-  border: "1px solid var(--sb-border)",
-  borderRadius: "var(--sb-radius-sm)",
-  padding: "var(--sb-space-2) var(--sb-space-3)",
-  fontSize: "var(--sb-text-sm)",
-  color: "var(--sb-text)",
-} as const;
-
-const buttonStyle = {
-  width: "100%",
-  background: "var(--sb-accent)",
-  color: "var(--sb-text-on-accent)",
-  border: "none",
-  borderRadius: "var(--sb-radius-sm)",
-  padding: "var(--sb-space-2) var(--sb-space-4)",
-  fontSize: "var(--sb-text-sm)",
-  fontWeight: 600,
-  cursor: "pointer",
-} as const;

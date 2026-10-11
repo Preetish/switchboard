@@ -12,7 +12,9 @@ export type { HubspotOAuthConfig, HubspotTokenSet } from "./oauth.js";
 export {
   HUBSPOT_API_BASE,
   HubspotApiError,
+  MEETING_TO_CONTACT_ASSOCIATION,
   findContactByEmail,
+  findOwnerByEmail,
   getOwner,
   logMeeting,
   upsertContact,

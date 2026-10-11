@@ -3,7 +3,7 @@ import type { RuleSet } from "./types.js";
 /**
  * Unique `crm.*` paths a rule set needs, from `when` keys and dynamic
  * `{ to: crm.contact.owner }` routes. Callers prefetch these lookups once
- * (with a ~2s timeout, per the brief) and pass the results as flat inputs.
+ * (with a ~2s timeout) and pass the results as flat inputs.
  */
 export function crmPathsIn(ruleSet: RuleSet): string[] {
   const paths = new Set<string>();

@@ -9,7 +9,7 @@ import {
  * Encryption for stored OAuth tokens (`integrations.token_cipher`).
  * AES-256-GCM, key from `TOKEN_ENCRYPTION_KEY` (32 bytes, hex). The blob is
  * `base64(iv[12] | authTag[16] | ciphertext)` — nothing is ever stored in
- * plaintext (operating rule 5).
+ * plaintext.
  */
 
 const IV_LENGTH = 12;
@@ -19,7 +19,7 @@ export function getEncryptionKey(): Buffer {
   const hex = process.env.TOKEN_ENCRYPTION_KEY;
   if (!hex) {
     throw new Error(
-      "TOKEN_ENCRYPTION_KEY is not set — generate one with `openssl rand -hex 32` (see .env.example).",
+      "TOKEN_ENCRYPTION_KEY is not set. Generate one with `openssl rand -hex 32` (see .env.example).",
     );
   }
   if (!/^[0-9a-f]{64}$/i.test(hex)) {

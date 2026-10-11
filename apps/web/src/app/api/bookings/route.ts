@@ -1,42 +1,34 @@
 import { NextResponse } from "next/server";
 import { createBooking, parseBookingInput } from "@/lib/bookings";
 import { getDb } from "@/lib/db";
-import { checkRateLimit, clientIp } from "@/lib/rate-limit";
+import { readJsonBody } from "@/lib/http";
+import { checkRateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Create a booking for one rep at one slot. The instant-booking UI calls
- * this after a routing decision picks the rep; the embed uses the same
- * surface. Public by design — the lead books themselves; the slot-hold
- * uniqueness plus the per-IP rate limiter are the abuse guards.
+ * Book the rep a lead was routed to. Public by design — the lead books
+ * themselves — so the submission id, the routed-rep check, slot validation,
+ * the overlap constraint, and the per-address rate limit are the guards
+ * (see lib/bookings.ts).
  */
 export async function POST(request: Request) {
   const limit = checkRateLimit("booking", clientIp(request));
   if (!limit.allowed) {
-    return NextResponse.json(
-      { error: "Too many booking attempts — please try again shortly." },
-      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
-    );
+    return tooManyRequests(limit.retryAfterSeconds, {
+      error: "Too many booking attempts. Try again in a few minutes.",
+    });
   }
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Expected a JSON body." }, { status: 400 });
-  }
-
-  const parsed = parseBookingInput(body);
+  const parsed = parseBookingInput(await readJsonBody(request));
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-
   const result = await createBooking(getDb(), parsed.input);
-
   switch (result.status) {
-    case "invalid":
     case "not_found":
-      return NextResponse.json({ error: result.error }, { status: result.status === "not_found" ? 404 : 400 });
+      return NextResponse.json({ error: result.error }, { status: 404 });
+    case "invalid":
+      return NextResponse.json({ error: result.error }, { status: 400 });
     case "slot_taken":
       return NextResponse.json({ error: result.error }, { status: 409 });
     case "created":
@@ -44,10 +36,11 @@ export async function POST(request: Request) {
         {
           booking: result.booking,
           duplicate: result.duplicate,
-          calendarError: result.calendarError ?? null,
-          emailSent: result.emailSent,
+          calendarFailed: result.calendarFailed,
+          emailQueued: result.emailQueued,
+          invited: result.invited,
         },
-        { status: 201 },
+        { status: result.duplicate ? 200 : 201 },
       );
   }
 }

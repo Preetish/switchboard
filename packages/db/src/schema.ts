@@ -1,6 +1,7 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -14,6 +15,14 @@ import {
 import type { FormField, WorkingHours } from "@switchboard/core";
 
 export type { FormField, WorkingHours };
+
+/** Per-form presentation settings (from switchboard.yaml). */
+export type FormSettings = {
+  /** Submit button label; defaults to "Continue". */
+  submitLabel?: string;
+  /** Where self-serve leads book (e.g. a scheduling page or signup). */
+  selfServeUrl?: string;
+};
 
 export type DecisionOutcome = {
   kind: "route_user" | "route_team" | "self_serve_link" | "fallback_queue";
@@ -43,7 +52,8 @@ export const users = pgTable(
     workingHours: jsonb("working_hours").$type<WorkingHours>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("users_org_email_uq").on(t.orgId, t.email)],
+  // Emails are matched case-insensitively (HubSpot owners, config files).
+  (t) => [uniqueIndex("users_org_email_uq").on(t.orgId, sql`lower(${t.email})`)],
 );
 
 export const teams = pgTable(
@@ -75,8 +85,15 @@ export const teamMembers = pgTable(
     /** Max bookings per week; 0 means unlimited. */
     weeklyCapacity: integer("weekly_capacity").notNull().default(0),
     active: boolean("active").notNull().default(true),
+    /** Smooth weighted round-robin credit (see selectRep in packages/core). */
+    rrCredit: integer("rr_credit").notNull().default(0),
   },
-  (t) => [uniqueIndex("team_members_team_user_uq").on(t.teamId, t.userId)],
+  (t) => [
+    uniqueIndex("team_members_team_user_uq").on(t.teamId, t.userId),
+    index("team_members_user_idx").on(t.userId),
+    check("team_members_weight_positive", sql`${t.weight} > 0`),
+    check("team_members_capacity_nonnegative", sql`${t.weeklyCapacity} >= 0`),
+  ],
 );
 
 export const ruleSets = pgTable(
@@ -104,6 +121,7 @@ export const forms = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     fields: jsonb("fields").$type<FormField[]>().notNull(),
+    settings: jsonb("settings").$type<FormSettings>().notNull().default({}),
     /** Rule set version this form routes with; null = fallback only. */
     ruleSetId: uuid("rule_set_id").references((): AnyPgColumn => ruleSets.id, {
       onDelete: "set null",
@@ -111,11 +129,8 @@ export const forms = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   // Slug is the public key of a hosted/embedded form (`/f/:slug`), so it is
-  // globally unique; the org-scoped index keeps per-org lookups fast.
-  (t) => [
-    uniqueIndex("forms_slug_key_uq").on(t.slug),
-    uniqueIndex("forms_org_slug_uq").on(t.orgId, t.slug),
-  ],
+  // globally unique.
+  (t) => [uniqueIndex("forms_slug_key_uq").on(t.slug), index("forms_rule_set_idx").on(t.ruleSetId)],
 );
 
 export const submissions = pgTable(
@@ -132,13 +147,16 @@ export const submissions = pgTable(
     email: text("email"),
     /** Client-provided key for idempotent retries; unique per form. */
     idempotencyKey: text("idempotency_key"),
-    /** Set when the speed-to-lead alert for this lead was sent (at-most-once marker). */
+    /** Set when the speed-to-lead alert for this lead was delivered (send-once marker). */
     alertedAt: timestamp("alerted_at", { withTimezone: true }),
+    /** Set once the lead was written to the CRM. */
+    crmSyncedAt: timestamp("crm_synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("submissions_form_idempotency_uq").on(t.formId, t.idempotencyKey),
     index("submissions_created_at_idx").on(t.createdAt),
+    index("submissions_org_email_idx").on(t.orgId, t.email),
   ],
 );
 
@@ -202,14 +220,27 @@ export const bookings = pgTable(
      * keeping CRM write-back idempotent.
      */
     crmMeetingId: text("crm_meeting_id"),
+    /** When the lead's confirmation email went out (send-once marker for retries). */
+    confirmationSentAt: timestamp("confirmation_sent_at", { withTimezone: true }),
     /** Client key so booking retries return the original instead of duplicating. */
     idempotencyKey: text("idempotency_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  // Double-booking guard: a rep can hold exactly one booking per start time.
+  // Double-booking guard: the `bookings_no_overlap` exclusion constraint
+  // (btree_gist, migration 0007 — drizzle cannot express EXCLUDE) rejects any
+  // two live bookings for one rep whose [start, end) ranges overlap.
+  // Cancelled rows never block a slot.
   (t) => [
-    uniqueIndex("bookings_user_start_uq").on(t.userId, t.startAt),
-    uniqueIndex("bookings_idempotency_uq").on(t.idempotencyKey),
+    // One live booking per lead; retries return it instead of booking again.
+    uniqueIndex("bookings_active_submission_uq")
+      .on(t.submissionId)
+      .where(sql`${t.status} in ('hold', 'confirmed')`),
+    // Idempotency keys are scoped to the lead they were issued for.
+    uniqueIndex("bookings_submission_idempotency_uq").on(t.submissionId, t.idempotencyKey),
+    index("bookings_user_start_idx").on(t.userId, t.startAt),
+    index("bookings_status_created_idx").on(t.status, t.createdAt),
+    check("bookings_end_after_start", sql`${t.endAt} > ${t.startAt}`),
+    check("bookings_status_valid", sql`${t.status} in ('hold', 'confirmed', 'cancelled')`),
   ],
 );
 
@@ -220,19 +251,34 @@ export const integrations = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
+    /**
+     * The rep a per-user connection belongs to (Google Calendar: each rep
+     * connects their own calendar). Null for org-wide connections (HubSpot).
+     */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     provider: text("provider", {
       enum: ["google_calendar", "hubspot", "slack"],
     }).notNull(),
     /** AES-encrypted OAuth token blob (IV + ciphertext), never stored in plaintext. */
     tokenCipher: text("token_cipher").notNull(),
     scopes: text("scopes"),
+    /** Account the tokens belong to (e.g. the rep's Google address), for display. */
+    accountEmail: text("account_email"),
     status: text("status", { enum: ["connected", "expired", "revoked"] })
       .notNull()
       .default("connected"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("integrations_org_provider_uq").on(t.orgId, t.provider)],
+  // One org-wide connection per provider, and one per rep per provider.
+  (t) => [
+    uniqueIndex("integrations_org_provider_uq")
+      .on(t.orgId, t.provider)
+      .where(sql`${t.userId} is null`),
+    uniqueIndex("integrations_user_provider_uq")
+      .on(t.userId, t.provider)
+      .where(sql`${t.userId} is not null`),
+  ],
 );
 
 export const orgsRelations = relations(orgs, ({ many }) => ({

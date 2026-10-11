@@ -8,6 +8,6 @@
     "build": "esbuild embed.js --minify --target=es2017 --outfile=../../apps/web/public/embed.js"
   },
   "devDependencies": {
-    "esbuild": "^0.21.5"
+    "esbuild": "^0.28.2"
   }
 }

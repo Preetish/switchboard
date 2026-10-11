@@ -196,3 +196,45 @@ describe("computeSlots", () => {
     ]);
   });
 });
+
+describe("computeSlots — DST gaps", () => {
+  it("skips wall times that don't exist on spring-forward day (no duplicates)", () => {
+    // New York jumps 02:00 -> 03:00 on 2025-03-09.
+    const slots = computeSlots({
+      timeZone: "America/New_York",
+      workingHours: { days: [0], startMinute: 0, endMinute: 4 * 60 },
+      from: new Date("2025-03-09T00:00:00Z"),
+      to: new Date("2025-03-10T00:00:00Z"),
+      durationMinutes: 60,
+    });
+    const starts = slots.map((slot) => slot.start.toISOString());
+    expect(new Set(starts).size).toBe(starts.length);
+    // 00:00, 01:00, 03:00 local exist; 02:00 does not.
+    expect(starts).toEqual([
+      "2025-03-09T05:00:00.000Z",
+      "2025-03-09T06:00:00.000Z",
+      "2025-03-09T07:00:00.000Z",
+    ]);
+  });
+
+  it("never places a slot on the previous local day where DST starts at midnight", () => {
+    // Santiago springs forward at 00:00 -> 01:00 on 2025-09-07.
+    const slots = computeSlots({
+      timeZone: "America/Santiago",
+      workingHours: { days: [0], startMinute: 0, endMinute: 3 * 60 },
+      from: new Date("2025-09-06T12:00:00Z"),
+      to: new Date("2025-09-08T12:00:00Z"),
+      durationMinutes: 60,
+    });
+    for (const slot of slots) {
+      const local = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Santiago",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(slot.start);
+      expect(local).toBe("2025-09-07");
+    }
+    expect(slots.length).toBe(2); // 01:00 and 02:00; 00:00 doesn't exist
+  });
+});

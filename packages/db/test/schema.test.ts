@@ -25,6 +25,7 @@ const migration0005 = readFileSync(
   `${migrationDir}/0005_cheerful_purifiers.sql`,
   "utf8",
 );
+const migration0006 = readFileSync(`${migrationDir}/0006_per_rep_calendars.sql`, "utf8");
 
 describe("generated migration", () => {
   it("creates every v0.1 table", () => {
@@ -68,9 +69,12 @@ describe("generated migration", () => {
     );
   });
 
-  it("stores exactly one integration per provider per org", () => {
-    expect(migration).toContain(
-      'CREATE UNIQUE INDEX "integrations_org_provider_uq" ON "integrations" USING btree ("org_id","provider")',
+  it("stores one org-wide integration per provider, and one per rep per provider", () => {
+    expect(migration0006).toContain(
+      'CREATE UNIQUE INDEX "integrations_org_provider_uq" ON "integrations" USING btree ("org_id","provider") WHERE "integrations"."user_id" is null',
+    );
+    expect(migration0006).toContain(
+      'CREATE UNIQUE INDEX "integrations_user_provider_uq" ON "integrations" USING btree ("user_id","provider") WHERE "integrations"."user_id" is not null',
     );
   });
 
@@ -117,6 +121,7 @@ describe("schema definition", () => {
       "calendarEventId",
       "meetLink",
       "crmMeetingId",
+      "confirmationSentAt",
       "idempotencyKey",
       "createdAt",
     ]);

@@ -100,6 +100,7 @@ export function computeSlots(options: SlotOptions): BusyInterval[] {
   });
 
   const slots: BusyInterval[] = [];
+  const seen = new Set<number>();
   const durationMs = options.durationMinutes * 60_000;
   for (let n = 0; n <= dayCount; n++) {
     const day = addDaysUtc(firstDay, n);
@@ -110,6 +111,21 @@ export function computeSlots(options: SlotOptions): BusyInterval[] {
       startMinute += step
     ) {
       const start = wallTimeToUtc(day, startMinute, options.timeZone);
+      // A wall time inside a DST gap (e.g. 02:30 on spring-forward day, or
+      // midnight in zones that switch at 00:00) doesn't exist; the converter
+      // shifts it to another hour or even the previous day. Only keep slots
+      // that land on the wall time they were cut for, and never twice.
+      const local = zonedParts(start, options.timeZone);
+      if (
+        local.year !== day.year ||
+        local.month !== day.month ||
+        local.day !== day.day ||
+        local.hour * 60 + local.minute !== startMinute ||
+        seen.has(start.getTime())
+      ) {
+        continue;
+      }
+      seen.add(start.getTime());
       const end = new Date(start.getTime() + durationMs);
       if (start < options.from || end > options.to) continue;
       if (overlapsAny({ start, end }, busy)) continue;

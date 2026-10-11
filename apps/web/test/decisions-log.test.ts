@@ -63,6 +63,8 @@ describe("csvCell", () => {
     expect(csvCell("+cmd")).toBe("'+cmd");
     expect(csvCell("-cmd")).toBe("'-cmd");
     expect(csvCell("@x")).toBe("'@x");
+    expect(csvCell("\t=cmd")).toBe("'\t=cmd");
+    expect(csvCell("\r=cmd")).toBe(`"'\r=cmd"`);
   });
 
   it("does not prefix numbers that start with a sign", () => {

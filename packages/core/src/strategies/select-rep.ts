@@ -1,8 +1,7 @@
 /**
  * Team rep selection. Pure and I/O-free like the rest of core: the caller
- * supplies each member's load counters (assignment history from
- * `routing_decisions`, bookings this week from `bookings`) and availability,
- * and the function only picks.
+ * supplies each member's rotation credit (persisted on the membership),
+ * load counters, and availability, then stores the returned credits.
  */
 
 export type RepCandidate = {
@@ -11,16 +10,26 @@ export type RepCandidate = {
   weight: number;
   /** Max bookings per week; 0 means unlimited. */
   weeklyCapacity: number;
-  /** Bookings already held in the current week. */
+  /** Bookings (held or confirmed) already in the current week. */
   bookingsThisWeek: number;
-  /** Total past routing decisions that landed on this rep (rotation state). */
-  assignments: number;
-  /** Active membership; OOO / no calendar availability is folded in here. */
+  /**
+   * Smooth weighted round-robin credit, persisted per team membership. New
+   * members start at 0 and get their fair share immediately — no catch-up
+   * flood, and deleted leads never rewind the rotation.
+   */
+  credit: number;
+  /** Active membership; OOO / offboarding is folded in here. */
   available: boolean;
 };
 
 export type RepSelection =
-  { userId: string; reason: string } | { userId: null; reason: string };
+  | {
+      userId: string;
+      reason: string;
+      /** New credits to persist (only when round robin made the pick). */
+      credits: Map<string, number> | null;
+    }
+  | { userId: null; reason: string; credits: null };
 
 function eligible(member: RepCandidate): boolean {
   if (!member.available) return false;
@@ -29,36 +38,44 @@ function eligible(member: RepCandidate): boolean {
   return true;
 }
 
-/**
- * Smooth weighted round robin: the eligible rep with the lowest
- * `assignments / weight` is next, so weight 2 gets roughly twice the turns.
- * Ties go to the first member in caller order (sort members deterministically
- * before calling, e.g. by email).
- */
-function roundRobin(members: RepCandidate[]): RepCandidate | null {
-  const pool = members.filter(eligible);
-  const first = pool[0];
-  if (!first) return null;
-  let best = first;
-  for (const member of pool.slice(1)) {
-    if (
-      member.assignments / normWeight(member.weight) <
-      best.assignments / normWeight(best.weight)
-    ) {
-      best = member;
-    }
-  }
-  return best;
-}
-
 function normWeight(weight: number): number {
   return weight > 0 ? weight : 1;
 }
 
 /**
+ * Smooth weighted round robin (the nginx algorithm): every eligible rep
+ * earns their weight in credit, the richest rep is picked, and pays back the
+ * total. Weight 2 gets exactly twice the turns of weight 1, interleaved
+ * (a, b, a, a, b, a…) rather than in bursts. Ties go to caller order (sort
+ * members deterministically, e.g. by email). Ineligible reps neither earn
+ * nor pay, so a rep back from capacity rejoins at their old place.
+ */
+function roundRobin(
+  members: RepCandidate[],
+): { picked: RepCandidate; credits: Map<string, number> } | null {
+  const pool = members.filter(eligible);
+  if (pool.length === 0) return null;
+  const total = pool.reduce((sum, member) => sum + normWeight(member.weight), 0);
+  const credits = new Map<string, number>();
+  let picked = pool[0]!;
+  let best = -Infinity;
+  for (const member of pool) {
+    const credit = member.credit + normWeight(member.weight);
+    credits.set(member.userId, credit);
+    if (credit > best) {
+      best = credit;
+      picked = member;
+    }
+  }
+  credits.set(picked.userId, credits.get(picked.userId)! - total);
+  return { picked, credits };
+}
+
+/**
  * Pick the rep a team route lands on. `existing_owner` sends the lead to the
- * CRM owner when they are on the team and eligible, and falls back to
- * round-robin otherwise so a missing or busy owner never drops a lead.
+ * CRM owner when they are on the team and eligible (without spending a
+ * rotation turn), and falls back to round robin otherwise so a missing or
+ * busy owner never drops a lead.
  */
 export function selectRep(
   strategy: "round_robin" | "existing_owner",
@@ -66,34 +83,42 @@ export function selectRep(
   ownerUserId?: string,
 ): RepSelection {
   if (members.length === 0) {
-    return { userId: null, reason: "Team has no members; sent to the fallback queue." };
+    return {
+      userId: null,
+      reason: "no members; sent to the fallback queue.",
+      credits: null,
+    };
   }
   if (strategy === "existing_owner" && ownerUserId) {
     const owner = members.find((m) => m.userId === ownerUserId);
     if (owner && eligible(owner)) {
-      return { userId: owner.userId, reason: "Existing owner wins." };
+      return { userId: owner.userId, reason: "existing CRM owner.", credits: null };
     }
-    const picked = roundRobin(members);
-    return picked
+    const result = roundRobin(members);
+    return result
       ? {
-          userId: picked.userId,
-          reason: "Existing owner unavailable; round robin picked the rep.",
+          userId: result.picked.userId,
+          reason: "CRM owner unavailable, so round robin.",
+          credits: result.credits,
         }
       : {
           userId: null,
           reason:
-            "Existing owner unavailable; no eligible rep left; sent to the fallback queue.",
+            "CRM owner unavailable and nobody else eligible; sent to the fallback queue.",
+          credits: null,
         };
   }
-  const picked = roundRobin(members);
-  if (!picked) {
+  const result = roundRobin(members);
+  if (!result) {
     return {
       userId: null,
-      reason: "No eligible rep (capacity or availability); sent to the fallback queue.",
+      reason: "nobody eligible (capacity or paused); sent to the fallback queue.",
+      credits: null,
     };
   }
   return {
-    userId: picked.userId,
-    reason: `Round robin picked the rep (weight ${normWeight(picked.weight)}, ${picked.assignments} past assignments).`,
+    userId: result.picked.userId,
+    reason: `round robin (weight ${normWeight(result.picked.weight)}).`,
+    credits: result.credits,
   };
 }

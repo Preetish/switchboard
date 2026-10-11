@@ -1,41 +1,28 @@
-import { randomBytes } from "node:crypto";
-import { computeSlots, DEFAULT_WORKING_HOURS } from "@switchboard/core";
+import { computeSlots } from "@switchboard/core";
 import {
   DEFAULT_TIMEOUT_MS,
   GoogleAuthError,
   GoogleApiError,
   exchangeCode,
   fetchFreeBusy,
+  missingCalendarScopes,
   refreshAccessToken,
   type GoogleOAuthConfig,
-  type GoogleTokenSet,
 } from "@switchboard/calendar-google";
-import { and, eq, gt, lt, or } from "drizzle-orm";
-import {
-  bookings,
-  integrations,
-  orgs,
-  users,
-  type Database,
-  type WorkingHours,
-} from "@switchboard/db";
-import { decryptJson, encryptJson, getEncryptionKey, secretsMatch } from "@/lib/crypto";
+import { and, asc, eq, gt, lt, or } from "drizzle-orm";
+import { bookings, orgs, users, type Database, type WorkingHours } from "@switchboard/db";
+import { secretsMatch } from "@/lib/crypto";
 import { releaseExpiredHolds } from "./holds";
+import { getValidAccessToken, saveTokens, type TokenOwner } from "./token-store";
+import { log } from "./log";
 
 /**
- * Google Calendar integration plumbing: configuration from env, the OAuth
- * connect/callback handshake, and encrypted token lifecycle in the
- * `integrations` table. Tokens are decrypted only in memory, refreshed
- * lazily shortly before expiry, and re-encrypted on update.
+ * Google Calendar integration: configuration from env, completing the OAuth
+ * handshake, and availability. Each rep connects their own calendar, so
+ * tokens are stored per rep (see `token-store.ts`) and free/busy and event
+ * creation always act as the rep the lead was routed to.
  */
 
-export const DEFAULT_ORG_SLUG = process.env.ORG_SLUG ?? "acme";
-
-/** OAuth state cookie: random value compared in the callback (CSRF guard). */
-export const OAUTH_STATE_COOKIE = "sb_oauth_state";
-
-/** Provider-scoped so both OAuth flows can be in flight without colliding. */
-export const OAUTH_STATE_COOKIE_HUBSPOT = "sb_oauth_state_hubspot";
 
 export function appBaseUrl(): string {
   return (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
@@ -53,9 +40,9 @@ export function googleConfig(): GoogleOAuthConfig | null {
 }
 
 /**
- * Automation key for the CSV export route (docs/decisions.md, task 13):
- * scripted exports authenticate with `ADMIN_SETUP_KEY` instead of the admin
- * session cookie. The admin pages and OAuth handshakes use Auth.js sessions.
+ * Automation key for the CSV export route: scripted exports authenticate
+ * with `ADMIN_SETUP_KEY` instead of the admin session cookie. The admin
+ * pages and OAuth handshakes use Auth.js sessions.
  */
 export function adminKeyOk(key: string | undefined | null): boolean {
   const expected = process.env.ADMIN_SETUP_KEY;
@@ -63,112 +50,48 @@ export function adminKeyOk(key: string | undefined | null): boolean {
   return secretsMatch(key, expected);
 }
 
-/** The single org in single-org mode (see docs/decisions.md, task 5). */
+/**
+ * The org this instance serves. One instance serves one org (the one in
+ * switchboard.yaml); `ORG_SLUG` picks one explicitly when a database holds
+ * several. Without it, the first org created wins.
+ */
 export async function findOrg(
   db: Database,
 ): Promise<{ id: string; name: string } | null> {
+  const slug = process.env.ORG_SLUG?.trim();
   const [row] = await db
     .select({ id: orgs.id, name: orgs.name })
     .from(orgs)
-    .where(eq(orgs.slug, DEFAULT_ORG_SLUG))
+    .where(slug ? eq(orgs.slug, slug) : undefined)
+    .orderBy(asc(orgs.createdAt))
     .limit(1);
   return row ?? null;
 }
 
+export type GoogleConnectError =
+  "google_not_configured" | "exchange_failed" | "scope_missing";
+
 /**
- * The encrypted blob's shape. `expiresAtMs` is epoch milliseconds because
- * JSON round-trips Dates as strings — a Date here would crash the expiry
- * check on load.
+ * Complete the OAuth handshake for one rep; returns a stable error code on
+ * failure. A consent screen where the rep unticked a calendar scope is
+ * rejected here rather than failing later at booking time.
  */
-type StoredGoogleTokens = {
-  accessToken: string;
-  refreshToken?: string;
-  expiresAtMs: number;
-  scope?: string;
-};
-
-function toStored(tokens: GoogleTokenSet): StoredGoogleTokens {
-  return {
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-    expiresAtMs: tokens.expiresAt.getTime(),
-    scope: tokens.scope,
-  };
-}
-
-export async function loadGoogleTokens(
-  db: Database,
-  orgId: string,
-): Promise<GoogleTokenSet | null> {
-  const [row] = await db
-    .select({ tokenCipher: integrations.tokenCipher })
-    .from(integrations)
-    .where(
-      and(eq(integrations.orgId, orgId), eq(integrations.provider, "google_calendar")),
-    )
-    .limit(1);
-  if (!row) return null;
-  try {
-    const stored = decryptJson<StoredGoogleTokens>(row.tokenCipher, getEncryptionKey());
-    return {
-      accessToken: stored.accessToken,
-      refreshToken: stored.refreshToken,
-      expiresAt: new Date(stored.expiresAtMs),
-      scope: stored.scope,
-    };
-  } catch {
-    // Unreadable blob (key rotated/lost) counts as not connected; the admin
-    // reconnects and overwrites the row.
-    return null;
-  }
-}
-
-async function saveGoogleTokens(
-  db: Database,
-  orgId: string,
-  tokens: GoogleTokenSet,
-): Promise<void> {
-  const tokenCipher = encryptJson(toStored(tokens), getEncryptionKey());
-  await db
-    .insert(integrations)
-    .values({
-      orgId,
-      provider: "google_calendar",
-      tokenCipher,
-      scopes: tokens.scope ?? null,
-      status: "connected",
-    })
-    .onConflictDoUpdate({
-      target: [integrations.orgId, integrations.provider],
-      set: {
-        tokenCipher,
-        scopes: tokens.scope ?? null,
-        status: "connected",
-        updatedAt: new Date(),
-      },
-    });
-}
-
-export function newStateValue(): string {
-  return randomBytes(16).toString("hex");
-}
-
-/** Complete the OAuth handshake; returns a stable error code on failure. */
 export async function connectGoogle(
   db: Database,
-  orgId: string,
+  owner: TokenOwner & { userId: string },
   code: string,
-): Promise<
-  { ok: true } | { ok: false; error: "google_not_configured" | "exchange_failed" }
-> {
+): Promise<{ ok: true } | { ok: false; error: GoogleConnectError }> {
   const config = googleConfig();
   if (!config) return { ok: false, error: "google_not_configured" };
   try {
     const tokens = await exchangeCode(config, code, DEFAULT_TIMEOUT_MS);
-    await saveGoogleTokens(db, orgId, tokens);
+    if (missingCalendarScopes(tokens.scope).length > 0) {
+      return { ok: false, error: "scope_missing" };
+    }
+    await saveTokens(db, "google_calendar", owner, tokens, tokens.email ?? null);
     return { ok: true };
   } catch (cause) {
-    console.error(
+    log.error(
       `Google token exchange failed: ${cause instanceof GoogleAuthError ? cause.message : String(cause)}`,
     );
     return { ok: false, error: "exchange_failed" };
@@ -176,57 +99,69 @@ export async function connectGoogle(
 }
 
 /**
- * A valid access token, refreshing it shortly before expiry (60s skew) and
- * carrying the stored refresh token forward when Google omits it. Returns
- * null when the org is not connected or the refresh call fails — callers
- * degrade to local availability instead of failing the request.
+ * A valid access token for one rep's Google Calendar, or null when that rep
+ * has not connected (or the refresh failed) — callers degrade to local
+ * availability instead of failing the request.
  */
-export async function getValidAccessToken(
+export async function getGoogleAccessToken(
   db: Database,
-  orgId: string,
+  owner: TokenOwner & { userId: string },
 ): Promise<string | null> {
-  const tokens = await loadGoogleTokens(db, orgId);
-  if (!tokens?.refreshToken) return tokens?.accessToken ?? null;
-  if (tokens.expiresAt.getTime() - Date.now() > 60_000) return tokens.accessToken;
-
   const config = googleConfig();
-  if (!config) return null;
-  try {
-    const refreshed = await refreshAccessToken(
-      config,
-      tokens.refreshToken,
-      DEFAULT_TIMEOUT_MS,
-    );
-    const merged: GoogleTokenSet = {
-      ...refreshed,
-      refreshToken: refreshed.refreshToken ?? tokens.refreshToken,
-    };
-    await saveGoogleTokens(db, orgId, merged);
-    return merged.accessToken;
-  } catch (cause) {
-    // Surface the reason to the caller context; availability degrades.
-    console.error(
-      `Google token refresh failed: ${cause instanceof GoogleAuthError ? cause.message : String(cause)}`,
-    );
-    return null;
-  }
+  return getValidAccessToken(
+    db,
+    "google_calendar",
+    owner,
+    config
+      ? (refreshToken) => refreshAccessToken(config, refreshToken, DEFAULT_TIMEOUT_MS)
+      : null,
+  );
 }
 
+/**
+ * Public availability for the booking UI: the rep's display name and zone
+ * and open slots. Working hours, calendar error text, and free/busy details
+ * stay server-side.
+ */
 export type Availability = {
   rep: { name: string; timeZone: string };
-  workingHours: WorkingHours;
-  from: Date;
-  to: Date;
   durationMinutes: number;
-  /** Where busy windows came from: Google Calendar, or local bookings only. */
-  source: "google" | "local";
-  calendarError?: string;
+  /** True when the live calendar could not be read and only local bookings count. */
+  degraded: boolean;
   slots: { start: string; end: string }[];
 };
 
 /** Lead time before the earliest bookable slot (a lead cannot book the past). */
-const LEAD_MINUTES = 60;
+export const LEAD_MINUTES = 60;
+/** Furthest ahead a lead may look or book. */
+export const MAX_HORIZON_DAYS = 42;
 const MINUTE_MS = 60_000;
+
+/**
+ * Whether `startAt` is a slot the rep actually offers for this duration:
+ * inside their working hours, on the slot grid, after the lead time, and
+ * within the booking horizon. Busy time is checked separately (the database
+ * constraint and the live free/busy re-check).
+ */
+export function isOfferedSlot(
+  rep: { timeZone: string; workingHours: WorkingHours | null },
+  startAt: Date,
+  durationMinutes: number,
+  now: number = Date.now(),
+): boolean {
+  const earliest = now + LEAD_MINUTES * MINUTE_MS;
+  const latest = now + MAX_HORIZON_DAYS * 24 * 60 * MINUTE_MS;
+  const end = startAt.getTime() + durationMinutes * MINUTE_MS;
+  if (startAt.getTime() < earliest || end > latest) return false;
+  const slots = computeSlots({
+    timeZone: rep.timeZone,
+    workingHours: rep.workingHours ?? undefined,
+    from: startAt,
+    to: new Date(end),
+    durationMinutes,
+  });
+  return slots.some((slot) => slot.start.getTime() === startAt.getTime());
+}
 
 /**
  * Bookable slots for one rep over the next `days` days: confirmed bookings
@@ -254,7 +189,7 @@ export async function getAvailability(
 
   const now = Date.now();
   const from = new Date(now + LEAD_MINUTES * MINUTE_MS);
-  const to = new Date(now + days * 24 * 60 * MINUTE_MS);
+  const to = new Date(now + Math.min(days, MAX_HORIZON_DAYS) * 24 * 60 * MINUTE_MS);
   const workingHours = rep.workingHours ?? undefined;
 
   // Expired holds release lazily; remaining holds and confirmed bookings both
@@ -276,10 +211,9 @@ export async function getAvailability(
     start: interval.start,
     end: interval.end,
   }));
-  let source: Availability["source"] = "local";
-  let calendarError: string | undefined;
+  let degraded = false;
 
-  const accessToken = await getValidAccessToken(db, rep.orgId);
+  const accessToken = await getGoogleAccessToken(db, { orgId: rep.orgId, userId });
   if (accessToken) {
     try {
       const freeBusy = await fetchFreeBusy({
@@ -289,12 +223,15 @@ export async function getAvailability(
         timeoutMs: DEFAULT_TIMEOUT_MS,
       });
       busy.push(...freeBusy.busy);
-      source = "google";
     } catch (cause) {
-      calendarError =
-        cause instanceof GoogleApiError || cause instanceof GoogleAuthError
-          ? cause.message
-          : "Google Calendar lookup failed.";
+      degraded = true;
+      log.error(
+        `Google free/busy failed for rep ${userId}; offering times from local bookings only: ${
+          cause instanceof GoogleApiError || cause instanceof GoogleAuthError
+            ? cause.message
+            : String(cause)
+        }`,
+      );
     }
   }
 
@@ -309,12 +246,8 @@ export async function getAvailability(
 
   return {
     rep: { name: rep.name, timeZone: rep.timeZone },
-    workingHours: workingHours ?? DEFAULT_WORKING_HOURS,
-    from,
-    to,
     durationMinutes,
-    source,
-    calendarError,
+    degraded,
     slots: slots.map((slot) => ({
       start: slot.start.toISOString(),
       end: slot.end.toISOString(),

@@ -43,6 +43,41 @@
       "when": 1791668799904,
       "tag": "0005_cheerful_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791729358716,
+      "tag": "0006_per_rep_calendars",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791730105120,
+      "tag": "0007_booking_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791730868573,
+      "tag": "0008_rotation_and_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791730929660,
+      "tag": "0009_side_effect_markers",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791731646536,
+      "tag": "0010_form_settings",
+      "breakpoints": true
     }
   ]
 }

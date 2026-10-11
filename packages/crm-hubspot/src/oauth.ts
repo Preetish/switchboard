@@ -3,7 +3,7 @@
  * dependency, mirroring `packages/calendar-google`. Self-hosters create their
  * own HubSpot app (see README); the public app credentials never ship.
  *
- * All network calls take a timeout (default ~2s, per the routing brief) and
+ * All network calls take a timeout (default ~2s, so a slow provider never stalls a lead) and
  * raise `HubspotAuthError` instead of hanging.
  */
 
@@ -35,9 +35,18 @@ export const HUBSPOT_SCOPES = [
 ] as const;
 
 export class HubspotAuthError extends Error {
-  constructor(message: string) {
+  /** OAuth error code from the token endpoint (e.g. `invalid_grant`), when given. */
+  readonly code: string | undefined;
+
+  constructor(message: string, code?: string) {
     super(message);
     this.name = "HubspotAuthError";
+    this.code = code;
+  }
+
+  /** The grant was revoked or expired: only reconnecting will fix it. */
+  get revoked(): boolean {
+    return this.code === "invalid_grant";
   }
 }
 
@@ -82,6 +91,7 @@ async function tokenRequest(
       payload?.error_description ??
         payload?.error ??
         `HubSpot token endpoint returned HTTP ${response.status}.`,
+      payload?.error,
     );
   }
   return {

@@ -1,0 +1,62 @@
+# Demo setup loaded by `docker compose up` (SEED_DEMO_DATA=true) and
+# `npm run demo:load`: three teams, four reps, and the /f/book-a-demo form
+# routed by rules.example.yaml. Rep addresses use the reserved .test domain.
+
+org:
+  name: Acme Inc
+  slug: acme
+
+reps:
+  - email: alice@acme.test
+    name: Alice Chen
+    timezone: America/New_York
+  - email: bob@acme.test
+    name: Bob Martinez
+    timezone: America/Los_Angeles
+  - email: carol@acme.test
+    name: Carol Okafor
+    timezone: Europe/London
+  - email: dana@acme.test
+    name: Dana Weber
+    timezone: Europe/Berlin
+    workingHours: { days: [mon, tue, wed, thu, fri], hours: "08:00-16:00" }
+
+teams:
+  - key: enterprise
+    name: Enterprise
+    members:
+      - { rep: alice@acme.test, weight: 2 }
+      - bob@acme.test
+  - key: dach
+    name: DACH
+    members:
+      - dana@acme.test
+  - key: default
+    name: Sales
+    members:
+      - carol@acme.test
+
+forms:
+  - slug: book-a-demo
+    name: Book a demo
+    submitLabel: Find a time
+    selfServeUrl: https://example.com/signup
+    rules: rules.example.yaml
+    fields:
+      - { key: name, label: Full name, type: text, required: true }
+      - { key: email, label: Work email, type: email, required: true }
+      - key: company_size
+        label: Company size
+        type: number
+        required: true
+        helpText: Number of employees.
+      - key: country
+        label: Country
+        type: select
+        required: true
+        options: [US, CA, GB, DE, AT, CH, Other]
+      - { key: message, label: Anything we should know?, type: textarea, required: false }
+      - key: consent
+        label: I agree that my details are stored to process this request.
+        type: consent
+        required: true

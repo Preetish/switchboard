@@ -1,4 +1,5 @@
 import { createTransport } from "nodemailer";
+import { log } from "./log";
 
 /**
  * Confirmation email (bring-your-own SMTP): `SMTP_URL` like
@@ -20,6 +21,11 @@ export type ConfirmationEmailInput = {
   /** Plain booking link offered when no calendar event could be created. */
   fallbackUrl: string | null;
 };
+
+/** Plain booking link offered by email when the calendar event cannot be created. */
+export function fallbackBookingUrl(): string | null {
+  return process.env.FALLBACK_BOOKING_URL || null;
+}
 
 export function smtpConfigured(): boolean {
   return Boolean(process.env.SMTP_URL);
@@ -83,7 +89,7 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): {
 } {
   const whenSubject = formatWhen(input.startAt, input.repTimeZone, SUBJECT_OPTIONS);
   const whenBody = formatWhen(input.startAt, input.repTimeZone, BODY_OPTIONS);
-  const greeting = input.leadName ? `Hi ${input.leadName}` : "Hello";
+  const greeting = input.leadName ? `Hi ${input.leadName.split(" ")[0]}` : "Hello";
 
   const lines = [
     `${greeting},`,
@@ -95,24 +101,24 @@ export function buildConfirmationEmail(input: ConfirmationEmailInput): {
   } else {
     lines.push(
       "",
-      "We could not create the calendar event automatically, so the meeting is not on a calendar yet.",
+      "We couldn't add this meeting to the calendar, so no invite went out.",
     );
     if (input.fallbackUrl) {
       lines.push(`You can pick another time here: ${input.fallbackUrl}`);
     }
     lines.push(
-      `Or simply reply to this email and ${input.repName} will set it up with you.`,
+      `Or reply to this email and ${input.repName} will set it up with you.`,
     );
   }
   lines.push(
     "",
-    `Questions? Reach ${input.repName} at ${input.repEmail}.`,
+    `Questions? Write to ${input.repName} at ${input.repEmail}.`,
     "",
-    "— Switchboard",
+    input.orgName,
   );
 
   return {
-    subject: `Confirmed: meeting with ${input.repName} — ${whenSubject}`,
+    subject: `Confirmed: meeting with ${input.repName}, ${whenSubject}`,
     text: lines.join("\n"),
   };
 }
@@ -127,6 +133,13 @@ export async function sendConfirmationEmail(
   );
 }
 
+/** `jane.doe@corp.com` → `j***@corp.com`, so logs don't collect lead addresses. */
+export function maskEmail(address: string): string {
+  const at = address.lastIndexOf("@");
+  if (at <= 0) return "***";
+  return `${address[0]}***${address.slice(at)}`;
+}
+
 /** A short label used in the skip/failure logs, e.g. "confirmation email". */
 export type EmailContext = { context: string };
 
@@ -136,7 +149,7 @@ export async function sendEmail(
 ): Promise<boolean> {
   const url = process.env.SMTP_URL;
   if (!url) {
-    console.warn(`SMTP_URL is not set — ${context} skipped.`);
+    log.warn(`SMTP_URL is not set, so the ${context} was skipped.`);
     return false;
   }
   try {
@@ -152,8 +165,8 @@ export async function sendEmail(
     });
     return true;
   } catch (cause) {
-    console.error(
-      `Email to ${message.to} failed: ${
+    log.error(
+      `Email (${context}) to ${maskEmail(message.to)} failed: ${
         cause instanceof Error ? cause.message : String(cause)
       }`,
     );

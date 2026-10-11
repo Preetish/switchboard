@@ -1,6 +1,5 @@
 export { crmPathsIn } from "./crm-lookups.js";
 export {
-  actionKind,
   evaluate,
   isCatchAll,
   matchCondition,

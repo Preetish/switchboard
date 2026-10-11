@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { parseBookingInput } from "../src/lib/bookings.js";
 
 const UUID = "11111111-1111-1111-1111-111111111111";
+const SUBMISSION = "22222222-2222-2222-2222-222222222222";
 
 function validBody() {
   return {
     userId: UUID,
+    submissionId: SUBMISSION,
     startAt: "2026-10-07T13:00:00.000Z",
     durationMinutes: 30,
   };
@@ -19,7 +21,7 @@ describe("parseBookingInput", () => {
       expect(parsed.input.userId).toBe(UUID);
       expect(parsed.input.startAt.toISOString()).toBe("2026-10-07T13:00:00.000Z");
       expect(parsed.input.durationMinutes).toBe(30);
-      expect(parsed.input.submissionId).toBeNull();
+      expect(parsed.input.submissionId).toBe(SUBMISSION);
       expect(parsed.input.idempotencyKey).toBeNull();
     }
   });
@@ -53,12 +55,13 @@ describe("parseBookingInput", () => {
     ).toBe(false);
   });
 
-  it("accepts explicit nulls for optional fields", () => {
-    const parsed = parseBookingInput({
-      ...validBody(),
-      submissionId: null,
-      idempotencyKey: null,
-    });
-    expect(parsed.ok).toBe(true);
+  it("requires the lead's submission (bookings are only for routed leads)", () => {
+    const { submissionId: _omit, ...withoutSubmission } = validBody();
+    expect(parseBookingInput(withoutSubmission).ok).toBe(false);
+    expect(parseBookingInput({ ...validBody(), submissionId: null }).ok).toBe(false);
+  });
+
+  it("accepts an explicit null idempotency key", () => {
+    expect(parseBookingInput({ ...validBody(), idempotencyKey: null }).ok).toBe(true);
   });
 });
