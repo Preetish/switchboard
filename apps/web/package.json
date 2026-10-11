@@ -9,7 +9,7 @@
     "start": "node server.mjs"
   },
   "dependencies": {
-    "@next/env": "^15.5.27",
+    "@next/env": "^16.4.0",
     "@switchboard/calendar-google": "*",
     "@switchboard/core": "*",
     "@switchboard/crm-hubspot": "*",
