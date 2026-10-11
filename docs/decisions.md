@@ -498,7 +498,10 @@ decisions. Each item notes what it supersedes.
   current page's UTMs stores nothing on the device. Keeping first touch in
   localStorage and reading `_ga`/`_fbp`/`_fbc`/`_gcl_aw`/`hubspotutk` does,
   so it waits for `data-switchboard-consent="granted"` or
-  `Switchboard.setConsent(true)`. The default is the privacy-safe one.
+  `Switchboard.setConsent(true)`. The loader's own default is the
+  privacy-safe one, but the documented snippet (and the one the Setup page
+  copies) includes the attribute: most B2B sites want full attribution, and
+  sites that need a consent banner remove it and call `setConsent` instead.
 - **Last touch flat, first touch nested.** Rules mostly care about the visit
   that converted (`attribution.utm_medium`); first touch is there for
   reporting and ABM rules (`attribution.first.utm_source`).

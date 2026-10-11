@@ -10,12 +10,23 @@ host and the form's slug:
 
 ```html
 <div data-switchboard-form="book-a-demo"></div>
-<script src="https://switchboard.yourcompany.com/embed.js" defer></script>
+<script src="https://switchboard.yourcompany.com/embed.js" data-switchboard-consent="granted" defer></script>
 ```
 
 The loader (about 4 KB, no dependencies) turns every
 `data-switchboard-form` placeholder into the form. Several placeholders on one
 page each get their own form.
+
+`data-switchboard-consent="granted"` turns on full attribution: the loader
+remembers where a visitor first came from across pages and visits, and reads
+your analytics and ad cookie IDs. If your site has to ask visitors before
+storing that (for example under GDPR), remove the attribute and let your
+consent banner turn it on instead; see
+[Tracking and attribution](#tracking-and-attribution).
+
+To capture campaigns from your landing pages, not just the page with the
+form, add the script tag (without a placeholder) to every page, for example
+in your site's shared layout or through your tag manager.
 
 ## Single-page apps, modals, and tag managers
 
@@ -26,7 +37,7 @@ page each get their own form.
   `<script>` tag so the loader can find its own origin:
 
   ```html
-  <script src="https://switchboard.yourcompany.com/embed.js" data-switchboard-embed defer></script>
+  <script src="https://switchboard.yourcompany.com/embed.js" data-switchboard-embed data-switchboard-consent="granted" defer></script>
   ```
 
 - Set an accessible name for the frame with
@@ -61,18 +72,17 @@ loads, it asks the loader for that data and sends it with the submission.
 | First touch, kept across pages and visits for 90 days | localStorage on your site | Yes |
 | Cookie IDs: `_ga`, `_fbp`, `_fbc`, `_gcl_aw`, `hubspotutk` | Your site's cookies | Yes |
 
-Without consent, the loader reads only the current page's URL and referrer
-and stores nothing. So if a visitor lands on `/pricing?utm_source=google` and
-then clicks to `/demo`, the campaign is lost unless you've granted consent.
-Grant it in one of two ways:
+The snippets in this guide include `data-switchboard-consent="granted"`, so
+everything in the table is captured. Without the attribute, the loader reads
+only the current page's URL and referrer and stores nothing; a visitor who
+lands on `/pricing?utm_source=google` and then clicks to `/demo` would arrive
+with no campaign.
 
-```html
-<!-- Your site doesn't need a consent banner (or consent is implied): -->
-<script src="https://switchboard.yourcompany.com/embed.js" data-switchboard-consent="granted" defer></script>
-```
+If your site needs consent before storing data or reading cookies, leave the
+attribute off and call this from your consent banner once the visitor
+accepts analytics or marketing cookies:
 
 ```js
-// Your consent banner calls this once the visitor accepts analytics or marketing cookies:
 window.Switchboard.setConsent(true);
 ```
 

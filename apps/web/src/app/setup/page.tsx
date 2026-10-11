@@ -90,7 +90,7 @@ export default async function SetupPage() {
           {formRows.length > 0 ? <h2 className={styles.groupTitle}>Forms</h2> : null}
           {formRows.map(({ form, rules, version }) => {
             const url = `${base}/f/${form.slug}`;
-            const snippet = `<div data-switchboard-form="${form.slug}"></div>\n<script src="${base}/embed.js" defer></script>`;
+            const snippet = `<div data-switchboard-form="${form.slug}"></div>\n<script src="${base}/embed.js" data-switchboard-consent="granted" defer></script>`;
             const parsed = rules ? validateRuleSet(rules) : null;
             return (
               <section key={form.id} className={styles.section} aria-labelledby={`form-${form.slug}`}>
