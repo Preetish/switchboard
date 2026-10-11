@@ -26,7 +26,7 @@
     "test:db": "vitest run apps/web/test/integration.db.test.ts"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "^15.5.27",
+    "@next/eslint-plugin-next": "^16.4.0",
     "@playwright/test": "^1.64.0",
     "@types/node": "^22.10.0",
     "eslint": "^9.17.0",
