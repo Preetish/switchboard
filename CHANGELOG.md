@@ -6,6 +6,19 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Admin sign-in no longer hangs when the server is started with `HOSTNAME`
+  unset (the "without Docker" path): the server passed its 0.0.0.0 bind
+  address to Next as the app's hostname, and Auth.js's internal sign-in
+  request to that address never answered. The bind address is still used
+  for listening, but Next now hears "localhost" for a bind-all address.
+  Covered by a new browser test that signs in through the login form.
+- The consent checkbox's keyboard focus ring now outlines just the
+  checkbox instead of the whole consent sentence, and no longer appears
+  on mouse clicks.
+
+
 ## [0.1.0] — 2026-10-13
 
 The first public release: qualify a form submission, route it to the right
