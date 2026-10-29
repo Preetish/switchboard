@@ -43,7 +43,15 @@ const port = Number(process.env.PORT ?? 3000);
 const hostname = process.env.HOSTNAME ?? "0.0.0.0";
 const hops = trustedProxyHops();
 
-const app = next({ dev, dir, hostname, port });
+// Next (and Auth.js on top of it) builds internal URLs from the hostname it
+// is given — including the sign-in flow's request to its own auth endpoint.
+// A bind-all address (0.0.0.0 / ::) is a listen instruction, not a callable
+// address: handing it to Next makes sign-in call http://0.0.0.0:<port> and
+// hang forever. Keep binding to it, but tell Next "localhost" instead.
+const appHostname =
+  hostname === "0.0.0.0" || hostname === "::" ? "localhost" : hostname;
+
+const app = next({ dev, dir, hostname: appHostname, port });
 const handle = app.getRequestHandler();
 await app.prepare();
 
