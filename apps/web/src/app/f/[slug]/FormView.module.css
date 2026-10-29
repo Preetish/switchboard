@@ -126,10 +126,12 @@
   accent-color: var(--sb-accent);
 }
 
-.consent:focus-within {
+/* Keyboard focus rings the checkbox itself, not the whole consent row:
+   a full-width outline around the sentence reads as a stray border,
+   and :focus-within also showed it on plain mouse clicks. */
+.consent input:focus-visible {
   outline: 2px solid var(--sb-accent);
   outline-offset: 2px;
-  border-radius: var(--sb-radius-sm);
 }
 
 .help {
