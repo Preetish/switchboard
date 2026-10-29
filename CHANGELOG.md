@@ -6,6 +6,8 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-10-29
+
 ### Fixed
 
 - Admin sign-in no longer hangs when the server is started with `HOSTNAME`
@@ -17,7 +19,6 @@ Notable changes to Switchboard. The format follows
 - The consent checkbox's keyboard focus ring now outlines just the
   checkbox instead of the whole consent sentence, and no longer appears
   on mouse clicks.
-
 
 ## [0.1.0] — 2026-10-13
 
