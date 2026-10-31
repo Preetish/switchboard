@@ -4,6 +4,7 @@ import Script from "next/script";
 import { forms } from "@switchboard/db";
 import { getDb } from "@/lib/db";
 import { findOrg } from "@/lib/integrations";
+import RoutingStory from "./RoutingStory";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -117,17 +118,7 @@ export default async function Home() {
           </div>
         </div>
 
-        {form ? (
-          <div className={styles.stage}>
-            <div className={styles.formPanel} id="live-form">
-              <div data-switchboard-form={form.slug} />
-              <Script src="/embed.js" strategy="afterInteractive" />
-            </div>
-            <p className={styles.stageCaption}>
-              This is the product, running. Submit it, and watch what happens.
-            </p>
-          </div>
-        ) : null}
+        <RoutingStory />
       </section>
 
       <section className={styles.proof}>
@@ -181,6 +172,24 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {form ? (
+        <section className={styles.trySection}>
+          <div className={styles.tryInner}>
+            <div>
+              <h2 className={styles.tryTitle}>Try the board.</h2>
+              <p className={styles.tryBody}>
+                This is the product, running. Submit it, and watch what
+                happens.
+              </p>
+            </div>
+            <div className={styles.formPanel} id="live-form">
+              <div data-switchboard-form={form.slug} />
+              <Script src="/embed.js" strategy="afterInteractive" />
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className={styles.hostSection}>
         <h2 className={styles.hostTitle}>Yours to run.</h2>

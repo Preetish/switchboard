@@ -12,6 +12,10 @@ Notable changes to Switchboard. The format follows
   Sans display type, a clearer headline and lede, a one-line proof
   strip, and header/footer content aligned to the same column as the
   sections.
+- The hero visual is now a staged replay of one lead's trip through
+  the board (submitted, rules evaluated, round-robin, booked) using
+  the demo rules; the live form moved to its own "Try the board"
+  section lower on the page.
 - The instance home page is now a real front door: the live form
   embedded on the page with the standard embed snippet, the routing
   rules shown on a dark band, and a self-host section. Design standard
