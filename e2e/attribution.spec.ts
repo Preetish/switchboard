@@ -80,7 +80,8 @@ test("a direct link to the hosted form keeps its UTMs", async ({ page }) => {
   await page.getByLabel("Full name").fill("Sam Lee");
   await page.getByLabel("Work email").fill(`sam-${Date.now()}@initech.test`);
   await page.getByLabel("Company size").fill("40");
-  await page.getByLabel("Country").selectOption("US");
+  await page.getByLabel("Country").click();
+  await page.getByRole("option", { name: "US" }).click();
   await page.getByLabel(/I agree/).check();
   const submitted = page.waitForRequest((request) => request.url().includes("/submit"));
   await page.getByRole("button", { name: "Find a time" }).click();
