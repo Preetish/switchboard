@@ -1,0 +1,208 @@
+/* Step visuals — small looping animations for Qualify / Route / Book.
+   Every element's base state is its finished state; the 7s loop only
+   replays how it got there. Reduced motion: no loop, finished state. */
+
+.visual {
+  background-color: var(--sb-gray-900);
+  background-image: radial-gradient(
+    circle at center,
+    oklch(1 0 0 / 0.05) 1px,
+    transparent 1.6px
+  );
+  background-size: 22px 22px;
+  border: 1px solid var(--sb-gray-800);
+  border-radius: var(--sb-radius-lg);
+  padding: var(--sb-space-4);
+  min-height: 9.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sb-space-3);
+  margin-bottom: var(--sb-space-6);
+  overflow: hidden;
+}
+
+@keyframes stepIn {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  8%,
+  82% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  96%,
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+.d1 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 0s; }
+.d2 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 0.35s; }
+.d3 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 0.7s; }
+.d4 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 1.15s; }
+.d5 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 1.5s; }
+.d6 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 1.95s; }
+.d7 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 2.3s; }
+.d8 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 2.7s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .d1, .d2, .d3, .d4, .d5, .d6, .d7, .d8,
+  .scan1, .scan2, .picked {
+    animation: none;
+  }
+}
+
+/* ---- Qualify ---- */
+
+.miniForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-2);
+}
+
+.field {
+  padding: var(--sb-space-2) var(--sb-space-3);
+  background: var(--sb-gray-950);
+  border: 1px solid var(--sb-gray-800);
+  border-radius: var(--sb-radius-md);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-gray-100);
+}
+
+.checks {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-3);
+  flex-wrap: wrap;
+}
+
+.check {
+  font-size: var(--sb-text-sm);
+  color: var(--sb-success);
+  font-weight: 500;
+}
+
+.pill {
+  padding: 2px var(--sb-space-2);
+  border-radius: var(--sb-radius-full);
+  background: color-mix(in oklab, var(--sb-success) 18%, transparent);
+  color: var(--sb-success);
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+}
+
+/* ---- Route ---- */
+
+.avatars {
+  display: flex;
+  gap: var(--sb-space-3);
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--sb-radius-full);
+  background: var(--sb-gray-950);
+  border: 1px solid var(--sb-gray-800);
+  color: var(--sb-gray-400);
+  font-size: var(--sb-text-sm);
+  font-weight: 700;
+}
+
+@keyframes scan {
+  0%, 100% { border-color: var(--sb-gray-800); color: var(--sb-gray-400); }
+  10%, 22% { border-color: var(--sb-gray-400); color: var(--sb-gray-100); }
+  32% { border-color: var(--sb-gray-800); color: var(--sb-gray-400); }
+}
+
+.scan1 { animation: scan 7s var(--sb-ease-out) infinite; }
+.scan2 { animation: scan 7s var(--sb-ease-out) infinite; animation-delay: 0.9s; }
+
+@keyframes pick {
+  0%, 30% {
+    border-color: var(--sb-gray-800);
+    background: var(--sb-gray-950);
+    color: var(--sb-gray-400);
+  }
+  42%, 95% {
+    border-color: var(--sb-accent);
+    background: var(--sb-accent-soft);
+    color: var(--sb-accent);
+  }
+  100% {
+    border-color: var(--sb-gray-800);
+    background: var(--sb-gray-950);
+    color: var(--sb-gray-400);
+  }
+}
+
+.picked { animation: pick 7s var(--sb-ease-out) infinite; }
+
+.pickLabel {
+  font-weight: 600;
+  color: var(--sb-gray-100);
+  font-size: var(--sb-text-sm);
+}
+
+.pickSub {
+  font-size: var(--sb-text-sm);
+  color: var(--sb-gray-500);
+  margin-top: calc(var(--sb-space-3) * -1);
+}
+
+/* ---- Book ---- */
+
+.week {
+  display: flex;
+  gap: var(--sb-space-2);
+}
+
+.dayCell {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--sb-gray-800);
+  border-radius: var(--sb-radius-md);
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+  color: var(--sb-gray-400);
+}
+
+.dayPicked {
+  border-color: var(--sb-gray-100);
+  color: var(--sb-gray-100);
+  background: var(--sb-gray-950);
+}
+
+.slots {
+  display: flex;
+  gap: var(--sb-space-2);
+  flex-wrap: wrap;
+}
+
+.slot {
+  padding: var(--sb-space-1) var(--sb-space-3);
+  border: 1px solid var(--sb-gray-800);
+  border-radius: var(--sb-radius-full);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-gray-400);
+}
+
+.slotPicked {
+  background: var(--sb-accent-strong);
+  border-color: var(--sb-accent-strong);
+  color: var(--sb-text-on-accent);
+  font-weight: 600;
+}
+
+.bookedLine {
+  font-size: var(--sb-text-sm);
+  color: var(--sb-success);
+  font-weight: 600;
+}

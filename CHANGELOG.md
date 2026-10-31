@@ -16,6 +16,9 @@ Notable changes to Switchboard. The format follows
   the board (submitted, rules evaluated, round-robin, booked) using
   the demo rules; the live form moved to its own "Try the board"
   section lower on the page.
+- Each How-it-works step now carries a small looping animation in the
+  same canvas language: a form qualifying, a round-robin landing, a
+  slot being booked.
 - The instance home page is now a real front door: the live form
   embedded on the page with the standard embed snippet, the routing
   rules shown on a dark band, and a self-host section. Design standard
