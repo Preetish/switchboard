@@ -13,6 +13,8 @@ and you pay nothing per seat.
 [![CI](https://github.com/Preetish/switchboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Preetish/switchboard/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
+**Live demo: [switchboard.preetish.me](https://switchboard.preetish.me)** — the demo workspace from the quick start below, running the latest release.
+
 <p align="center">
   <img src="docs/images/1-form.png" width="32%" alt="The hosted form">
   <img src="docs/images/2-pick-a-time.png" width="32%" alt="The routed rep's open times, shown inline">
