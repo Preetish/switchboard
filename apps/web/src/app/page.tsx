@@ -137,10 +137,10 @@ export default async function Home() {
       <section className={styles.statement}>
         <p>
           <span className={styles.titleGrey}>
-            Somewhere between the form and the calendar, intent goes quiet.
-            Most companies never hear it happen.{" "}
+            Leads go cold in the gap between the form and the first reply.{" "}
           </span>
-          Switchboard exists in that interval.
+          Switchboard removes the gap: the reply is a calendar, shown before
+          the lead leaves the page.
         </p>
       </section>
 
@@ -162,33 +162,53 @@ export default async function Home() {
           <div>
             <h2 className={styles.siteTitle}>On your site, the same day.</h2>
             <p className={styles.siteBody}>
-              Switchboard works with the site you already have: Webflow,
-              Framer, WordPress, Contentful, or any page that can hold a
-              snippet.
+              Switchboard works with the site you already have, or any page
+              that can hold a snippet.
             </p>
           </div>
           <ol className={styles.siteSteps}>
             <li className={styles.siteStep}>
               <span className={styles.stepNumber}>1</span>
-              <p>
-                Paste one snippet where your form goes, or link to your
-                hosted form page.
-              </p>
+              <div>
+                <h3 className={styles.siteStepTitle}>Add the form</h3>
+                <p className={styles.siteStepBody}>
+                  One snippet where your form goes, or a link to your hosted
+                  form page.
+                </p>
+                <p className={styles.chips}>
+                  <span className={styles.chip}>Webflow</span>
+                  <span className={styles.chip}>Framer</span>
+                  <span className={styles.chip}>WordPress</span>
+                  <span className={styles.chip}>Contentful</span>
+                </p>
+              </div>
             </li>
             <li className={styles.siteStep}>
               <span className={styles.stepNumber}>2</span>
-              <p>
-                Connect HubSpot and Google Calendar. Two sign-ins, no keys
-                to copy.
-              </p>
+              <div>
+                <h3 className={styles.siteStepTitle}>Connect your tools</h3>
+                <p className={styles.siteStepBody}>
+                  Two sign-ins. No keys to copy, nothing to paste into
+                  settings.
+                </p>
+                <p className={styles.chips}>
+                  <span className={styles.connectPill}>✓ HubSpot</span>
+                  <span className={styles.connectPill}>✓ Google Calendar</span>
+                </p>
+              </div>
             </li>
             <li className={styles.siteStep}>
               <span className={styles.stepNumber}>3</span>
-              <p>
-                Your routing rules are set once, with whoever looks after
-                your site. After that, forms, reps, and schedules are yours
-                to change, and every decision is in the log.
-              </p>
+              <div>
+                <h3 className={styles.siteStepTitle}>Set the rules once</h3>
+                <p className={styles.siteStepBody}>
+                  Done with whoever looks after your site. After that, forms,
+                  reps, and schedules are yours to change.
+                </p>
+                <p className={styles.logChip}>
+                  <code>Teams get a rep → Alice Chen · 31 ms</code>
+                </p>
+              </div>
             </li>
           </ol>
         </div>
@@ -198,13 +218,13 @@ export default async function Home() {
         <div className={styles.darkInner}>
           <div className={styles.darkText}>
             <h2 className={styles.darkTitle}>
-              <span className={styles.darkTitleGrey}>The rules are yours, </span>
-              kept where your code lives.
+              Routing rules live in one YAML file.
             </h2>
             <p className={styles.darkBody}>
-              Nothing about the decision is hidden in a console. It is a file.
-              It can be read, reviewed, and changed the way code is changed,
-              and every decision it makes is written down.
+              Your rules sit in a single YAML file in your repo, changed the
+              way you change code. For every lead, Switchboard checks them
+              in order, top to bottom. The routing log then shows which rule
+              fired, which rep got the lead, and how long the decision took.
             </p>
           </div>
           <div className={styles.codeStack}>
@@ -219,10 +239,11 @@ export default async function Home() {
         <section className={styles.trySection}>
           <div className={styles.tryInner}>
             <div>
-              <h2 className={styles.tryTitle}>Try the board.</h2>
+              <h2 className={styles.tryTitle}>Try the demo</h2>
               <p className={styles.tryBody}>
-                This is the product, running. Submit it, and watch what
-                happens.
+                This form is live, connected to the demo workspace. Fill it
+                in and submit, and you will be routed to a rep and shown
+                their calendar, exactly as a lead on your site would be.
               </p>
             </div>
             <div className={styles.formPanel} id="live-form">
