@@ -157,6 +157,43 @@ export default async function Home() {
         </ol>
       </section>
 
+      <section className={styles.siteSection}>
+        <div className={styles.siteInner}>
+          <div>
+            <h2 className={styles.siteTitle}>On your site, the same day.</h2>
+            <p className={styles.siteBody}>
+              Switchboard works with the site you already have: Webflow,
+              Framer, WordPress, Contentful, or any page that can hold a
+              snippet.
+            </p>
+          </div>
+          <ol className={styles.siteSteps}>
+            <li className={styles.siteStep}>
+              <span className={styles.stepNumber}>1</span>
+              <p>
+                Paste one snippet where your form goes, or link to your
+                hosted form page.
+              </p>
+            </li>
+            <li className={styles.siteStep}>
+              <span className={styles.stepNumber}>2</span>
+              <p>
+                Connect HubSpot and Google Calendar. Two sign-ins, no keys
+                to copy.
+              </p>
+            </li>
+            <li className={styles.siteStep}>
+              <span className={styles.stepNumber}>3</span>
+              <p>
+                Your routing rules are set once, with whoever looks after
+                your site. After that, forms, reps, and schedules are yours
+                to change, and every decision is in the log.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
       <section className={styles.darkBand}>
         <div className={styles.darkInner}>
           <div className={styles.darkText}>
@@ -199,13 +236,17 @@ export default async function Home() {
       <section className={styles.hostSection}>
         <h2 className={styles.hostTitle}>Yours to run.</h2>
         <p className={styles.hostBody}>
-          Switchboard is open source under Apache-2.0. It runs on a single
-          server with Postgres, on infrastructure you already have. The
-          outcome is a meeting, already on the calendar.
+          Switchboard is open source under Apache-2.0, running on
+          infrastructure you control. Your rules, your data, your servers.
+          No per-seat pricing, no lock-in.
         </p>
-        <p className={styles.command}>
-          <code>docker compose up</code>
-        </p>
+        <a
+          className={styles.hostLink}
+          href="https://github.com/Preetish/switchboard"
+          rel="noreferrer"
+        >
+          Read the self-host guide
+        </a>
       </section>
 
       <footer className={styles.footer}>
