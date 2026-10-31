@@ -5,6 +5,7 @@ import { forms } from "@switchboard/db";
 import { getDb } from "@/lib/db";
 import { findOrg } from "@/lib/integrations";
 import RoutingStory from "./RoutingStory";
+import { BookVisual, QualifyVisual, RouteVisual } from "./StepVisuals";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -24,14 +25,17 @@ const STEPS = [
   {
     title: "Qualify",
     body: "A lead fills in your form. Rules you keep in git read the answers, and your CRM, and decide who should talk to them.",
+    visual: <QualifyVisual />,
   },
   {
     title: "Route",
     body: "The board decides in milliseconds: the account owner if there is one, otherwise the next rep on the team, by weight and by capacity.",
+    visual: <RouteVisual />,
   },
   {
     title: "Book",
     body: "The lead sees that rep's open times on the same page and books one. The meeting goes onto the rep's calendar with a Meet link.",
+    visual: <BookVisual />,
   },
 ];
 
@@ -144,12 +148,50 @@ export default async function Home() {
         <ol className={styles.steps}>
           {STEPS.map((step, i) => (
             <li key={step.title} className={styles.step}>
+              {step.visual}
               <span className={styles.stepNumber}>{i + 1}</span>
               <h2 className={styles.stepTitle}>{step.title}</h2>
               <p className={styles.stepBody}>{step.body}</p>
             </li>
           ))}
         </ol>
+      </section>
+
+      <section className={styles.siteSection}>
+        <div className={styles.siteInner}>
+          <div>
+            <h2 className={styles.siteTitle}>On your site, the same day.</h2>
+            <p className={styles.siteBody}>
+              Switchboard works with the site you already have: Webflow,
+              Framer, WordPress, Contentful, or any page that can hold a
+              snippet.
+            </p>
+          </div>
+          <ol className={styles.siteSteps}>
+            <li className={styles.siteStep}>
+              <span className={styles.stepNumber}>1</span>
+              <p>
+                Paste one snippet where your form goes, or link to your
+                hosted form page.
+              </p>
+            </li>
+            <li className={styles.siteStep}>
+              <span className={styles.stepNumber}>2</span>
+              <p>
+                Connect HubSpot and Google Calendar. Two sign-ins, no keys
+                to copy.
+              </p>
+            </li>
+            <li className={styles.siteStep}>
+              <span className={styles.stepNumber}>3</span>
+              <p>
+                Your routing rules are set once, with whoever looks after
+                your site. After that, forms, reps, and schedules are yours
+                to change, and every decision is in the log.
+              </p>
+            </li>
+          </ol>
+        </div>
       </section>
 
       <section className={styles.darkBand}>
@@ -194,13 +236,17 @@ export default async function Home() {
       <section className={styles.hostSection}>
         <h2 className={styles.hostTitle}>Yours to run.</h2>
         <p className={styles.hostBody}>
-          Switchboard is open source under Apache-2.0. It runs on a single
-          server with Postgres, on infrastructure you already have. The
-          outcome is a meeting, already on the calendar.
+          Switchboard is open source under Apache-2.0, running on
+          infrastructure you control. Your rules, your data, your servers.
+          No per-seat pricing, no lock-in.
         </p>
-        <p className={styles.command}>
-          <code>docker compose up</code>
-        </p>
+        <a
+          className={styles.hostLink}
+          href="https://github.com/Preetish/switchboard"
+          rel="noreferrer"
+        >
+          Read the self-host guide
+        </a>
       </section>
 
       <footer className={styles.footer}>
