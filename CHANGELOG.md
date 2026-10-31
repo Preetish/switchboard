@@ -8,6 +8,13 @@ Notable changes to Switchboard. The format follows
 
 ### Changed
 
+- Select fields on the lead form (hosted and embedded) are now a custom
+  dropdown instead of the native picker, so they look the same on every
+  device. Lists with more than 10 options get a search box; shorter
+  ones support type-ahead. The dropdown follows the ARIA listbox
+  pattern with full keyboard support, and in the embed it opens in
+  flow so the iframe grows instead of clipping it. Form fields are
+  also taller (at least 44px) and easier to tap.
 - The live demo form on the home page no longer sits inside a second
   padded frame: the panel chrome is gone, so the form's own card is
   the only frame and the fields get the full section width, most

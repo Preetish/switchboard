@@ -1,0 +1,116 @@
+/* Custom select (SelectField.tsx) — tokens only, per docs/design.md. The
+   closed control takes FormView's .input class, so it matches the text
+   fields; these rules only add what a button needs on top of it. */
+
+.root {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.value,
+.placeholder {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: var(--sb-text-muted);
+}
+
+.chevron,
+.check {
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chevron {
+  color: var(--sb-text-muted);
+  transition: transform var(--sb-duration-base) var(--sb-ease-out);
+}
+
+.trigger[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+/* Floats over the fields below on the hosted page. */
+.panel {
+  position: absolute;
+  top: calc(100% + var(--sb-space-1));
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: var(--sb-space-1);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-md);
+  box-shadow: var(--sb-shadow-overlay);
+}
+
+/* Embed: in flow, so the iframe's reported height grows to fit the panel
+   instead of clipping it. */
+.inFlow {
+  position: static;
+  margin-top: var(--sb-space-1);
+}
+
+.search {
+  margin-bottom: var(--sb-space-1);
+}
+
+.list {
+  max-height: calc(var(--sb-space-16) * 5);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-2);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border-radius: var(--sb-radius-sm);
+  cursor: pointer;
+}
+
+.option[aria-selected="true"] {
+  font-weight: 600;
+}
+
+.active {
+  background: var(--sb-accent-soft);
+}
+
+.check {
+  color: var(--sb-accent-strong);
+}
+
+.empty {
+  padding: var(--sb-space-2) var(--sb-space-3);
+  color: var(--sb-text-muted);
+  font-size: var(--sb-text-sm);
+}
+
+/* Forced colors drop backgrounds; outline the active row instead. */
+@media (forced-colors: active) {
+  .active {
+    outline: 2px solid Highlight;
+  }
+}
