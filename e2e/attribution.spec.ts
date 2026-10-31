@@ -40,7 +40,8 @@ test("the embed passes landing-page attribution through and reports conversions"
   await form.getByLabel("Full name").fill("Priya Shah");
   await form.getByLabel("Work email").fill(`priya-${Date.now()}@globex.test`);
   await form.getByLabel("Company size").fill("1200");
-  await form.getByLabel("Country").selectOption("US");
+  await form.getByLabel("Country").click();
+  await form.getByRole("option", { name: "US" }).click();
   await form.getByLabel(/I agree/).check();
 
   const submitted = page.waitForRequest((request) => request.url().includes("/submit"));

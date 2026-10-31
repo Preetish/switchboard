@@ -11,6 +11,7 @@ import {
 } from "@switchboard/core/client";
 import type { DecisionOutcome, FormSettings } from "@switchboard/db";
 import styles from "./FormView.module.css";
+import SelectField from "./SelectField";
 
 type Values = Record<string, string | boolean>;
 
@@ -192,22 +193,15 @@ export default function FormView({
                   {field.required ? null : <span className={styles.optional}> (optional)</span>}
                 </label>
                 {field.type === "select" ? (
-                  <select
+                  <SelectField
                     id={field.key}
-                    className={`${styles.input} sb-input`}
+                    options={field.options ?? []}
                     value={(values[field.key] as string) ?? ""}
-                    onChange={(e) => setValue(field.key, e.target.value)}
-                    aria-invalid={Boolean(errors[field.key])}
-                    aria-describedby={describedBy(field)}
-                    required={field.required}
-                  >
-                    <option value="">Choose one…</option>
-                    {field.options?.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(next) => setValue(field.key, next)}
+                    invalid={Boolean(errors[field.key])}
+                    describedBy={describedBy(field)}
+                    embedded={embedded}
+                  />
                 ) : field.type === "textarea" ? (
                   <textarea
                     id={field.key}

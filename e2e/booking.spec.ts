@@ -15,7 +15,8 @@ async function fillForm(page: Page, email: string, size: string) {
   await page.getByLabel("Full name").fill("Priya Shah");
   await page.getByLabel("Work email").fill(email);
   await page.getByLabel("Company size").fill(size);
-  await page.getByLabel("Country").selectOption("US");
+  await page.getByLabel("Country").click();
+  await page.getByRole("option", { name: "US" }).click();
   await page.getByLabel(/I agree/).check();
   await page.getByRole("button", { name: "Find a time" }).click();
 }

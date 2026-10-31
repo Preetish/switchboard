@@ -8,6 +8,13 @@ Notable changes to Switchboard. The format follows
 
 ### Changed
 
+- Select fields in the lead form (country, company size, and any other
+  dropdown) now use a custom dropdown instead of the native picker, so
+  they look and behave the same on every device. Lists with more than
+  ten options get a search box; the dropdown is fully keyboard usable.
+  Form fields are also a little taller, which makes them easier to tap
+  on phones.
+
 - The live demo form on the home page no longer sits inside a second
   padded frame: the panel chrome is gone, so the form's own card is
   the only frame and the fields get the full section width, most

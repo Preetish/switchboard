@@ -89,7 +89,7 @@
 
 .input {
   width: 100%;
-  padding: var(--sb-space-2) var(--sb-space-3);
+  padding: var(--sb-space-3);
   border: 1px solid var(--sb-border);
   border-radius: var(--sb-radius-sm);
   background: var(--sb-surface);
@@ -484,5 +484,104 @@
   padding: var(--sb-space-2) var(--sb-space-3);
   border-radius: var(--sb-radius-sm);
   background: color-mix(in oklab, var(--sb-info) 12%, transparent);
+  font-size: var(--sb-text-sm);
+}
+
+/* Custom dropdown for select fields (SelectField). The closed control
+   reuses .input, so it matches the text fields exactly; only the panel
+   and rows are new. */
+.selectWrap {
+  position: relative;
+}
+
+.selectButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-2);
+  text-align: left;
+  cursor: pointer;
+  background: var(--sb-surface);
+}
+
+.selectPlaceholder {
+  color: var(--sb-text-muted);
+}
+
+.selectChevron {
+  flex: none;
+  color: var(--sb-text-muted);
+  transition: transform var(--sb-duration-fast) var(--sb-ease-out);
+}
+
+.selectButton[aria-expanded="true"] .selectChevron {
+  transform: rotate(180deg);
+}
+
+.selectPanel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + var(--sb-space-1));
+  left: 0;
+  right: 0;
+  max-height: 16rem;
+  overflow: auto;
+  padding: var(--sb-space-1);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-md);
+  box-shadow: var(--sb-shadow-overlay);
+}
+
+/* In an embed the panel stays in flow, so the iframe grows to fit it
+   instead of clipping it. */
+.selectPanelEmbed {
+  position: static;
+  margin-top: var(--sb-space-1);
+  box-shadow: none;
+}
+
+.selectSearch {
+  width: 100%;
+  margin-bottom: var(--sb-space-1);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-sm);
+  background: var(--sb-surface);
+  color: var(--sb-text);
+  font: inherit;
+  /* 16px stops iOS zooming the page when the search box takes focus. */
+  font-size: 1rem;
+}
+
+.selectSearch:focus {
+  border-color: var(--sb-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sb-accent) 22%, transparent);
+  outline: none;
+}
+
+.selectOption {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-2);
+  min-height: 2.5rem;
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border-radius: var(--sb-radius-sm);
+  cursor: pointer;
+}
+
+.selectOptionActive {
+  background: var(--sb-accent-soft);
+}
+
+.selectCheck {
+  flex: none;
+  width: 1rem;
+  color: var(--sb-accent-strong);
+}
+
+.selectEmpty {
+  padding: var(--sb-space-3);
+  color: var(--sb-text-muted);
   font-size: var(--sb-text-sm);
 }
