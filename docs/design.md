@@ -76,6 +76,10 @@ How every Switchboard surface should look, behave, and be built. The tokens in
 - Header, footer, and every section on the home page share one content
   column (same max-width and side padding). Hairlines may span the
   full width; content may not start at a different margin.
+- Home page copy is plain and factual: complete sentences, concrete
+  nouns, claims the product can back. No slogans, no sentence
+  fragments for drama, and no metaphor a first-time visitor has to
+  decode before the headline makes sense.
 - Everything else in this standard still applies: tokens only,
   hairlines over shadows, no decorative animation.
 - Its visuals are the product at work: a staged replay of one routing

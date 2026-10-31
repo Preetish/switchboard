@@ -23,6 +23,10 @@ Notable changes to Switchboard. The format follows
   WordPress, Contentful; three plain setup steps), and the self-host
   section now leads with ownership instead of a Docker command, with
   the guide one click away on GitHub.
+- Copy pass: the "On your site" steps gained titles and small product
+  details, the rules section and statement now state facts plainly
+  instead of slogans, and the live-form section is headed "Try the
+  demo" and says what happens on submit.
 - The instance home page is now a real front door: the live form
   embedded on the page with the standard embed snippet, the routing
   rules shown on a dark band, and a self-host section. Design standard

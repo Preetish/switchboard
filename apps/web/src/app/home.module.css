@@ -314,10 +314,63 @@
   display: flex;
   gap: var(--sb-space-4);
   align-items: flex-start;
-  padding: var(--sb-space-5) 0;
+  padding: var(--sb-space-6) 0;
   border-top: 1px solid var(--sb-gray-800);
   color: var(--sb-gray-100);
   line-height: 1.6;
+}
+
+.siteStepTitle {
+  font-family: var(--sb-font-display);
+  font-size: var(--sb-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--sb-gray-50);
+}
+
+.siteStepBody {
+  margin-top: var(--sb-space-1);
+  color: var(--sb-gray-400);
+  max-width: 30rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-3);
+}
+
+.chip {
+  padding: var(--sb-space-1) var(--sb-space-3);
+  border: 1px solid var(--sb-gray-800);
+  border-radius: var(--sb-radius-full);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-gray-400);
+}
+
+.connectPill {
+  padding: var(--sb-space-1) var(--sb-space-3);
+  border: 1px solid var(--sb-gray-800);
+  border-radius: var(--sb-radius-full);
+  font-size: var(--sb-text-sm);
+  font-weight: 500;
+  color: var(--sb-success);
+}
+
+.logChip {
+  margin-top: var(--sb-space-3);
+}
+
+.logChip code {
+  display: inline-block;
+  padding: var(--sb-space-2) var(--sb-space-3);
+  background: var(--sb-gray-900);
+  border: 1px solid var(--sb-gray-800);
+  border-radius: var(--sb-radius-md);
+  font-family: var(--sb-font-mono);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-gray-100);
 }
 
 .siteStep:first-child {
