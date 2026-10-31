@@ -11,10 +11,18 @@ export const dynamic = "force-dynamic";
 /**
  * What the lead's browser needs from a routing decision: what kind of
  * outcome it was and, for instant booking, which rep. Rule names, reasons,
- * team ids, and strategies stay in the routing log.
+ * team ids, and strategies stay in the routing log. A self-serve `message`
+ * is the exception: the rule author wrote it for the visitor.
  */
 function publicDecision(decision: DecisionOutcome | null) {
-  return decision ? { kind: decision.kind, userId: decision.userId ?? null } : null;
+  return decision
+    ? {
+        kind: decision.kind,
+        userId: decision.userId ?? null,
+        message:
+          decision.kind === "self_serve_link" ? (decision.message ?? null) : null,
+      }
+    : null;
 }
 
 async function handlePOST(

@@ -14,18 +14,14 @@ rules:
     route:
       to: crm.contact.owner
 
-  - name: Enterprise
+  # A one-person company has nobody to route to: skip the sales call and
+  # say so, in so many words, on the self-serve page.
+  - name: Solo company goes self-serve
     when:
-      form.company_size: { gte: 500 }
-    route:
-      team: enterprise
-      strategy: round_robin
-
-  - name: Personal email goes self-serve
-    when:
-      form.email_domain: { in: [gmail.com, outlook.com, yahoo.com] }
+      form.company_size: { lte: 1 }
     route:
       action: self_serve_link
+      message: "With a team of one, there is nobody to route you to yet, so a sales call would only slow you down. You can set everything up yourself in a few minutes, and support is there if you get stuck."
 
   - name: DACH region
     when:
@@ -33,6 +29,21 @@ rules:
     route:
       team: dach
       strategy: round_robin
+
+  # Any team bigger than one person gets a rep and a calendar.
+  - name: Teams get a rep
+    when:
+      form.company_size: { gt: 1 }
+    route:
+      team: enterprise
+      strategy: round_robin
+
+  # Reached only when company size is missing (e.g. API submissions).
+  - name: Personal email goes self-serve
+    when:
+      form.email_domain: { in: [gmail.com, outlook.com, yahoo.com] }
+    route:
+      action: self_serve_link
 
 fallback:
   team: default

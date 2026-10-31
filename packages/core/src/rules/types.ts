@@ -20,7 +20,9 @@ export type Strategy = "round_robin" | "existing_owner";
 export type RouteAction =
   | { to: string }
   | { team: string; strategy: Strategy }
-  | { action: "self_serve_link" }
+  /** `message` optionally replaces the self-serve page's body text, so a
+   *  rule can say why this lead is not being routed to a rep. */
+  | { action: "self_serve_link"; message?: string }
   | { action: "fallback_queue" };
 
 export type Condition = {

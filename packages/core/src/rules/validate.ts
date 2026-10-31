@@ -59,7 +59,10 @@ const routeActionSchema: z.ZodType<RouteAction> = z.union([
     team: z.string().min(1),
     strategy: z.enum(["round_robin", "existing_owner"] satisfies Strategy[]),
   }),
-  z.strictObject({ action: z.literal("self_serve_link") }),
+  z.strictObject({
+    action: z.literal("self_serve_link"),
+    message: z.string().min(1).max(500).optional(),
+  }),
   z.strictObject({ action: z.literal("fallback_queue") }),
 ]);
 

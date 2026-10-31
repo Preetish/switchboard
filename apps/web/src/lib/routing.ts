@@ -168,5 +168,11 @@ export async function finalizeOutcome(
       reason: `${draft.to} isn't a rep here yet (from ${draft.toSource}); waiting for a match.`,
     };
   }
-  return { kind: draft.kind, reason: draft.reason };
+  return {
+    kind: draft.kind,
+    reason: draft.reason,
+    ...(draft.kind === "self_serve_link" && draft.message
+      ? { message: draft.message }
+      : {}),
+  };
 }

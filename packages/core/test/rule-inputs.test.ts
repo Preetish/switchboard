@@ -55,9 +55,20 @@ describe("example rule sets route realistic leads", () => {
     evaluate(load(file), buildRuleInputs(fields, data, crm ?? null)).matchedRule;
 
   it("rules.example.yaml: personal email goes self-serve", () => {
+    // No company size given: the size rules cannot fire, so the personal
+    // email rule is what catches this lead.
+    expect(
+      route("rules.example.yaml", { email: "jane@gmail.com", country: "US" }),
+    ).toBe("Personal email goes self-serve");
+  });
+
+  it("rules.example.yaml: a one-person company goes self-serve, any team gets a rep", () => {
+    expect(
+      route("rules.example.yaml", { email: "jane@corp.com", company_size: "1", country: "US" }),
+    ).toBe("Solo company goes self-serve");
     expect(
       route("rules.example.yaml", { email: "jane@gmail.com", company_size: "20", country: "US" }),
-    ).toBe("Personal email goes self-serve");
+    ).toBe("Teams get a rep");
   });
 
   it("rules.example.yaml: existing CRM owner wins over everything", () => {
@@ -70,15 +81,15 @@ describe("example rule sets route realistic leads", () => {
     ).toBe("Existing owner wins");
   });
 
-  it("rules.example.yaml: enterprise by size, DACH by country, else fallback", () => {
+  it("rules.example.yaml: teams by size, DACH by country, else fallback", () => {
     expect(
       route("rules.example.yaml", { email: "a@corp.com", company_size: "900", country: "US" }),
-    ).toBe("Enterprise");
+    ).toBe("Teams get a rep");
     expect(
       route("rules.example.yaml", { email: "a@corp.de", company_size: "40", country: "DE" }),
     ).toBe("DACH region");
     expect(
-      route("rules.example.yaml", { email: "a@corp.com", company_size: "40", country: "US" }),
+      route("rules.example.yaml", { email: "a@corp.com", country: "US" }),
     ).toBeNull();
   });
 

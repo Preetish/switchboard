@@ -12,7 +12,7 @@ export type OutcomeKind =
 export type OutcomeDraft =
   | { kind: "route_user"; to: string; toSource: string; reason: string }
   | { kind: "route_team"; teamKey: string; strategy: Strategy; reason: string }
-  | { kind: "self_serve_link"; reason: string }
+  | { kind: "self_serve_link"; reason: string; message?: string }
   | { kind: "fallback_queue"; reason: string };
 
 function isPresent(value: unknown): boolean {
@@ -63,7 +63,11 @@ export function draftOutcome(
     };
   }
   if (action.action === "self_serve_link") {
-    return { kind: "self_serve_link", reason: "Sent to self-serve." };
+    return {
+      kind: "self_serve_link",
+      reason: "Sent to self-serve.",
+      ...(action.message ? { message: action.message } : {}),
+    };
   }
   return { kind: "fallback_queue", reason: "Sent to the fallback queue." };
 }

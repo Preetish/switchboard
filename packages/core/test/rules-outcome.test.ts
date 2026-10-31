@@ -48,4 +48,18 @@ describe("draftOutcome", () => {
       "fallback_queue",
     );
   });
+
+  it("carries a self-serve rule's message into the outcome", () => {
+    expect(
+      draftOutcome({ action: "self_serve_link", message: "Flying solo?" }, inputs),
+    ).toEqual({
+      kind: "self_serve_link",
+      reason: "Sent to self-serve.",
+      message: "Flying solo?",
+    });
+    // No message authored, no message key: stored outcomes stay minimal.
+    expect(draftOutcome({ action: "self_serve_link" }, inputs)).not.toHaveProperty(
+      "message",
+    );
+  });
 });

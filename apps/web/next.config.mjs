@@ -1,12 +1,10 @@
-import type { NextConfig } from "next";
-
 /**
  * Who may embed the hosted form in an iframe (`frame-ancestors`). Defaults
  * to any site so the embed snippet works out of the box; set
  * EMBED_ALLOWED_ORIGINS to a space-separated list (e.g.
  * "https://www.acme.com https://acme.com") to restrict it.
  */
-function embedAncestors(): string {
+function embedAncestors() {
   const raw = process.env.EMBED_ALLOWED_ORIGINS?.trim();
   return raw ? `'self' ${raw}` : "*";
 }
@@ -17,7 +15,11 @@ const baseHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 
-const nextConfig: NextConfig = {
+// Plain .mjs on purpose: a TypeScript config makes Next require the
+// typescript package at server start, but the production Docker image
+// prunes devDependencies, so the published image could not boot.
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   // Workspace packages ship TypeScript source, not build output.
   transpilePackages: ["@switchboard/core", "@switchboard/db", "@switchboard/calendar-google", "@switchboard/crm-hubspot"],
   // Keep the queue runtime as plain Node requires (ESM-only package with

@@ -102,9 +102,13 @@
   border-color: var(--sb-gray-400);
 }
 
-.input:focus-visible {
-  outline: 2px solid var(--sb-accent);
-  outline-offset: 1px;
+/* Soft focus ring instead of a hard offset outline: text fields match
+   :focus-visible even on mouse clicks in some browsers, and a solid
+   accent frame around the whole field reads as a stray border. */
+.input:focus {
+  border-color: var(--sb-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sb-accent) 22%, transparent);
+  outline: none;
 }
 
 .input[aria-invalid="true"] {
