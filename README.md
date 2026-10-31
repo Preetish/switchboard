@@ -26,8 +26,9 @@ git clone https://github.com/Preetish/switchboard && cd switchboard
 docker compose up
 ```
 
-Open http://localhost:3000/f/book-a-demo, enter a company size over 500, and
-book a time. To see the decision in the routing log, sign in at
+Open http://localhost:3000/f/book-a-demo, enter a company size over 1, and
+book a time (a size of 1 shows the self-serve message instead). To see the
+decision in the routing log, sign in at
 http://localhost:3000/login. Docker prints the admin password once when it
 first starts:
 
@@ -43,11 +44,12 @@ The demo comes with four fictional reps, three teams, and the rules in
 1. The lead fills in a hosted form at `/f/<slug>`, or the same form embedded
    on your site with two lines of HTML.
 2. Your rules run in order against the answers and, if you connect HubSpot,
-   the lead's CRM record. The first match decides. Typical rules send
-   existing customers to their account owner, companies over 500 people to
-   the enterprise team, and Gmail addresses to self-serve signup. Within a
-   team, reps take turns by weight, and you can cap a rep's meetings per week
-   or pause them while they're away.
+   the lead's CRM record. The first match decides. The demo rules send
+   existing customers to their account owner, one-person companies to
+   self-serve with a short explanation, companies in Germany, Austria, or
+   Switzerland to the DACH team, and every larger company to the enterprise
+   team. Within a team, reps take turns by weight, and you can cap a rep's
+   meetings per week or pause them while they're away.
 3. The lead sees open times from that rep's own Google Calendar and books
    one. Switchboard creates the event with a Google Meet link, logs the
    meeting in HubSpot, and emails the lead a confirmation. If the lead leaves
