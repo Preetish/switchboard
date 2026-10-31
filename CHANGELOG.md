@@ -27,6 +27,9 @@ Notable changes to Switchboard. The format follows
   details, the rules section and statement now state facts plainly
   instead of slogans, and the live-form section is headed "Try the
   demo" and says what happens on submit.
+- The public form's "Delete my data" control now appears only after a
+  submission (on the outcome screens), not on the entry form where a
+  lead has nothing to delete yet. The erasure flow is unchanged.
 - The instance home page is now a real front door: the live form
   embedded on the page with the standard embed snippet, the routing
   rules shown on a dark band, and a self-host section. Design standard

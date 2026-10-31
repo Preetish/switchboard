@@ -259,7 +259,6 @@ export default function FormView({
           {submitting ? "Sending…" : (settings.submitLabel ?? "Continue")}
         </button>
       </form>
-      <PrivacyFooter slug={slug} />
     </section>
   );
 }
@@ -619,7 +618,12 @@ function BookingPanel({
   );
 }
 
-/** A quiet link to request deletion of what the lead submitted. */
+/**
+ * A quiet link to request deletion of what the lead submitted. Rendered
+ * only on the post-submission outcome, never on the entry form: a lead
+ * who has not submitted anything has nothing to delete, and the control
+ * read as alarm there. The erasure flow itself is unchanged.
+ */
 function PrivacyFooter({ slug }: { slug: string }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
