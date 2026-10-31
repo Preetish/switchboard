@@ -16,13 +16,14 @@ test("the Country dropdown works from the keyboard", async ({ page }) => {
   await expect(listbox).toBeVisible();
   await expect(page.getByPlaceholder("Search…")).toHaveCount(0);
 
-  // Type-ahead: "c" lands on CA, a second "c" cycles to CH.
-  await page.keyboard.press("c");
+  // Type-ahead: "u" skips the active United States to United Kingdom,
+  // and a second "u" cycles back to it.
+  await page.keyboard.press("u");
   await expect(country).toHaveAttribute("aria-activedescendant", /.+/);
   const activeId = () => country.getAttribute("aria-activedescendant");
-  await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("CA");
-  await page.keyboard.press("c");
-  await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("CH");
+  await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("United Kingdom");
+  await page.keyboard.press("u");
+  await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("United States");
 
   await page.keyboard.press("End");
   await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("Other");
@@ -30,11 +31,11 @@ test("the Country dropdown works from the keyboard", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(listbox).toBeHidden();
   await expect(country).toBeFocused();
-  await expect(country).toHaveText("US");
+  await expect(country).toHaveText("United States");
 
   // Escape closes without changing the choice; outside clicks close too.
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("option", { name: "US", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("option", { name: "United States", exact: true })).toHaveAttribute(
     "aria-selected",
     "true",
   );
@@ -42,7 +43,7 @@ test("the Country dropdown works from the keyboard", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(listbox).toBeHidden();
   await expect(country).toBeFocused();
-  await expect(country).toHaveText("US");
+  await expect(country).toHaveText("United States");
 
   await country.click();
   await expect(listbox).toBeVisible();

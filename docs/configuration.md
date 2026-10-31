@@ -133,7 +133,7 @@ fields:
   - { key: name, label: Full name, type: text, required: true }
   - { key: email, label: Work email, type: email, required: true }
   - { key: company_size, label: Company size, type: number, required: true, helpText: Number of employees. }
-  - { key: country, label: Country, type: select, required: true, options: [US, CA, DE] }
+  - { key: country, label: Country, type: select, required: true, options: [United States, Canada, Germany] }
   - { key: message, label: Anything we should know?, type: textarea, required: false }
   - key: consent
     label: I agree that my details are stored to process this request.
@@ -190,10 +190,10 @@ becoming a rule that never matches.
 
 | Operator | Matches when the value… | Example |
 | --- | --- | --- |
-| *(bare value)* | equals it | `form.country: DE` |
+| *(bare value)* | equals it | `form.country: Germany` |
 | `exists` | is present (`exists: false`: is missing) | `crm.contact.owner: exists` |
 | `eq` / `neq` | equals / doesn't equal | `{ neq: Other }` |
-| `in` / `nin` | is / isn't one of a list | `{ in: [DE, AT, CH] }` |
+| `in` / `nin` | is / isn't one of a list | `{ in: [Germany, Austria, Switzerland] }` |
 | `gt` `gte` `lt` `lte` | compares numerically (`"500"` counts as 500) | `{ gte: 500 }` |
 | `contains` | contains the text | `{ contains: demo }` |
 | `matches` | matches a regular expression (case-sensitive) | `{ matches: "^\\+49" }` |

@@ -7,7 +7,7 @@ const fields: FormField[] = [
   { key: "name", label: "Full name", type: "text", required: true },
   { key: "email", label: "Work email", type: "email", required: true },
   { key: "company_size", label: "Company size", type: "number", required: true },
-  { key: "country", label: "Country", type: "select", required: true, options: ["US", "DE"] },
+  { key: "country", label: "Country", type: "select", required: true, options: ["United States", "Germany"] },
 ];
 
 describe("buildRuleInputs", () => {
@@ -58,16 +58,24 @@ describe("example rule sets route realistic leads", () => {
     // No company size given: the size rules cannot fire, so the personal
     // email rule is what catches this lead.
     expect(
-      route("rules.example.yaml", { email: "jane@gmail.com", country: "US" }),
+      route("rules.example.yaml", { email: "jane@gmail.com", country: "United States" }),
     ).toBe("Personal email goes self-serve");
   });
 
   it("rules.example.yaml: a one-person company goes self-serve, any team gets a rep", () => {
     expect(
-      route("rules.example.yaml", { email: "jane@corp.com", company_size: "1", country: "US" }),
+      route("rules.example.yaml", {
+        email: "jane@corp.com",
+        company_size: "1",
+        country: "United States",
+      }),
     ).toBe("Solo company goes self-serve");
     expect(
-      route("rules.example.yaml", { email: "jane@gmail.com", company_size: "20", country: "US" }),
+      route("rules.example.yaml", {
+        email: "jane@gmail.com",
+        company_size: "20",
+        country: "United States",
+      }),
     ).toBe("Teams get a rep");
   });
 
@@ -75,7 +83,7 @@ describe("example rule sets route realistic leads", () => {
     expect(
       route(
         "rules.example.yaml",
-        { email: "jane@gmail.com", company_size: "900", country: "DE" },
+        { email: "jane@gmail.com", company_size: "900", country: "Germany" },
         { contact: { owner: "alice@acme.test" } },
       ),
     ).toBe("Existing owner wins");
@@ -83,19 +91,31 @@ describe("example rule sets route realistic leads", () => {
 
   it("rules.example.yaml: teams by size, DACH by country, else fallback", () => {
     expect(
-      route("rules.example.yaml", { email: "a@corp.com", company_size: "900", country: "US" }),
+      route("rules.example.yaml", {
+        email: "a@corp.com",
+        company_size: "900",
+        country: "United States",
+      }),
     ).toBe("Teams get a rep");
     expect(
-      route("rules.example.yaml", { email: "a@corp.de", company_size: "40", country: "DE" }),
+      route("rules.example.yaml", {
+        email: "a@corp.de",
+        company_size: "40",
+        country: "Germany",
+      }),
     ).toBe("DACH region");
     expect(
-      route("rules.example.yaml", { email: "a@corp.com", country: "US" }),
+      route("rules.example.yaml", { email: "a@corp.com", country: "United States" }),
     ).toBeNull();
   });
 
   it("rules.saas.yaml: free email goes self-serve before enterprise", () => {
     expect(
-      route("rules.saas.yaml", { email: "cto@yahoo.com", company_size: "900", country: "US" }),
+      route("rules.saas.yaml", {
+        email: "cto@yahoo.com",
+        company_size: "900",
+        country: "United States",
+      }),
     ).toBe("Personal email goes self-serve");
   });
 });

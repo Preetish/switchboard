@@ -25,7 +25,7 @@ rules:
 
   - name: DACH region
     when:
-      form.country: { in: [DE, AT, CH] }
+      form.country: { in: [Germany, Austria, Switzerland] }
     route:
       team: dach
       strategy: round_robin

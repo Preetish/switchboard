@@ -8,6 +8,9 @@ Notable changes to Switchboard. The format follows
 
 ### Changed
 
+- The demo form now uses full country names (United States, Canada, United
+  Kingdom, Germany, Austria, Switzerland, and Other) instead of two-letter
+  codes, and the example DACH rule matches on those names.
 - Select fields on the lead form (hosted and embedded) are now a custom
   dropdown instead of the native picker, so they look the same on every
   device. Lists with more than 10 options get a search box; shorter
