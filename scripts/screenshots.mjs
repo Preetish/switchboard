@@ -24,7 +24,7 @@ await page.goto(`${base}/f/book-a-demo`);
 await page.getByLabel("Full name").fill("Priya Shah");
 await page.getByLabel("Work email").fill("priya@globex.example");
 await page.getByLabel("Company size").fill("1200");
-await page.getByLabel("Country").selectOption("US");
+await page.getByLabel("Country").selectOption("United States");
 await page.getByLabel(/I agree/).check();
 await shot("1-form");
 await page.getByRole("button", { name: "Find a time" }).click();

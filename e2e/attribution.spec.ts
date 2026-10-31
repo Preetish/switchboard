@@ -41,7 +41,7 @@ test("the embed passes landing-page attribution through and reports conversions"
   await form.getByLabel("Work email").fill(`priya-${Date.now()}@globex.test`);
   await form.getByLabel("Company size").fill("1200");
   await form.getByLabel("Country").click();
-  await form.getByRole("option", { name: "US", exact: true }).click();
+  await form.getByRole("option", { name: "United States", exact: true }).click();
   await form.getByLabel(/I agree/).check();
 
   const submitted = page.waitForRequest((request) => request.url().includes("/submit"));
@@ -81,7 +81,7 @@ test("a direct link to the hosted form keeps its UTMs", async ({ page }) => {
   await page.getByLabel("Work email").fill(`sam-${Date.now()}@initech.test`);
   await page.getByLabel("Company size").fill("40");
   await page.getByLabel("Country").click();
-  await page.getByRole("option", { name: "US", exact: true }).click();
+  await page.getByRole("option", { name: "United States", exact: true }).click();
   await page.getByLabel(/I agree/).check();
   const submitted = page.waitForRequest((request) => request.url().includes("/submit"));
   await page.getByRole("button", { name: "Find a time" }).click();
