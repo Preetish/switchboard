@@ -19,6 +19,10 @@ Notable changes to Switchboard. The format follows
 - Each How-it-works step now carries a small looping animation in the
   same canvas language: a form qualifying, a round-robin landing, a
   slot being booked.
+- New "On your site" section in marketer language (Webflow, Framer,
+  WordPress, Contentful; three plain setup steps), and the self-host
+  section now leads with ownership instead of a Docker command, with
+  the guide one click away on GitHub.
 - The instance home page is now a real front door: the live form
   embedded on the page with the standard embed snippet, the routing
   rules shown on a dark band, and a self-host section. Design standard

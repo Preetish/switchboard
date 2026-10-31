@@ -78,8 +78,11 @@ How every Switchboard surface should look, behave, and be built. The tokens in
   full width; content may not start at a different margin.
 - Everything else in this standard still applies: tokens only,
   hairlines over shadows, no decorative animation.
-- Its hero visual is the product itself: the live form, embedded with
-  the same snippet customers use.
+- Its visuals are the product at work: a staged replay of one routing
+  decision in the hero, a small looping animation in each step, and
+  the live form, embedded with the same snippet customers use, in its
+  own section. Animation demonstrates; it never decorates, and
+  reduced motion gets the finished state.
 
 ## Testing the standard
 
