@@ -98,8 +98,9 @@ export default async function Home() {
             connected the way it always should have been.
           </h1>
           <p className={styles.lede}>
-            A connection layer between a stranger&apos;s intent and your
-            team&apos;s time.
+            Switchboard is open source. A lead submits your form, your rules
+            route them to the right rep, and the meeting is booked before
+            they leave the page.
           </p>
           <div className={styles.actions}>
             {form ? (
@@ -177,9 +178,8 @@ export default async function Home() {
         <h2 className={styles.hostTitle}>Yours to run.</h2>
         <p className={styles.hostBody}>
           Switchboard is open source under Apache-2.0. It runs on a single
-          server with Postgres, on infrastructure you already have, and it
-          does not phone home. The outcome is a meeting, already on the
-          calendar.
+          server with Postgres, on infrastructure you already have. The
+          outcome is a meeting, already on the calendar.
         </p>
         <p className={styles.command}>
           <code>docker compose up</code>
