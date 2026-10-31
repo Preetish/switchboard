@@ -66,10 +66,10 @@
     Arial, sans-serif;
   --sb-font-mono:
     ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-  /* Display serif for the public home page headlines only (loaded by the
-     home page; product surfaces stay on the system sans). Falls back to a
-     local serif when the webfont is absent. */
-  --sb-font-display: var(--sb-font-display-src, Georgia, "Times New Roman", serif);
+  /* Display face for the public home page headlines only (loaded by the
+     home page; product surfaces stay on the system sans). Falls back to
+     the system grotesque when the webfont is absent. */
+  --sb-font-display: var(--sb-font-display-src, ui-sans-serif, system-ui, sans-serif);
   --sb-text-sm: 0.875rem;
   --sb-text-base: 1rem;
   --sb-text-lg: 1.125rem;

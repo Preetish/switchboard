@@ -1,5 +1,5 @@
 import { asc, eq } from "drizzle-orm";
-import { Fraunces } from "next/font/google";
+import { Instrument_Sans } from "next/font/google";
 import Script from "next/script";
 import { forms } from "@switchboard/db";
 import { getDb } from "@/lib/db";
@@ -9,11 +9,11 @@ import styles from "./home.module.css";
 export const dynamic = "force-dynamic";
 
 /**
- * Display serif for this page's headlines only (docs/design.md, "The
+ * Display face for this page's headlines only (docs/design.md, "The
  * public home page"). Self-hosted by next/font at build time; the token
- * falls back to a local serif when the font is unavailable.
+ * falls back to the system grotesque when the font is unavailable.
  */
-const displaySerif = Fraunces({
+const displayFont = Instrument_Sans({
   subsets: ["latin"],
   variable: "--sb-font-display-src",
   display: "swap",
@@ -70,37 +70,36 @@ async function firstForm(): Promise<{ slug: string; name: string } | null> {
 export default async function Home() {
   const form = await firstForm();
   return (
-    <main className={`${styles.page} ${displaySerif.variable}`}>
+    <main className={`${styles.page} ${displayFont.variable}`}>
       <header className={styles.topbar}>
-        <p className={styles.wordmark}>Switchboard</p>
-        <nav className={styles.topnav}>
-          <a
-            className={styles.navLink}
-            href="https://github.com/Preetish/switchboard"
-            rel="noreferrer"
-          >
-            GitHub
-          </a>
-          {form ? (
-            <a className={styles.navCta} href="#live-form">
-              Try the demo
+        <div className={styles.barInner}>
+          <p className={styles.wordmark}>Switchboard</p>
+          <nav className={styles.topnav}>
+            <a
+              className={styles.navLink}
+              href="https://github.com/Preetish/switchboard"
+              rel="noreferrer"
+            >
+              GitHub
             </a>
-          ) : null}
-        </nav>
+            {form ? (
+              <a className={styles.navCta} href="#live-form">
+                Try the demo
+              </a>
+            ) : null}
+          </nav>
+        </div>
       </header>
 
       <section className={styles.hero}>
         <div className={styles.heroText}>
           <h1 className={styles.title}>
-            <span className={styles.titleGrey}>
-              This is the first conversation,{" "}
-            </span>
-            connected the way it always should have been.
+            Inbound routing that ends in a booked meeting.
           </h1>
           <p className={styles.lede}>
-            Switchboard is open source. A lead submits your form, your rules
-            route them to the right rep, and the meeting is booked before
-            they leave the page.
+            Switchboard is open-source lead routing software. A lead submits
+            your form, your rules route them to the right rep, and the
+            meeting is booked before they leave the page.
           </p>
           <div className={styles.actions}>
             {form ? (
@@ -129,6 +128,15 @@ export default async function Home() {
             </p>
           </div>
         ) : null}
+      </section>
+
+      <section className={styles.proof}>
+        <div className={styles.proofInner}>
+          <p>
+            Apache-2.0 · Self-hosted · Works with HubSpot and Google Calendar
+            · Rules in YAML, kept in git
+          </p>
+        </div>
       </section>
 
       <section className={styles.statement}>
@@ -187,14 +195,16 @@ export default async function Home() {
       </section>
 
       <footer className={styles.footer}>
-        <p className={styles.wordmark}>Switchboard</p>
-        <p className={styles.footerLine}>
-          Apache-2.0 · Runs on your servers ·{" "}
-          <a href="https://github.com/Preetish/switchboard" rel="noreferrer">
-            GitHub
-          </a>{" "}
-          · <a href="/login">Sign in</a>
-        </p>
+        <div className={styles.barInner}>
+          <p className={styles.wordmark}>Switchboard</p>
+          <p className={styles.footerLine}>
+            Apache-2.0 · Runs on your servers ·{" "}
+            <a href="https://github.com/Preetish/switchboard" rel="noreferrer">
+              GitHub
+            </a>{" "}
+            · <a href="/login">Sign in</a>
+          </p>
+        </div>
       </footer>
     </main>
   );

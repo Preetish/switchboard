@@ -66,11 +66,18 @@ How every Switchboard surface should look, behave, and be built. The tokens in
 ## The public home page
 
 - The instance home page (`/`) is a marketing surface, not a product
-  surface. It may use the display serif (`--sb-font-display`) for
-  headlines and pill-shaped calls to action; a grid of jack dots may
-  texture the dark band as its one decoration. Everything else in this
-  standard still applies: tokens only, hairlines over shadows, no
-  decorative animation.
+  surface. It is dark by design in both OS schemes (page gray-950,
+  raised surfaces gray-900, hairlines gray-800); product surfaces keep
+  following the OS. It may use the display face (`--sb-font-display`,
+  Instrument Sans) for headlines and pill-shaped calls to action; a
+  grid of jack dots may texture its dark surfaces as decoration.
+  Inter, Geist, Space Grotesk, and Roboto are not used anywhere: they
+  read as generated defaults, not choices.
+- Header, footer, and every section on the home page share one content
+  column (same max-width and side padding). Hairlines may span the
+  full width; content may not start at a different margin.
+- Everything else in this standard still applies: tokens only,
+  hairlines over shadows, no decorative animation.
 - Its hero visual is the product itself: the live form, embedded with
   the same snippet customers use.
 
