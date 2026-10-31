@@ -6,6 +6,14 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The instance home page is now a real front door: display-serif
+  headlines, the live form embedded on the page with the standard embed
+  snippet, the routing rules and decision log shown on a dark band, a
+  self-host section, and a short comparison table. Design standard
+  updated with the home page's exceptions (docs/design.md).
+
 ## [0.1.2] — 2026-10-30
 
 ### Fixed

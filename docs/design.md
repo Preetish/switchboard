@@ -59,6 +59,21 @@ How every Switchboard surface should look, behave, and be built. The tokens in
 - Sentence case everywhere. Button labels are verbs ("Book meeting", not
   "Submit"). Errors are plain sentences with a next step. Numbers are real
   (latency in ms, not "fast").
+- One exception: the public home page speaks in a higher register —
+  declarative, indirect, no feature lists in headlines. Product surfaces,
+  docs, and every button stay literal.
+
+## The public home page
+
+- The instance home page (`/`) is a marketing surface, not a product
+  surface. It may use the display serif (`--sb-font-display`) for
+  headlines, pill-shaped calls to action, and the patch-cord motif: a
+  single accent line, drawn as an SVG curve, that connects the form to
+  the booking — the board's one decoration. A grid of jack dots may
+  texture the dark band. Everything else in this standard still applies:
+  tokens only, hairlines over shadows, no decorative animation.
+- Its hero visual is the product itself: the live form, embedded with
+  the same snippet customers use.
 
 ## Testing the standard
 
