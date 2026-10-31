@@ -8,6 +8,11 @@ Notable changes to Switchboard. The format follows
 
 ### Changed
 
+- The live demo form on the home page no longer sits inside a second
+  padded frame: the panel chrome is gone, so the form's own card is
+  the only frame and the fields get the full section width, most
+  visibly on phones.
+
 - The home page is dark by design in both OS schemes, with Instrument
   Sans display type, a clearer headline and lede, a one-line proof
   strip, and header/footer content aligned to the same column as the
