@@ -8,11 +8,14 @@ Notable changes to Switchboard. The format follows
 
 ### Changed
 
-- The instance home page is now a real front door: display-serif
-  headlines, the live form embedded on the page with the standard embed
-  snippet, the routing rules shown on a dark band, and a self-host
-  section. Design standard updated with the home page's exceptions
-  (docs/design.md).
+- The home page is dark by design in both OS schemes, with Instrument
+  Sans display type, a clearer headline and lede, a one-line proof
+  strip, and header/footer content aligned to the same column as the
+  sections.
+- The instance home page is now a real front door: the live form
+  embedded on the page with the standard embed snippet, the routing
+  rules shown on a dark band, and a self-host section. Design standard
+  updated with the home page's exceptions (docs/design.md).
 - The home page drops its navbar "Sign in" link (a public page does not
   need it; the footer link now points at /login).
 

@@ -1,28 +1,40 @@
 /* Instance home page — tokens only, per docs/design.md ("The public home
-   page": display serif headlines, pill CTAs, jack-dot texture). */
+   page": dark by design, display grotesque headlines, pill CTAs, jack-dot
+   texture, one shared content column). */
 
 .page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--sb-gray-950);
+  color: var(--sb-gray-100);
+}
+
+/* ---- shared column: header and footer align with every section ---- */
+
+.barInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-4);
+  width: 100%;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: var(--sb-space-4) var(--sb-space-6);
 }
 
 /* ---- top bar ---- */
 
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sb-space-4);
-  padding: var(--sb-space-4) var(--sb-space-6);
-  border-bottom: 1px solid var(--sb-border);
+  border-bottom: 1px solid var(--sb-gray-800);
 }
 
 .wordmark {
   font-family: var(--sb-font-display);
   font-size: var(--sb-text-xl);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  color: var(--sb-gray-50);
 }
 
 .topnav {
@@ -32,28 +44,29 @@
 }
 
 .navLink {
-  color: var(--sb-text-muted);
+  color: var(--sb-gray-400);
   font-size: var(--sb-text-sm);
   font-weight: 500;
   transition: color var(--sb-duration-fast) var(--sb-ease-out);
 }
 
 .navLink:hover {
-  color: var(--sb-text);
+  color: var(--sb-gray-100);
 }
 
 .navCta {
   padding: var(--sb-space-2) var(--sb-space-4);
-  border: 1px solid var(--sb-border);
+  border: 1px solid var(--sb-gray-800);
   border-radius: var(--sb-radius-full);
-  background: var(--sb-surface);
+  background: var(--sb-gray-900);
+  color: var(--sb-gray-100);
   font-size: var(--sb-text-sm);
   font-weight: 600;
   transition: background var(--sb-duration-fast) var(--sb-ease-out);
 }
 
 .navCta:hover {
-  background: var(--sb-bg);
+  background: var(--sb-gray-800);
 }
 
 .navLink:focus-visible,
@@ -81,20 +94,17 @@
 .title {
   font-family: var(--sb-font-display);
   font-size: clamp(var(--sb-text-4xl), 4.5vw, var(--sb-text-5xl));
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  line-height: 1.08;
-}
-
-.titleGrey {
-  color: var(--sb-text-muted);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--sb-gray-50);
 }
 
 .lede {
   margin-top: var(--sb-space-6);
   font-size: var(--sb-text-lg);
   line-height: 1.6;
-  color: var(--sb-text-muted);
+  color: var(--sb-gray-400);
   max-width: 30rem;
 }
 
@@ -124,23 +134,24 @@
 }
 
 .secondary {
-  background: var(--sb-surface);
-  border-color: var(--sb-border);
+  background: var(--sb-gray-900);
+  border-color: var(--sb-gray-800);
+  color: var(--sb-gray-100);
 }
 
 .secondary:hover {
-  background: var(--sb-bg);
+  background: var(--sb-gray-800);
 }
 
-/* ---- live form stage ---- */
+/* ---- live form stage (the form stays a bright card on the dark) ---- */
 
 .stage {
   position: relative;
 }
 
 .formPanel {
-  background: var(--sb-surface);
-  border: 1px solid var(--sb-border);
+  background: var(--sb-gray-0);
+  border: 1px solid var(--sb-gray-900);
   border-radius: var(--sb-radius-lg);
   padding: var(--sb-space-6);
 }
@@ -148,7 +159,27 @@
 .stageCaption {
   margin-top: var(--sb-space-3);
   font-size: var(--sb-text-sm);
-  color: var(--sb-text-muted);
+  color: var(--sb-gray-500);
+}
+
+/* ---- proof strip ---- */
+
+.proof {
+  border-top: 1px solid var(--sb-gray-800);
+}
+
+.proofInner {
+  width: 100%;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: var(--sb-space-6);
+}
+
+.proofInner p {
+  text-align: center;
+  font-size: var(--sb-text-sm);
+  letter-spacing: 0.02em;
+  color: var(--sb-gray-500);
 }
 
 /* ---- statement ---- */
@@ -164,14 +195,19 @@
   font-family: var(--sb-font-display);
   font-size: clamp(var(--sb-text-2xl), 3vw, var(--sb-text-4xl));
   font-weight: 500;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--sb-gray-100);
+}
+
+.titleGrey {
+  color: var(--sb-gray-500);
 }
 
 /* ---- steps ---- */
 
 .stepsSection {
-  border-top: 1px solid var(--sb-border);
+  border-top: 1px solid var(--sb-gray-800);
 }
 
 .steps {
@@ -191,8 +227,9 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: var(--sb-radius-full);
-  background: var(--sb-accent-soft);
-  color: var(--sb-accent-text);
+  background: var(--sb-gray-900);
+  border: 1px solid var(--sb-gray-800);
+  color: var(--sb-accent);
   font-weight: 700;
   font-size: var(--sb-text-sm);
 }
@@ -201,18 +238,20 @@
   margin-top: var(--sb-space-4);
   font-family: var(--sb-font-display);
   font-size: var(--sb-text-2xl);
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--sb-gray-50);
 }
 
 .stepBody {
   margin-top: var(--sb-space-2);
-  color: var(--sb-text-muted);
+  color: var(--sb-gray-400);
 }
 
-/* ---- dark band: the rules ---- */
+/* ---- rules band (one step lighter than the page) ---- */
 
 .darkBand {
-  background-color: var(--sb-gray-950);
+  background-color: var(--sb-gray-900);
   /* The board of jacks: a quiet grid of sockets behind the code. */
   background-image: radial-gradient(
     circle at center,
@@ -220,13 +259,8 @@
     transparent 1.6px
   );
   background-size: 22px 22px;
+  border-block: 1px solid var(--sb-gray-800);
   color: var(--sb-gray-100);
-}
-
-@media (prefers-color-scheme: dark) {
-  .darkBand {
-    border-block: 1px solid var(--sb-gray-800);
-  }
 }
 
 .darkInner {
@@ -242,24 +276,25 @@
 .darkTitle {
   font-family: var(--sb-font-display);
   font-size: clamp(var(--sb-text-3xl), 3.5vw, var(--sb-text-4xl));
-  font-weight: 500;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--sb-gray-50);
 }
 
 .darkTitleGrey {
-  color: var(--sb-gray-400);
+  color: var(--sb-gray-500);
 }
 
 .darkBody {
   margin-top: var(--sb-space-6);
-  color: var(--sb-gray-300);
+  color: var(--sb-gray-400);
   line-height: 1.6;
   max-width: 26rem;
 }
 
 .codePanel {
-  background: var(--sb-gray-900);
+  background: var(--sb-gray-950);
   border: 1px solid var(--sb-gray-800);
   border-radius: var(--sb-radius-lg);
   padding: var(--sb-space-6);
@@ -281,15 +316,16 @@
 .hostTitle {
   font-family: var(--sb-font-display);
   font-size: clamp(var(--sb-text-3xl), 3.5vw, var(--sb-text-4xl));
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--sb-gray-50);
 }
 
 .hostBody {
   margin-top: var(--sb-space-4);
   font-size: var(--sb-text-lg);
   line-height: 1.6;
-  color: var(--sb-text-muted);
+  color: var(--sb-gray-400);
   max-width: 38rem;
 }
 
@@ -297,9 +333,10 @@
   display: inline-block;
   margin-top: var(--sb-space-6);
   padding: var(--sb-space-3) var(--sb-space-4);
-  background: var(--sb-surface);
-  border: 1px solid var(--sb-border);
+  background: var(--sb-gray-900);
+  border: 1px solid var(--sb-gray-800);
   border-radius: var(--sb-radius-md);
+  color: var(--sb-gray-100);
   font-family: var(--sb-font-mono);
   font-size: var(--sb-text-sm);
 }
@@ -307,18 +344,16 @@
 /* ---- footer ---- */
 
 .footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--sb-space-3);
-  padding: var(--sb-space-8) var(--sb-space-6);
-  border-top: 1px solid var(--sb-border);
+  border-top: 1px solid var(--sb-gray-800);
+}
+
+.footer .barInner {
+  padding-block: var(--sb-space-8);
 }
 
 .footerLine {
   font-size: var(--sb-text-sm);
-  color: var(--sb-text-muted);
+  color: var(--sb-gray-500);
 }
 
 .footerLine a {
