@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * The demo form's Country field (examples/switchboard.demo.yaml, seven
- * options) uses the custom dropdown: a short list, so keyboard type-ahead
- * rather than a search box.
+ * The demo form's Country field (examples/switchboard.demo.yaml, fifteen
+ * options) uses the custom dropdown: a long list, so a search box rather
+ * than type-ahead.
  */
-test("the Country dropdown works from the keyboard", async ({ page }) => {
+test("the Country dropdown searches and selects from the keyboard", async ({ page }) => {
   await page.goto("/f/book-a-demo");
   const country = page.getByRole("combobox", { name: "Country" });
   await country.focus();
@@ -14,36 +14,34 @@ test("the Country dropdown works from the keyboard", async ({ page }) => {
   await expect(country).toHaveAttribute("aria-expanded", "true");
   const listbox = page.getByRole("listbox", { name: "Country" });
   await expect(listbox).toBeVisible();
-  await expect(page.getByPlaceholder("Search…")).toHaveCount(0);
+  const search = page.getByPlaceholder("Search…");
+  await expect(search).toBeFocused();
+  await expect(page.getByRole("option")).toHaveCount(15);
 
-  // Type-ahead: "u" skips the active United States to United Kingdom,
-  // and a second "u" cycles back to it.
-  await page.keyboard.press("u");
-  await expect(country).toHaveAttribute("aria-activedescendant", /.+/);
-  const activeId = () => country.getAttribute("aria-activedescendant");
-  await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("United Kingdom");
-  await page.keyboard.press("u");
-  await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("United States");
-
-  await page.keyboard.press("End");
-  await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("Other");
-  await page.keyboard.press("Home");
+  // The search box narrows the list; Enter chooses the active match.
+  await page.keyboard.type("united k");
+  await expect(page.getByRole("option")).toHaveCount(1);
   await page.keyboard.press("Enter");
   await expect(listbox).toBeHidden();
   await expect(country).toBeFocused();
-  await expect(country).toHaveText("United States");
+  await expect(country).toHaveText("United Kingdom");
 
-  // Escape closes without changing the choice; outside clicks close too.
+  // Home and End move through the unfiltered list; Escape closes without
+  // changing the choice, and outside clicks close too.
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("option", { name: "United States", exact: true })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await page.keyboard.press("ArrowDown");
+  await expect(search).toBeFocused();
+  const activeId = () => country.getAttribute("aria-activedescendant");
+  await page.keyboard.press("End");
+  await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("Other");
+  await page.keyboard.press("Home");
+  await expect(page.locator(`[id="${await activeId()}"]`)).toHaveText("United States");
+  await expect(
+    page.getByRole("option", { name: "United Kingdom", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
   await expect(listbox).toBeHidden();
   await expect(country).toBeFocused();
-  await expect(country).toHaveText("United States");
+  await expect(country).toHaveText("United Kingdom");
 
   await country.click();
   await expect(listbox).toBeVisible();

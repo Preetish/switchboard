@@ -54,7 +54,22 @@ forms:
         label: Country
         type: select
         required: true
-        options: [United States, Canada, United Kingdom, Germany, Austria, Switzerland, Other]
+        options:
+          - United States
+          - Canada
+          - United Kingdom
+          - Germany
+          - Austria
+          - Switzerland
+          - France
+          - Netherlands
+          - Ireland
+          - Spain
+          - Italy
+          - Australia
+          - India
+          - Japan
+          - Other
       - { key: message, label: Anything we should know?, type: textarea, required: false }
       - key: consent
         label: I agree that my details are stored to process this request.
