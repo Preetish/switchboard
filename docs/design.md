@@ -67,11 +67,10 @@ How every Switchboard surface should look, behave, and be built. The tokens in
 
 - The instance home page (`/`) is a marketing surface, not a product
   surface. It may use the display serif (`--sb-font-display`) for
-  headlines, pill-shaped calls to action, and the patch-cord motif: a
-  single accent line, drawn as an SVG curve, that connects the form to
-  the booking — the board's one decoration. A grid of jack dots may
-  texture the dark band. Everything else in this standard still applies:
-  tokens only, hairlines over shadows, no decorative animation.
+  headlines and pill-shaped calls to action; a grid of jack dots may
+  texture the dark band as its one decoration. Everything else in this
+  standard still applies: tokens only, hairlines over shadows, no
+  decorative animation.
 - Its hero visual is the product itself: the live form, embedded with
   the same snippet customers use.
 

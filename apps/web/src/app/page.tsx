@@ -47,18 +47,7 @@ const RULES_EXCERPT = `rules:
     when: { form.company_size: { gt: 1 } }
     route: { team: enterprise, strategy: round_robin }`;
 
-const LOG_LINES = [
-  "jane@globex.com      Teams get a rep → Alice Chen · booked Tue 09:30 ET · 31 ms",
-  "ops@beispiel.de     DACH region → Dana Weber · booked Wed 14:00 CET · 28 ms",
-  "founder@solo.io     Solo company goes self-serve · 3 ms",
-];
 
-const COMPARISON: Array<[string, string, string]> = [
-  ["Source", "Open, Apache-2.0", "Closed"],
-  ["Hosting", "Your servers", "Their cloud"],
-  ["Routing logic", "YAML in your repo", "A vendor console"],
-  ["Price", "Free", "Per seat, per month"],
-];
 
 /** The first form, so a fresh instance has an obvious "try it" link. */
 async function firstForm(): Promise<{ slug: string; name: string } | null> {
@@ -78,38 +67,6 @@ async function firstForm(): Promise<{ slug: string; name: string } | null> {
   }
 }
 
-/** The patch cord: one accent line from the headline into the live form. */
-function PatchCord() {
-  return (
-    <svg
-      className={styles.cord}
-      viewBox="0 0 100 40"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M 2 4 C 30 38, 62 6, 88 26"
-        fill="none"
-        stroke="var(--sb-accent)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
-      <circle cx="2" cy="4" r="2.2" fill="var(--sb-accent)" />
-      <circle
-        cx="88"
-        cy="26"
-        r="3.4"
-        fill="none"
-        stroke="var(--sb-accent)"
-        strokeWidth="2"
-        vectorEffect="non-scaling-stroke"
-      />
-      <circle cx="88" cy="26" r="1.6" fill="var(--sb-accent)" />
-    </svg>
-  );
-}
-
 export default async function Home() {
   const form = await firstForm();
   return (
@@ -123,9 +80,6 @@ export default async function Home() {
             rel="noreferrer"
           >
             GitHub
-          </a>
-          <a className={styles.navLink} href="/routing-log">
-            Sign in
           </a>
           {form ? (
             <a className={styles.navCta} href="#live-form">
@@ -144,10 +98,10 @@ export default async function Home() {
             connected the way it always should have been.
           </h1>
           <p className={styles.lede}>
-            A connection layer between a stranger&apos;s intent and your
-            team&apos;s time.
+            Switchboard is open source. A lead submits your form, your rules
+            route them to the right rep, and the meeting is booked before
+            they leave the page.
           </p>
-          <p className={styles.triad}>Open. Deterministic. Yours.</p>
           <div className={styles.actions}>
             {form ? (
               <a className={styles.primary} href="#live-form">
@@ -166,14 +120,7 @@ export default async function Home() {
 
         {form ? (
           <div className={styles.stage}>
-            <PatchCord />
             <div className={styles.formPanel} id="live-form">
-              <div className={styles.formPanelHead}>
-                <span className={styles.jackDot} aria-hidden="true" />
-                <span>
-                  The board, live · the &ldquo;{form.name}&rdquo; form
-                </span>
-              </div>
               <div data-switchboard-form={form.slug} />
               <Script src="/embed.js" strategy="afterInteractive" />
             </div>
@@ -223,14 +170,6 @@ export default async function Home() {
             <pre className={styles.codePanel}>
               <code>{RULES_EXCERPT}</code>
             </pre>
-            <div className={styles.logPanel}>
-              {LOG_LINES.map((line) => (
-                <p key={line} className={styles.logLine}>
-                  {line}
-                </p>
-              ))}
-              <p className={styles.logCaption}>From the board&apos;s log.</p>
-            </div>
           </div>
         </div>
       </section>
@@ -239,35 +178,12 @@ export default async function Home() {
         <h2 className={styles.hostTitle}>Yours to run.</h2>
         <p className={styles.hostBody}>
           Switchboard is open source under Apache-2.0. It runs on a single
-          server with Postgres, on infrastructure you already have, and it
-          does not phone home. The outcome is a meeting, already on the
-          calendar.
+          server with Postgres, on infrastructure you already have. The
+          outcome is a meeting, already on the calendar.
         </p>
         <p className={styles.command}>
           <code>docker compose up</code>
         </p>
-      </section>
-
-      <section className={styles.compareSection}>
-        <h2 className={styles.compareTitle}>An honest comparison.</h2>
-        <table className={styles.compare}>
-          <thead>
-            <tr>
-              <th aria-label="Aspect" />
-              <th>Switchboard</th>
-              <th>Chili Piper</th>
-            </tr>
-          </thead>
-          <tbody>
-            {COMPARISON.map(([aspect, ours, theirs]) => (
-              <tr key={aspect}>
-                <th scope="row">{aspect}</th>
-                <td>{ours}</td>
-                <td className={styles.theirs}>{theirs}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </section>
 
       <footer className={styles.footer}>
@@ -277,7 +193,7 @@ export default async function Home() {
           <a href="https://github.com/Preetish/switchboard" rel="noreferrer">
             GitHub
           </a>{" "}
-          · <a href="/routing-log">Sign in</a>
+          · <a href="/login">Sign in</a>
         </p>
       </footer>
     </main>
