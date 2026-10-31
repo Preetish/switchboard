@@ -1,5 +1,5 @@
 /* Instance home page — tokens only, per docs/design.md ("The public home
-   page": display serif headlines, pill CTAs, the patch-cord motif). */
+   page": display serif headlines, pill CTAs, jack-dot texture). */
 
 .page {
   min-height: 100vh;
@@ -98,22 +98,6 @@
   max-width: 30rem;
 }
 
-.triad {
-  margin-top: var(--sb-space-8);
-  font-size: var(--sb-text-sm);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.triad::before {
-  content: "";
-  display: block;
-  width: 2rem;
-  border-top: 2px solid var(--sb-accent);
-  margin-bottom: var(--sb-space-4);
-}
-
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -154,38 +138,11 @@
   position: relative;
 }
 
-.cord {
-  position: absolute;
-  top: -3rem;
-  left: -5rem;
-  width: 65%;
-  height: 5rem;
-  pointer-events: none;
-}
-
 .formPanel {
   background: var(--sb-surface);
   border: 1px solid var(--sb-border);
   border-radius: var(--sb-radius-lg);
   padding: var(--sb-space-6);
-}
-
-.formPanelHead {
-  display: flex;
-  align-items: center;
-  gap: var(--sb-space-2);
-  margin-bottom: var(--sb-space-4);
-  font-family: var(--sb-font-mono);
-  font-size: var(--sb-text-sm);
-  color: var(--sb-text-muted);
-}
-
-.jackDot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: var(--sb-radius-full);
-  background: var(--sb-accent);
-  flex: none;
 }
 
 .stageCaption {
@@ -312,27 +269,6 @@
   overflow-x: auto;
 }
 
-.logPanel {
-  margin-top: var(--sb-space-6);
-  border-top: 1px solid var(--sb-gray-800);
-  padding-top: var(--sb-space-4);
-  overflow-x: auto;
-}
-
-.logLine {
-  font-family: var(--sb-font-mono);
-  font-size: var(--sb-text-sm);
-  color: var(--sb-gray-400);
-  white-space: nowrap;
-  line-height: 1.9;
-}
-
-.logCaption {
-  margin-top: var(--sb-space-2);
-  font-size: var(--sb-text-sm);
-  color: var(--sb-gray-500);
-}
-
 /* ---- self-host ---- */
 
 .hostSection {
@@ -368,50 +304,6 @@
   font-size: var(--sb-text-sm);
 }
 
-/* ---- comparison ---- */
-
-.compareSection {
-  width: 100%;
-  max-width: 62rem;
-  margin: 0 auto;
-  padding: 0 var(--sb-space-6) var(--sb-space-16);
-}
-
-.compareTitle {
-  font-family: var(--sb-font-display);
-  font-size: clamp(var(--sb-text-3xl), 3.5vw, var(--sb-text-4xl));
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  margin-bottom: var(--sb-space-8);
-}
-
-.compare {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.compare th,
-.compare td {
-  padding: var(--sb-space-3) var(--sb-space-4);
-  border-bottom: 1px solid var(--sb-border);
-  text-align: left;
-  vertical-align: top;
-}
-
-.compare thead th {
-  font-weight: 600;
-  border-bottom: 2px solid var(--sb-border);
-}
-
-.compare tbody th {
-  font-weight: 500;
-  color: var(--sb-text-muted);
-}
-
-.compare .theirs {
-  color: var(--sb-text-muted);
-}
-
 /* ---- footer ---- */
 
 .footer {
@@ -440,10 +332,6 @@
   .hero {
     grid-template-columns: minmax(0, 1fr);
     padding-top: var(--sb-space-12);
-  }
-
-  .cord {
-    display: none;
   }
 
   .darkInner {
