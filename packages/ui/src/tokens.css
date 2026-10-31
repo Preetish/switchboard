@@ -66,6 +66,10 @@
     Arial, sans-serif;
   --sb-font-mono:
     ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  /* Display serif for the public home page headlines only (loaded by the
+     home page; product surfaces stay on the system sans). Falls back to a
+     local serif when the webfont is absent. */
+  --sb-font-display: var(--sb-font-display-src, Georgia, "Times New Roman", serif);
   --sb-text-sm: 0.875rem;
   --sb-text-base: 1rem;
   --sb-text-lg: 1.125rem;
@@ -73,6 +77,7 @@
   --sb-text-2xl: 1.5rem;
   --sb-text-3xl: 2rem;
   --sb-text-4xl: 2.75rem;
+  --sb-text-5xl: 3.5rem;
 
   /* Motion */
   --sb-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
