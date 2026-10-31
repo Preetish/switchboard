@@ -6,6 +6,34 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-10-30
+
+### Fixed
+
+- The published Docker image could not boot: `next.config.ts` made Next
+  require TypeScript at server start, but the image prunes devDependencies,
+  and pg-boss's telemetry import needs `@opentelemetry/api`, which was only
+  a peer dependency and did not survive the prune either. The config is now
+  plain JavaScript (`next.config.mjs`) and `@opentelemetry/api` is a direct
+  dependency of the web app.
+- Form text fields (public form and admin) no longer draw a hard accent
+  outline around the whole field on focus: browsers apply `:focus-visible`
+  to text inputs even on mouse clicks, so the ring read as a stray border.
+  Focus now shows as a soft ring with an accent border.
+
+### Added
+
+- A `self_serve_link` rule can carry a `message`, shown on the self-serve
+  page in place of the default text, so a lead who is not routed to a rep
+  can be told why (for example, a one-person company).
+
+### Changed
+
+- The demo rule set (`examples/rules.example.yaml`) is tuned so visitors
+  actually reach the calendar: a company of one goes self-serve with an
+  explanation, and any larger company is routed to a rep (the old
+  500-employee threshold first sent most test submissions to self-serve).
+
 ## [0.1.1] — 2026-10-29
 
 ### Fixed

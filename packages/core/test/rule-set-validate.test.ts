@@ -127,7 +127,13 @@ describe("loadRuleSetYaml", () => {
       if (file === "rules.example.yaml") {
         expect(result.ruleSet.rules[0]?.name).toBe("Existing owner wins");
         expect(result.ruleSet.rules[0]?.when["crm.contact.owner"]).toEqual({ exists: true });
-        expect(result.ruleSet.rules[2]?.route).toEqual({ action: "self_serve_link" });
+        // The solo rule carries a visitor-facing self-serve message.
+        expect(result.ruleSet.rules[1]?.name).toBe("Solo company goes self-serve");
+        expect(result.ruleSet.rules[1]?.route).toMatchObject({
+          action: "self_serve_link",
+          message: expect.stringContaining("team of one"),
+        });
+        expect(result.ruleSet.rules[4]?.route).toEqual({ action: "self_serve_link" });
       }
     }
   });

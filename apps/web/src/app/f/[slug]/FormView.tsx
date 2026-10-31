@@ -34,7 +34,11 @@ type BookedResult = {
   invited: boolean;
 };
 
-type PublicDecision = { kind: DecisionOutcome["kind"]; userId: string | null };
+type PublicDecision = {
+  kind: DecisionOutcome["kind"];
+  userId: string | null;
+  message?: string | null;
+};
 
 type Result = {
   submissionId: string | null;
@@ -298,8 +302,8 @@ function Outcome({
       <>
         <h1 className={`${styles.cardTitle} sb-heading`}>You can get started right away</h1>
         <p className={`${styles.cardBody} sb-text`}>
-          Thanks for reaching out. You can set things up yourself on the next page, without
-          waiting for a call.
+          {result.decision.message ??
+            "Thanks for reaching out. You can set things up yourself on the next page, without waiting for a call."}
         </p>
         <a className={`${styles.linkButton} sb-button`} href={settings.selfServeUrl} target="_top">
           Get started

@@ -47,6 +47,8 @@ export type DecisionOutcome = {
   userId?: string;
   teamId?: string;
   strategy?: "round_robin" | "existing_owner";
+  /** Visitor-facing body text for a self-serve outcome, from the rule. */
+  message?: string;
   reason: string;
 };
 

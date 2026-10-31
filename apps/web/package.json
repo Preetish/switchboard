@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@next/env": "^15.5.27",
+    "@opentelemetry/api": "^1.9.0",
     "@switchboard/calendar-google": "*",
     "@switchboard/core": "*",
     "@switchboard/crm-hubspot": "*",

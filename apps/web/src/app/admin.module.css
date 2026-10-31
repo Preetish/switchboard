@@ -115,10 +115,16 @@
 }
 
 .button:focus-visible,
-.buttonSecondary:focus-visible,
-.input:focus-visible {
+.buttonSecondary:focus-visible {
   outline: 2px solid var(--sb-accent);
   outline-offset: 2px;
+}
+
+/* Same soft ring as the public form fields (see FormView.module.css). */
+.input:focus {
+  border-color: var(--sb-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sb-accent) 22%, transparent);
+  outline: none;
 }
 
 .actions {

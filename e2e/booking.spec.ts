@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * The headline flow on the demo form (examples/switchboard.demo.yaml):
- * a qualified lead is routed to a rep and books on the same page; a
- * personal-email lead is sent to self-serve.
+ * a team-sized lead is routed to a rep and books on the same page; a
+ * one-person company is sent to self-serve with an explanation.
  */
 
 let counter = 0;
@@ -40,9 +40,10 @@ test("a qualified lead picks a time and books it on the same page", async ({ pag
   await expect(page.getByText(new RegExp(`${time} to`))).toBeVisible();
 });
 
-test("a personal-email lead is sent to self-serve", async ({ page }) => {
-  await fillForm(page, `sam-${unique()}@gmail.com`, "12");
+test("a one-person company is sent to self-serve with an explanation", async ({ page }) => {
+  await fillForm(page, `sam-${unique()}@globex.test`, "1");
   await expect(page.getByRole("heading", { name: "You can get started right away" })).toBeVisible();
+  await expect(page.getByText(/team of one/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Get started" })).toHaveAttribute(
     "href",
     "https://example.com/signup",
