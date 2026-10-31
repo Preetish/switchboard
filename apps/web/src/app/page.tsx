@@ -5,6 +5,7 @@ import { forms } from "@switchboard/db";
 import { getDb } from "@/lib/db";
 import { findOrg } from "@/lib/integrations";
 import RoutingStory from "./RoutingStory";
+import { BookVisual, QualifyVisual, RouteVisual } from "./StepVisuals";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -24,14 +25,17 @@ const STEPS = [
   {
     title: "Qualify",
     body: "A lead fills in your form. Rules you keep in git read the answers, and your CRM, and decide who should talk to them.",
+    visual: <QualifyVisual />,
   },
   {
     title: "Route",
     body: "The board decides in milliseconds: the account owner if there is one, otherwise the next rep on the team, by weight and by capacity.",
+    visual: <RouteVisual />,
   },
   {
     title: "Book",
     body: "The lead sees that rep's open times on the same page and books one. The meeting goes onto the rep's calendar with a Meet link.",
+    visual: <BookVisual />,
   },
 ];
 
@@ -144,6 +148,7 @@ export default async function Home() {
         <ol className={styles.steps}>
           {STEPS.map((step, i) => (
             <li key={step.title} className={styles.step}>
+              {step.visual}
               <span className={styles.stepNumber}>{i + 1}</span>
               <h2 className={styles.stepTitle}>{step.title}</h2>
               <p className={styles.stepBody}>{step.body}</p>
