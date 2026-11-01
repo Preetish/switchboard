@@ -6,7 +6,19 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The home page has link previews: Open Graph and Twitter card tags with
+  a 1200x630 image, so a shared link shows the product instead of a blank
+  card. The image URL is built from `APP_BASE_URL`. Hosted form pages keep
+  their own titles and carry no Switchboard image.
+- The README opens with a short clip of a lead picking a time and booking.
+
 ### Changed
+
+- The hero replay's last step, "Meeting booked", now shows its check mark
+  when the replay finishes (and in the reduced-motion view), instead of
+  staying in the pending state.
 
 - The demo form now uses full country names instead of two-letter codes,
   and the example DACH rule matches on those names.

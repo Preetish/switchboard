@@ -1,14 +1,49 @@
 import { asc, eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { Instrument_Sans } from "next/font/google";
 import Script from "next/script";
 import { forms } from "@switchboard/db";
 import { getDb } from "@/lib/db";
-import { findOrg } from "@/lib/integrations";
+import { appBaseUrl, findOrg } from "@/lib/integrations";
 import RoutingStory from "./RoutingStory";
 import { BookVisual, QualifyVisual, RouteVisual } from "./StepVisuals";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
+
+const SHARE_TITLE = "Switchboard: inbound routing that ends in a booked meeting";
+const SHARE_DESCRIPTION =
+  "Open-source lead routing. A lead submits your form, your rules route them to the right rep, and the meeting is booked before they leave the page.";
+
+/**
+ * Link previews for the home page only. Hosted form pages keep their own
+ * titles and no Switchboard image, since their links belong to the
+ * customer. APP_BASE_URL makes the image URL absolute, as crawlers need.
+ */
+export function generateMetadata(): Metadata {
+  const image = {
+    url: "/og.png",
+    width: 1200,
+    height: 630,
+    alt: "Switchboard: a lead's request goes through the rules, round robin picks a rep, and the meeting is booked.",
+  };
+  return {
+    metadataBase: new URL(appBaseUrl()),
+    openGraph: {
+      type: "website",
+      siteName: "Switchboard",
+      title: SHARE_TITLE,
+      description: SHARE_DESCRIPTION,
+      images: [image],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: SHARE_TITLE,
+      description: SHARE_DESCRIPTION,
+      images: [image],
+    },
+  };
+}
 
 /**
  * Display face for this page's headlines only (docs/design.md, "The

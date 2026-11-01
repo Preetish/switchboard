@@ -172,26 +172,30 @@ export default function RoutingStory() {
       </div>
       <div className={styles.storyBody}>
         <ol className={styles.flow}>
-          {NODES.map((node, i) => (
-            <li
-              key={node.title}
-              className={`${styles.node} ${
-                i < stage
-                  ? styles.nodeDone
-                  : i === stage
-                    ? styles.nodeActive
-                    : styles.nodeTodo
-              }`}
-            >
-              <span className={styles.nodeDot} aria-hidden="true">
-                {i < stage ? "✓" : ""}
-              </span>
-              <span className={styles.nodeText}>
-                <span className={styles.nodeTitle}>{node.title}</span>
-                <span className={styles.nodeSub}>{node.sub}</span>
-              </span>
-            </li>
-          ))}
+          {NODES.map((node, i) => {
+            // The last stage is the outcome, so it shows as done, not pending.
+            const done = i < stage || (stage === LAST && i === LAST);
+            return (
+              <li
+                key={node.title}
+                className={`${styles.node} ${
+                  done
+                    ? styles.nodeDone
+                    : i === stage
+                      ? styles.nodeActive
+                      : styles.nodeTodo
+                }`}
+              >
+                <span className={styles.nodeDot} aria-hidden="true">
+                  {done ? "✓" : ""}
+                </span>
+                <span className={styles.nodeText}>
+                  <span className={styles.nodeTitle}>{node.title}</span>
+                  <span className={styles.nodeSub}>{node.sub}</span>
+                </span>
+              </li>
+            );
+          })}
         </ol>
         <div className={styles.detail} key={`${runId}-${stage}`}>
           <Detail stage={stage} />

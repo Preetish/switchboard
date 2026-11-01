@@ -16,6 +16,10 @@ and you pay nothing per seat.
 **Live demo: [switchboard.preetish.me](https://switchboard.preetish.me)** — the demo workspace from the quick start below, running the latest release.
 
 <p align="center">
+  <img src="docs/images/booking.gif" width="640" alt="After the lead submits, the form shows Alice Chen's open times; the lead picks 9:00 AM, books, and sees the confirmation">
+</p>
+
+<p align="center">
   <img src="docs/images/1-form.png" width="32%" alt="The hosted form">
   <img src="docs/images/2-pick-a-time.png" width="32%" alt="The routed rep's open times, shown inline">
   <img src="docs/images/3-booked.png" width="32%" alt="Booked confirmation">
