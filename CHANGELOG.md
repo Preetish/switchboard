@@ -6,16 +6,18 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
-### Fixed
+## [0.2.0] — 2026-11-01
 
-- The Docker image no longer reports unhealthy. Docker sets `HOSTNAME` to
-  the container ID, so the app listened only on the container's network
-  address and the built-in health check on 127.0.0.1 never connected. The
-  image now sets `HOSTNAME=0.0.0.0`. The site worked either way; only
-  `docker compose ps` and anything watching container health saw the
-  difference.
+The launch release. It also collects the changes shipped in 0.1.3 to 0.1.11.
 
 ### Added
+
+- `HOME_PAGE_INDEXABLE=true` lets search engines index the home page.
+  Forms and admin pages stay noindex, and the default is unchanged.
+- `UMAMI_WEBSITE_ID` (and optional `UMAMI_SCRIPT_URL`) adds cookie-free
+  Umami page-view analytics to the home page.
+- A new logo: an S drawn as a patch cable between two jacks. It is the
+  browser icon, the Apple touch icon and the link-preview image.
 
 - The home page has link previews: Open Graph and Twitter card tags with
   a 1200x630 image, so a shared link shows the product instead of a blank
@@ -24,6 +26,9 @@ Notable changes to Switchboard. The format follows
 - The README opens with a short clip of a lead picking a time and booking.
 
 ### Changed
+
+- The hero replay shows all four demo rules a 400-person company in
+  Canada passes through, including DACH region, instead of three.
 
 - The hero replay's last step, "Meeting booked", now shows its check mark
   when the replay finishes (and in the reduced-motion view), instead of
@@ -75,6 +80,15 @@ Notable changes to Switchboard. The format follows
   updated with the home page's exceptions (docs/design.md).
 - The home page drops its navbar "Sign in" link (a public page does not
   need it; the footer link now points at /login).
+
+### Fixed
+
+- The Docker image no longer reports unhealthy. Docker sets `HOSTNAME` to
+  the container ID, so the app listened only on the container's network
+  address and the built-in health check on 127.0.0.1 never connected. The
+  image now sets `HOSTNAME=0.0.0.0`. The site worked either way; only
+  `docker compose ps` and anything watching container health saw the
+  difference.
 
 ## [0.1.2] — 2026-10-30
 
@@ -163,5 +177,6 @@ rep, and book the meeting on that rep's calendar from the same page.
 - Conversion events on the host page: `switchboard_submitted` and
   `switchboard_booked` in `window.dataLayer`, plus matching DOM events.
 
-[Unreleased]: https://github.com/Preetish/switchboard/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Preetish/switchboard/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Preetish/switchboard/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Preetish/switchboard/releases/tag/v0.1.0

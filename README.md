@@ -135,7 +135,7 @@ Google Calendar, and you connect HubSpot once for the whole org.
 
 ## Status and limits
 
-This is v0.1. The full flow works, and unit, Postgres, and browser tests cover
+This is v0.2. The full flow works, and unit, Postgres, and browser tests cover
 it in CI, but the project is new. Today Switchboard supports Google Calendar
 (Outlook isn't supported yet) and HubSpot (Salesforce isn't either). Each
 instance serves one company with one admin login, and lead pages are in
@@ -143,13 +143,18 @@ English. The inline booking step offers 30-minute meetings. Rate limits live
 in memory, so they apply per instance; if you run several, put a shared
 limiter in front.
 
-The [changelog](CHANGELOG.md) lists what changes in each release.
+The [roadmap issue](https://github.com/Preetish/switchboard/issues/56) tracks
+what's missing and what's next; comment there with what you need. The
+[changelog](CHANGELOG.md) lists what changes in each release.
 
 ## Contributing
 
 Bug reports, ideas, and pull requests are welcome. Start with
-[CONTRIBUTING.md](CONTRIBUTING.md). Please report security issues privately as
-described in [SECURITY.md](SECURITY.md).
+[CONTRIBUTING.md](CONTRIBUTING.md), and ask questions in
+[Discussions](https://github.com/Preetish/switchboard/discussions). Please
+report security issues privately as described in [SECURITY.md](SECURITY.md).
+
+If Switchboard is useful to you, a star helps other people find it.
 
 ## License
 
