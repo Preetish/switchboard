@@ -246,7 +246,17 @@
   list-style: none;
 }
 
+/* Each step spans the parent's rows (visual, number, title, body) via
+   subgrid, so visuals share one height and numbers and titles line up. */
+.step {
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
+  row-gap: 0;
+}
+
 .stepNumber {
+  justify-self: start;
   display: inline-grid;
   place-items: center;
   width: 1.75rem;
