@@ -6,6 +6,7 @@ import { forms } from "@switchboard/db";
 import { getDb } from "@/lib/db";
 import { appBaseUrl, findOrg } from "@/lib/integrations";
 import RoutingStory from "./RoutingStory";
+import StepsSequence from "./StepsSequence";
 import { BookVisual, QualifyVisual, RouteVisual } from "./StepVisuals";
 import styles from "./home.module.css";
 
@@ -193,7 +194,7 @@ export default async function Home() {
       </section>
 
       <section className={styles.stepsSection}>
-        <ol className={styles.steps}>
+        <StepsSequence className={styles.steps}>
           {STEPS.map((step, i) => (
             <li key={step.title} className={styles.step}>
               {step.visual}
@@ -202,7 +203,7 @@ export default async function Home() {
               <p className={styles.stepBody}>{step.body}</p>
             </li>
           ))}
-        </ol>
+        </StepsSequence>
       </section>
 
       <section className={styles.siteSection}>

@@ -1,10 +1,10 @@
 import styles from "./StepVisuals.module.css";
 
 /**
- * The three How-it-works visuals: small looping animations in the same
- * canvas language as the hero's routing story. Pure CSS, so they run
- * without client JS; the base state of every element is the finished,
- * readable state, and reduced motion simply never starts the loop.
+ * The three How-it-works visuals, in the same canvas language as the
+ * hero's routing story. CSS animations that StepsSequence plays once per
+ * step, in order; the base state of every element is the finished,
+ * readable state, which is what no-JS and reduced-motion visitors see.
  */
 
 export function QualifyVisual() {

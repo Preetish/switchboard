@@ -6,6 +6,16 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-11-01
+
+### Changed
+
+- The How-it-works visuals play one step at a time instead of all three
+  looping together. A step plays once, when it is on screen and the step
+  before it has finished, then stays on its finished state; steps waiting
+  their turn are dimmed. Without JavaScript or with reduced motion, all
+  three show their finished state.
+
 ## [0.2.0] — 2026-11-01
 
 The launch release. It also collects the changes shipped in 0.1.3 to 0.1.11.
@@ -177,6 +187,7 @@ rep, and book the meeting on that rep's calendar from the same page.
 - Conversion events on the host page: `switchboard_submitted` and
   `switchboard_booked` in `window.dataLayer`, plus matching DOM events.
 
-[Unreleased]: https://github.com/Preetish/switchboard/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Preetish/switchboard/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Preetish/switchboard/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Preetish/switchboard/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Preetish/switchboard/releases/tag/v0.1.0

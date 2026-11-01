@@ -1,6 +1,7 @@
-/* Step visuals — small looping animations for Qualify / Route / Book.
-   Every element's base state is its finished state; the 7s loop only
-   replays how it got there. Reduced motion: no loop, finished state. */
+/* Step visuals for Qualify / Route / Book. Every element's base state is
+   its finished state. StepsSequence marks a step "waiting" (hidden, dimmed)
+   until it is on screen and the previous step is done, then "playing",
+   which replays how it got there once. Reduced motion: finished state. */
 
 .visual {
   background-color: var(--sb-gray-900);
@@ -23,35 +24,37 @@
 }
 
 @keyframes stepIn {
-  0% {
+  from {
     opacity: 0;
     transform: translateY(5px);
   }
-  8%,
-  82% {
+  to {
     opacity: 1;
-    transform: translateY(0);
-  }
-  96%,
-  100% {
-    opacity: 0;
     transform: translateY(0);
   }
 }
 
-.d1 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 0s; }
-.d2 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 0.35s; }
-.d3 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 0.7s; }
-.d4 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 1.15s; }
-.d5 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 1.5s; }
-.d6 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 1.95s; }
-.d7 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 2.3s; }
-.d8 { animation: stepIn 7s var(--sb-ease-out) infinite; animation-delay: 2.7s; }
+[data-step-state="waiting"] :is(.d1, .d2, .d3, .d4, .d5, .d6, .d7, .d8) {
+  opacity: 0;
+}
+
+[data-step-state="playing"] :is(.d1, .d2, .d3, .d4, .d5, .d6, .d7, .d8) {
+  animation: stepIn var(--sb-duration-base) var(--sb-ease-out) both;
+}
+
+[data-step-state="playing"] .d1 { animation-delay: 0s; }
+[data-step-state="playing"] .d2 { animation-delay: 0.35s; }
+[data-step-state="playing"] .d3 { animation-delay: 0.7s; }
+[data-step-state="playing"] .d4 { animation-delay: 1.15s; }
+[data-step-state="playing"] .d5 { animation-delay: 1.5s; }
+[data-step-state="playing"] .d6 { animation-delay: 1.95s; }
+[data-step-state="playing"] .d7 { animation-delay: 2.3s; }
+[data-step-state="playing"] .d8 { animation-delay: 2.7s; }
 
 @media (prefers-reduced-motion: reduce) {
-  .d1, .d2, .d3, .d4, .d5, .d6, .d7, .d8,
-  .scan1, .scan2, .picked {
+  [data-step-state] :is(.d1, .d2, .d3, .d4, .d5, .d6, .d7, .d8, .scan1, .scan2, .picked) {
     animation: none;
+    opacity: 1;
   }
 }
 
@@ -116,32 +119,39 @@
 
 @keyframes scan {
   0%, 100% { border-color: var(--sb-gray-800); color: var(--sb-gray-400); }
-  10%, 22% { border-color: var(--sb-gray-400); color: var(--sb-gray-100); }
-  32% { border-color: var(--sb-gray-800); color: var(--sb-gray-400); }
+  35%, 60% { border-color: var(--sb-gray-400); color: var(--sb-gray-100); }
 }
 
-.scan1 { animation: scan 7s var(--sb-ease-out) infinite; }
-.scan2 { animation: scan 7s var(--sb-ease-out) infinite; animation-delay: 0.9s; }
+[data-step-state="playing"] .scan1 { animation: scan 1.4s var(--sb-ease-out) both; }
+[data-step-state="playing"] .scan2 { animation: scan 1.4s var(--sb-ease-out) 0.6s both; }
+
+/* The picked rep's finished state is the accent; the replay starts neutral. */
+.picked {
+  border-color: var(--sb-accent);
+  background: var(--sb-accent-soft);
+  color: var(--sb-accent);
+}
 
 @keyframes pick {
-  0%, 30% {
+  0%, 60% {
     border-color: var(--sb-gray-800);
     background: var(--sb-gray-950);
     color: var(--sb-gray-400);
   }
-  42%, 95% {
+  100% {
     border-color: var(--sb-accent);
     background: var(--sb-accent-soft);
     color: var(--sb-accent);
   }
-  100% {
-    border-color: var(--sb-gray-800);
-    background: var(--sb-gray-950);
-    color: var(--sb-gray-400);
-  }
 }
 
-.picked { animation: pick 7s var(--sb-ease-out) infinite; }
+[data-step-state="waiting"] .picked {
+  border-color: var(--sb-gray-800);
+  background: var(--sb-gray-950);
+  color: var(--sb-gray-400);
+}
+
+[data-step-state="playing"] .picked { animation: pick 1.8s var(--sb-ease-out) both; }
 
 .pickLabel {
   font-weight: 600;

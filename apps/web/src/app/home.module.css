@@ -253,6 +253,12 @@
   grid-row: span 4;
   grid-template-rows: subgrid;
   row-gap: 0;
+  transition: opacity var(--sb-duration-base) var(--sb-ease-out);
+}
+
+/* A step waiting for its turn in StepsSequence sits back. */
+.step[data-step-state="waiting"] {
+  opacity: 0.4;
 }
 
 .stepNumber {
