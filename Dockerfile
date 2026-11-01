@@ -27,8 +27,12 @@ RUN npm run build --workspace @switchboard/web \
 
 # ---- runtime: production dependencies only, non-root ----
 FROM node:22-alpine
+# Docker sets HOSTNAME to the container ID, and server.mjs listens on
+# HOSTNAME, so without this the app never listens on 127.0.0.1 and the
+# HEALTHCHECK below fails forever. Bind to all interfaces instead.
 ENV NODE_ENV=production \
     PORT=3000 \
+    HOSTNAME=0.0.0.0 \
     SWITCHBOARD_DATA_DIR=/var/lib/switchboard
 WORKDIR /app
 

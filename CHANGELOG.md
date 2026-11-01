@@ -6,6 +6,15 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The Docker image no longer reports unhealthy. Docker sets `HOSTNAME` to
+  the container ID, so the app listened only on the container's network
+  address and the built-in health check on 127.0.0.1 never connected. The
+  image now sets `HOSTNAME=0.0.0.0`. The site worked either way; only
+  `docker compose ps` and anything watching container health saw the
+  difference.
+
 ### Added
 
 - The home page has link previews: Open Graph and Twitter card tags with
