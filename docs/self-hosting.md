@@ -54,6 +54,8 @@ known-default secret, and lists what to fix.
 | `TOKEN_ENCRYPTION_KEY` | with Google/HubSpot | 64 hex characters; encrypts OAuth tokens at rest (AES-256-GCM). Generated if unset |
 | `APP_BASE_URL` | behind a proxy | The public URL, e.g. `https://switchboard.acme.com`. Used in OAuth redirect URIs and emailed links |
 | `TRUSTED_PROXY_HOPS` | behind a proxy | How many proxies you run in front (see [HTTPS](#https-and-reverse-proxies)). Default `0` |
+| `HOME_PAGE_INDEXABLE` | no | `true` lets search engines index the home page. Forms and admin pages stay noindex. Default `false` |
+| `UMAMI_WEBSITE_ID` / `UMAMI_SCRIPT_URL` | no | Cookie-free page-view analytics on the home page with [Umami](https://umami.is). The script URL defaults to Umami Cloud |
 | `SWITCHBOARD_CONFIG` | no | Path to the config file (default `/app/config/switchboard.yaml` in Docker) |
 | `SEED_DEMO_DATA` | no | Load the demo when there's no config file (compose default `true`) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | for calendars | Your Google OAuth client ([setup](#google-calendar)) |

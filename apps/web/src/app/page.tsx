@@ -29,6 +29,11 @@ export function generateMetadata(): Metadata {
   };
   return {
     metadataBase: new URL(appBaseUrl()),
+    // Instances stay out of search results unless the operator opts the home
+    // page in; forms and admin pages keep the layout's noindex either way.
+    ...(process.env.HOME_PAGE_INDEXABLE === "true"
+      ? { robots: { index: true, follow: true } }
+      : {}),
     openGraph: {
       type: "website",
       siteName: "Switchboard",
@@ -105,6 +110,14 @@ async function firstForm(): Promise<{ slug: string; name: string } | null> {
   } catch {
     return null;
   }
+}
+
+/** Optional page-view analytics for the home page (Umami: cookie-free). */
+function analyticsScript() {
+  const websiteId = process.env.UMAMI_WEBSITE_ID;
+  if (!websiteId) return null;
+  const src = process.env.UMAMI_SCRIPT_URL || "https://cloud.umami.is/script.js";
+  return <Script src={src} data-website-id={websiteId} strategy="afterInteractive" />;
 }
 
 export default async function Home() {
@@ -317,6 +330,7 @@ export default async function Home() {
           </p>
         </div>
       </footer>
+      {analyticsScript()}
     </main>
   );
 }

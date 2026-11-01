@@ -15,7 +15,7 @@ const LAST = 3;
 
 const NODES = [
   { title: "Form submitted", sub: "Book a demo" },
-  { title: "Rules evaluated", sub: "3 rules, in order" },
+  { title: "Rules evaluated", sub: "4 rules, in order" },
   { title: "Round-robin", sub: "Enterprise team" },
   { title: "Meeting booked", sub: "Tue 9:30 AM ET" },
 ];
@@ -27,6 +27,7 @@ const RULE_ROWS = [
     note: "400 employees, does not apply",
     state: "skip",
   },
+  { name: "DACH region", note: "Canada, does not apply", state: "skip" },
   { name: "Teams get a rep", note: "Matched", state: "match" },
 ] as const;
 
@@ -75,7 +76,7 @@ function Detail({ stage }: { stage: number }) {
               className={`${styles.ruleRow} ${
                 rule.state === "match" ? styles.ruleMatch : ""
               }`}
-              style={{ animationDelay: `${i * 450}ms` }}
+              style={{ animationDelay: `${i * 350}ms` }}
             >
               <span className={styles.ruleName}>{rule.name}</span>
               <span className={styles.ruleNote}>
