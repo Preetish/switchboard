@@ -35,6 +35,12 @@ Notable changes to Switchboard. The format follows
   color, page background, corner radius, color scheme, layout, and font) are
   editable too. These edits save with the same review and apply flow as reps,
   teams, and rules. The form previews show the saved form, not unsaved edits.
+- The Setup page has a template gallery to start from: B2B SaaS demo, Territory
+  split, Paid campaign fast lane, and Blank. A template fills the editors with
+  placeholder reps, one form, and its rules, and asks before replacing a draft
+  that already has reps, teams, rules, or forms. Nothing is applied until you
+  swap each placeholder for a real rep (a HubSpot owner, or typed by hand) and
+  save through the usual review.
 
 ## [0.2.1] — 2026-11-01
 

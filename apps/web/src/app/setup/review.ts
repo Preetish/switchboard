@@ -394,7 +394,18 @@ export function describeChanges(before: ConfigPlan, after: ConfigPlan): ChangeGr
       ),
     });
   }
-  if (!same(rest(before), rest(after))) {
+  // A form left out isn't deleted (it holds lead data), as with config:apply.
+  const listed = new Set(after.forms.map((form) => form.slug));
+  const unlisted = before.forms.filter((form) => !listed.has(form.slug));
+  groups.push({
+    title: "Forms",
+    changes: unlisted.map(
+      (form) =>
+        `${form.name} (/f/${form.slug}) is no longer listed; it stays live with its saved fields and rules`,
+    ),
+  });
+  const kept = { ...before, forms: before.forms.filter((form) => listed.has(form.slug)) };
+  if (!same(rest(kept), rest(after))) {
     groups.push({ title: "Other settings", changes: ["Changed; see the YAML diff."] });
   }
   return groups.filter((group) => group.changes.length > 0);
