@@ -1,10 +1,10 @@
 import { mergeThemes } from "@switchboard/core";
-import { toConfigObject } from "@switchboard/config";
+import { serializeConfig, toConfigObject } from "@switchboard/config";
 import { forms, integrations, orgs, users } from "@switchboard/db";
 import { and, asc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { adminSession } from "@/lib/auth";
-import { getCurrentConfigPlan } from "@/lib/config-admin";
+import { asLoadedPlan, getCurrentConfigPlan } from "@/lib/config-admin";
 import { getDb } from "@/lib/db";
 import { appBaseUrl, findOrg } from "@/lib/integrations";
 import AdminHeader from "../AdminHeader";
@@ -19,7 +19,8 @@ export const metadata = { title: "Setup · Switchboard" };
 /**
  * What switchboard.yaml set up: each form with its link, embed snippet, and
  * preview (read only; forms change in the file), then the reps, teams, and
- * rules, which can be edited here and saved through the config apply endpoint.
+ * rules, which can be edited here, tried in the simulator, reviewed, and
+ * saved through the config apply endpoint.
  */
 export default async function SetupPage() {
   if (!(await adminSession())) redirect("/login");
@@ -37,7 +38,9 @@ export default async function SetupPage() {
         .where(eq(forms.orgId, org.id))
         .orderBy(asc(forms.createdAt))
     : [];
-  const plan = org ? await getCurrentConfigPlan(db, org.id) : null;
+  const stored = org ? await getCurrentConfigPlan(db, org.id) : null;
+  // Key for key as a draft is checked, so the review shows only real changes.
+  const plan = stored ? asLoadedPlan(stored) : null;
   const calendarRows = org
     ? await db
         .select({ email: users.email, status: integrations.status })
@@ -54,7 +57,7 @@ export default async function SetupPage() {
     <>
       <AdminHeader active="setup" />
       <main className={styles.page}>
-        <div className={styles.container}>
+        <div className={styles.containerWide}>
           <h1 className={styles.title}>Setup</h1>
           <p className={styles.subtitle}>
             Forms from <code className={styles.code}>switchboard.yaml</code>. Edit the file and run{" "}
@@ -111,7 +114,12 @@ export default async function SetupPage() {
           })}
 
           {plan && plan.forms.length > 0 ? (
-            <SetupEditor config={toConfigObject(plan)} calendars={calendars} />
+            <SetupEditor
+              config={toConfigObject(plan)}
+              plan={plan}
+              yaml={serializeConfig(plan)}
+              calendars={calendars}
+            />
           ) : null}
         </div>
       </main>

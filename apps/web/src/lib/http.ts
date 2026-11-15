@@ -9,6 +9,9 @@ export function isUuid(value: unknown): value is string {
 /** Largest JSON body the public endpoints accept. */
 export const MAX_JSON_BYTES = 64 * 1024;
 
+/** A whole config (reps, fields, rules, CSS) is far bigger than a lead submission. */
+export const MAX_CONFIG_BYTES = 1024 * 1024;
+
 /**
  * Parse a JSON request body, refusing anything larger than `maxBytes`
  * before it is buffered in full. Returns `undefined` for a missing,

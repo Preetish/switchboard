@@ -1,5 +1,5 @@
 import type { RuleSet } from "@switchboard/core";
-import type { ConfigPlan } from "@switchboard/config";
+import { loadConfigObject, toConfigObject, type ConfigPlan } from "@switchboard/config";
 import { forms, orgs, ruleSets, teamMembers, teams, users, type Database } from "@switchboard/db";
 import { asc, eq } from "drizzle-orm";
 
@@ -73,4 +73,16 @@ export async function getCurrentConfigPlan(db: Database, orgId: string): Promise
       ruleSet: (rules as RuleSet | null) ?? null,
     })),
   };
+}
+
+/**
+ * The plan as loadConfigObject builds it from its own config object: the
+ * same values, with keys in the validator's order rather than the order
+ * Postgres keeps them in (jsonb sorts keys). A draft from the Setup page goes
+ * through loadConfigObject too, so the two compare, and serialize to YAML,
+ * line for line. A stored setup that no longer validates is returned as is.
+ */
+export function asLoadedPlan(plan: ConfigPlan): ConfigPlan {
+  const loaded = loadConfigObject(toConfigObject(plan));
+  return loaded.ok ? loaded.plan : plan;
 }
