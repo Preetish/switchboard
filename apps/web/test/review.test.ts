@@ -271,6 +271,19 @@ describe("describeChanges", () => {
       },
     ]);
   });
+
+  it("says a form left out of the draft stays live, as config:apply leaves it", () => {
+    const contact = { slug: "contact", name: "Contact", fields: FIELDS };
+    const before = { ...BASE, forms: [...BASE.forms, contact] };
+    expect(describeChanges(planOf(before), planOf(BASE))).toEqual([
+      {
+        title: "Forms",
+        changes: [
+          "Contact (/f/contact) is no longer listed; it stays live with its saved fields and rules",
+        ],
+      },
+    ]);
+  });
 });
 
 describe("diffLines", () => {

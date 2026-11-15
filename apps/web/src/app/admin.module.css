@@ -506,6 +506,29 @@
   margin-top: var(--sb-space-3);
 }
 
+/* Setup: the template gallery. */
+.templateGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--sb-space-3);
+  margin-top: var(--sb-space-4);
+  list-style: none;
+}
+
+.templateCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-2);
+  padding: var(--sb-space-4);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-lg);
+}
+
+/* The button sits at the bottom, so the cards' buttons line up. */
+.templateCard > :last-child {
+  margin-top: auto;
+}
+
 .saveBar {
   position: sticky;
   bottom: 0;

@@ -5,6 +5,7 @@ import styles from "../admin.module.css";
 import AddRepForm, { NO_OWNER_WARNING, type OwnersState } from "./AddRepForm";
 import {
   DAYS,
+  fieldsFromOwner,
   hasOwnerWithEmail,
   newRep,
   type HubspotOwner,
@@ -13,6 +14,7 @@ import {
   type RepDraft,
   type TeamDraft,
 } from "./reps-teams";
+import { isPlaceholder } from "./templates";
 
 export type CalendarStatus = "connected" | "expired" | "revoked";
 
@@ -88,10 +90,18 @@ export default function RepsTeamsEditor({
     setTeams((current) => current.map((team) => (team.key === key ? { ...team, members: members(team.members) } : team)));
   const updateMember = (teamKey: string, repId: string, change: Partial<MemberDraft>) =>
     updateTeam(teamKey, (members) => members.map((member) => (member.repId === repId ? { ...member, ...change } : member)));
+  /** Only a rep not saved yet can go: saved reps are never deleted. */
+  const removeRep = (id: string) => {
+    setReps((current) => current.filter((rep) => rep.id !== id));
+    setTeams((current) =>
+      current.map((team) => ({ ...team, members: team.members.filter((member) => member.repId !== id) })),
+    );
+  };
 
   const repById = new Map(reps.map((rep) => [rep.id, rep]));
   const repEmails = new Set(reps.map((rep) => rep.email.trim().toLowerCase()));
   const ownerList = owners.status === "ready" ? owners.owners : null;
+  const availableOwners = ownerList?.filter((owner) => !repEmails.has(owner.email.toLowerCase())) ?? [];
 
   return (
     <>
@@ -119,6 +129,35 @@ export default function RepsTeamsEditor({
                 <tr key={rep.id}>
                   <td>
                     <div className={styles.cellStack}>
+                      {isPlaceholder(rep) ? (
+                        <p className={styles.warning}>
+                          <span className={styles.dotWarn} aria-hidden="true" />
+                          Template placeholder. Pick a HubSpot owner, type a new rep&apos;s name and email, or
+                          add one of your reps to its team and remove this placeholder.
+                        </p>
+                      ) : null}
+                      {rep.savedEmail === null && ownerList ? (
+                        <label className={styles.inlineLabel}>
+                          HubSpot owner
+                          <select
+                            className={styles.inputSmall}
+                            value=""
+                            onChange={(event) => {
+                              const owner = availableOwners.find((candidate) => candidate.id === event.target.value);
+                              if (owner) updateRep(rep.id, fieldsFromOwner(owner));
+                            }}
+                          >
+                            <option value="">
+                              {availableOwners.length > 0 ? "Choose an owner" : "Every owner is already a rep"}
+                            </option>
+                            {availableOwners.map((owner) => (
+                              <option key={owner.id} value={owner.id}>
+                                {owner.name ? `${owner.name} (${owner.email})` : owner.email}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
                       <label className={styles.inlineLabel}>
                         Name
                         <input
@@ -136,7 +175,7 @@ export default function RepsTeamsEditor({
                           onChange={(event) => updateRep(rep.id, { email: event.target.value })}
                         />
                       </label>
-                      {ownerList && rep.email.trim() && !hasOwnerWithEmail(ownerList, rep.email) ? (
+                      {ownerList && rep.email.trim() && !isPlaceholder(rep) && !hasOwnerWithEmail(ownerList, rep.email) ? (
                         <p className={styles.warning}>
                           <span className={styles.dotWarn} aria-hidden="true" />
                           {NO_OWNER_WARNING}
@@ -151,6 +190,18 @@ export default function RepsTeamsEditor({
                         {rep.savedEmail ? calendarLabel(calendars[rep.savedEmail.toLowerCase()]) : "Not saved yet"}
                       </span>
                       <FieldErrors errors={errors?.reps.get(index)} />
+                      {rep.savedEmail === null ? (
+                        <div>
+                          <button
+                            type="button"
+                            className={styles.buttonSecondary}
+                            aria-label={`Remove ${rep.name || rep.email || "this rep"}`}
+                            onClick={() => removeRep(rep.id)}
+                          >
+                            Remove rep
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   </td>
                   <td>

@@ -18,6 +18,7 @@ import ReviewPanel from "./ReviewPanel";
 import { describeChanges, diffLines, type ChangeGroup, type DiffLine } from "./review";
 import RuleBuilder from "./RuleBuilder";
 import Simulator from "./Simulator";
+import TemplateGallery from "./TemplateGallery";
 import {
   buildConfig,
   draftsFromConfig,
@@ -31,6 +32,12 @@ import {
   type FormRulesDraft,
   type PlacedRuleErrors,
 } from "./rules";
+import {
+  draftsFromTemplate,
+  hasExistingSetup,
+  placeholderErrors,
+  type Template,
+} from "./templates";
 
 type SaveErrors = {
   repsTeams: PlacedErrors;
@@ -107,8 +114,9 @@ async function postConfig<T>(
 }
 
 /**
- * The Setup page's editors (reps and teams, each form's fields and theme,
- * and each form's rules, with the simulator beside the rules) and the one
+ * The Setup page's editors (a template gallery to start the draft from,
+ * reps and teams, each form's fields and theme, and each form's rules, with
+ * the simulator beside the rules) and the one
  * Save changes flow: the whole config (with everything not edited here as
  * loaded) is checked by POST /api/admin/config/check, the review screen
  * shows what changes, and Apply changes sends it to
@@ -133,6 +141,9 @@ export default function SetupEditor({
 }) {
   const router = useRouter();
   const [base, setBase] = useState(config);
+  // What the drafts started from: the saved config, or a template loaded over it.
+  const [start, setStart] = useState(config);
+  const [template, setTemplate] = useState<Template | null>(null);
   const [reps, setReps] = useState(() => draftsFromConfig(config).reps);
   const [teams, setTeams] = useState(() => draftsFromConfig(config).teams);
   const [ruleForms, setRuleForms] = useState(() => rulesDraftsFromConfig(config));
@@ -159,6 +170,8 @@ export default function SetupEditor({
   if (config !== base) {
     const drafts = draftsFromConfig(config);
     setBase(config);
+    setStart(config);
+    setTemplate(null);
     setReps(drafts.reps);
     setTeams(drafts.teams);
     setRuleForms(rulesDraftsFromConfig(config));
@@ -185,7 +198,7 @@ export default function SetupEditor({
 
   const draftConfig = () =>
     buildRulesConfig(
-      buildFormsConfig(buildConfig(base, reps, teams), forms, orgTheme),
+      buildFormsConfig(buildConfig(start, reps, teams), forms, orgTheme),
       liveRuleForms,
     );
 
@@ -201,10 +214,27 @@ export default function SetupEditor({
     setResult({ kind: "failed", errors: { repsTeams, rules, forms: formErrors } });
   };
 
+  /** Use template: replace the drafts (only) with the template's; the default theme stays. */
+  const loadTemplate = (chosen: Template) => {
+    // Placeholders start in this browser's zone, as a rep added by hand does.
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const drafts = draftsFromTemplate(chosen.id, base, timezone);
+    setStart(drafts.config);
+    setReps(drafts.reps);
+    setTeams(drafts.teams);
+    setRuleForms(drafts.ruleForms);
+    setForms(drafts.forms);
+    setTemplate(chosen);
+    setResult(null);
+  };
+
   /** Save changes: check the whole draft, then show the review screen. */
   const save = async () => {
     const sentRules = liveRuleForms;
     const sentForms = forms;
+    // A placeholder rep would be saved as a rep for good: stop before the check.
+    const placeholders = placeholderErrors(reps);
+    if (placeholders.length > 0) return failed(placeholders, sentRules, sentForms);
     const draft = draftConfig();
     setBusy("checking");
     setResult(null);
@@ -291,6 +321,11 @@ export default function SetupEditor({
 
       {/* Hidden, not unmounted, while reviewing: the editors keep their state. */}
       <div hidden={review !== null}>
+        <TemplateGallery
+          hasSetup={hasExistingSetup(draftConfig())}
+          loaded={template}
+          onLoad={loadTemplate}
+        />
         <RepsTeamsEditor
           reps={reps}
           teams={teams}
