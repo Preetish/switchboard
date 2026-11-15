@@ -28,6 +28,14 @@ On first start the container:
    file and `SEED_DEMO_DATA=true`, the compose default);
 4. starts the app on port 3000 with a healthcheck at `/api/health`.
 
+To set Switchboard up on the Setup page instead of in a file, start without
+`config/switchboard.yaml`, sign in, and edit the demo setup at `/setup`. Set
+`SEED_DEMO_DATA=false` in `.env` before the next restart, because the demo is
+loaded again on every start while it is `true`, and that replaces your Setup
+page changes. The same goes for `config/switchboard.yaml`: when it exists, it
+is applied on every start, so download the YAML from the Setup page after each
+save if you keep both.
+
 Compose uses the published image `ghcr.io/preetish/switchboard` when it
 exists and builds from your checkout otherwise. Pin a version with
 `SWITCHBOARD_VERSION=0.1.0`.
@@ -38,7 +46,8 @@ Postgres is not published on the host. For local development,
 
 ## Configuration reference
 
-Your reps, teams, forms, and rules go in `switchboard.yaml` (see
+You set up your reps, teams, forms, and rules on the Setup page in the app,
+or in a `switchboard.yaml` file that you keep in git (see
 [configuration.md](configuration.md)). Everything else is an environment
 variable (compose reads `.env`; see [`.env.example`](../.env.example)).
 

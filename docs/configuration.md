@@ -1,8 +1,51 @@
-# Configuration: `switchboard.yaml`
+# Configuration
 
-Your reps, teams, forms, and routing rules live in one YAML file. Start from
-[`switchboard.example.yaml`](../switchboard.example.yaml); the demo setup is
-[`examples/switchboard.demo.yaml`](../examples/switchboard.demo.yaml).
+Your reps, teams, forms, and routing rules make up one config. You can edit
+it on the Setup page in the app, or keep it as a `switchboard.yaml` file and
+apply it from the command line. Both change the same config.
+
+## The Setup page
+
+Sign in and open **Setup** (`/setup`). Its editors change the same config
+that `switchboard.yaml` describes:
+
+| Editor | What it changes | In the file |
+| --- | --- | --- |
+| Templates | Fills the draft with a ready-made setup: placeholder reps, teams, and the first form's fields and rules | All of it |
+| Reps and teams | Reps (picked from your HubSpot owners or typed), time zones, working hours, team members, weights, weekly caps, and pauses | [`reps`](#reps), [`teams`](#teams) |
+| Form builder | Form name, submit label, self serve URL, fields, theme, and the HubSpot contact owner switch | [`forms`](#forms), [`theme`](#theme-optional) |
+| Rules | Each form's rules as sentences, their order, and the fallback | [Rules](#rules) |
+| Simulator | Nothing: it routes a test lead through the rules as edited, without saving or creating a lead | None |
+
+**Save changes** runs the same checks as `npm run config:check` on the whole
+config and shows a review of what changes, in words and as a YAML diff.
+**Apply changes** writes it the same way `config:apply` does, in one
+transaction, and nothing is saved while any check fails. **Roll back last
+save** applies the config as it was before your last save.
+
+**Download YAML** exports the current config as a `switchboard.yaml`, with
+rules written inline, at any time.
+
+Some settings can only change in the file: adding, renaming, or removing a
+team (other than by loading a template), new forms and form slugs, `org`, the
+`hubspot` property mapping, `customCss`, and rule conditions a sentence can't
+express. A sentence has one condition and offers "is", "is any of", "is at
+least", "contains", and "exists"; a rule with more conditions or another
+operator, such as `lt`, `neq`, or `matches`, keeps its conditions as written,
+and you can still rename it, move it, and change its route. The Setup page
+keeps all of these as they are when you save.
+
+The editors appear once the instance has at least one form, from the demo
+or an applied file. Applying a file later replaces changes made on the Setup
+page, so if you keep `switchboard.yaml` in git, download the YAML after each
+save and commit it. With Docker, the file (or the demo, while
+`SEED_DEMO_DATA=true` and there is no file) is applied on every container
+start.
+
+## The file: `switchboard.yaml`
+
+Start from [`switchboard.example.yaml`](../switchboard.example.yaml); the demo
+setup is [`examples/switchboard.demo.yaml`](../examples/switchboard.demo.yaml).
 
 ```bash
 npm run config:check -- config/switchboard.yaml   # validate only, no database
