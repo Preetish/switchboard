@@ -144,8 +144,11 @@ frame-src  https://switchboard.yourcompany.com;
 The form runs in an iframe, so your page's CSS can't reach it (which also
 means it can't break it). You style it with a theme instead.
 
-**Set a theme in `switchboard.yaml`** for every form, and override it per
-form ([reference](configuration.md#theme-optional)):
+**Set a theme in the form builder on the Setup page.** The default theme
+applies to every form, and each form can override any setting: accent color,
+page background, corner radius, color scheme, layout, and font. Save changes
+to apply it. In `switchboard.yaml` the same settings are the top-level `theme`
+and each form's `theme` ([reference](configuration.md#theme-optional)):
 
 ```yaml
 theme:
@@ -178,9 +181,10 @@ the same values, except fonts:
 The embed snippet's settings win over the form's, and the form's win over
 the top-level theme. Invalid values are ignored rather than breaking the form.
 
-**Check it on the Setup page.** Each form shows a live preview with its
-theme, in light and dark if it follows the visitor's setting. The preview
-can't submit, so you can click around freely.
+**Check it on the Setup page.** Each form shows a live preview of the saved
+form with its theme, in light and dark if it follows the visitor's setting,
+so save your theme changes to see them there. The preview can't submit, so
+you can click around freely.
 
 A few things to know:
 

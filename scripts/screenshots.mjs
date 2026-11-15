@@ -24,7 +24,8 @@ await page.goto(`${base}/f/book-a-demo`);
 await page.getByLabel("Full name").fill("Priya Shah");
 await page.getByLabel("Work email").fill("priya@globex.example");
 await page.getByLabel("Company size").fill("1200");
-await page.getByLabel("Country").selectOption("United States");
+await page.getByLabel("Country").click();
+await page.getByRole("option", { name: "United States", exact: true }).click();
 await page.getByLabel(/I agree/).check();
 await shot("1-form");
 await page.getByRole("button", { name: "Find a time" }).click();
@@ -43,7 +44,16 @@ if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/routing-log/);
   await page.screenshot({ path: `${out}4-routing-log.png` });
+  // The visual builder: rules as sentences beside the simulator, with a test lead filled in.
   await page.goto(`${base}/setup`);
+  const simulator = page.getByRole("region", { name: "Simulator" });
+  await simulator.getByLabel("Work email").fill("lena@globex.example");
+  await simulator.getByLabel("Company size").fill("1200");
+  await simulator.getByLabel("Country").selectOption("Germany");
+  await page.evaluate(() => document.activeElement?.blur());
+  await page
+    .getByRole("heading", { name: "Rules", exact: true })
+    .evaluate((heading) => window.scrollTo(0, heading.getBoundingClientRect().top + window.scrollY - 24));
   await page.screenshot({ path: `${out}5-setup.png`, fullPage: false });
 }
 await browser.close();

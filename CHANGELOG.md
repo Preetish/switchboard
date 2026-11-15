@@ -48,6 +48,17 @@ Notable changes to Switchboard. The format follows
   owner of the lead's contact. Otherwise the contact keeps its current owner,
   and the lead is never held up.
 
+### Changed
+
+- The home page, the README, and the docs now describe setting Switchboard up
+  on the Setup page: connect HubSpot, pick reps, write rules as sentences,
+  try a test lead in the simulator, and apply. They describe
+  `switchboard.yaml` as the format underneath that you can download, review,
+  and keep in git, and they explain when applying the file or loading the
+  demo replaces Setup page changes. The Setup page screenshot now shows the
+  rule builder beside the simulator, and `scripts/screenshots.mjs` works with
+  the form's country dropdown again.
+
 ## [0.2.1] — 2026-11-01
 
 ### Changed

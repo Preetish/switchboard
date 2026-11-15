@@ -65,7 +65,7 @@ const displayFont = Instrument_Sans({
 const STEPS = [
   {
     title: "Qualify",
-    body: "A lead fills in your form. Rules you keep in git read the answers, and your CRM, and decide who should talk to them.",
+    body: "A lead fills in your form. Rules you write as sentences on the Setup page read the answers, and your CRM, and decide who should talk to them.",
     visual: <QualifyVisual />,
   },
   {
@@ -80,18 +80,19 @@ const STEPS = [
   },
 ];
 
-const RULES_EXCERPT = `rules:
-  - name: Existing owner wins
-    when: { crm.contact.owner: exists }
-    route: { to: crm.contact.owner }
+const RULES_EXCERPT = `1. Existing owner wins
+   When HubSpot contact owner exists
+   then route to the HubSpot contact owner
 
-  - name: Solo company goes self-serve
-    when: { form.company_size: { lte: 1 } }
-    route: { action: self_serve_link, message: "…" }
+2. DACH region
+   When Country is any of Germany, Austria, Switzerland
+   then route to team DACH, take turns
 
-  - name: Teams get a rep
-    when: { form.company_size: { gt: 1 } }
-    route: { team: enterprise, strategy: round_robin }`;
+3. Teams get a rep
+   When Company size is at least 2
+   then route to team Enterprise, take turns
+
+Otherwise route to team Sales, take turns`;
 
 
 
@@ -178,7 +179,7 @@ export default async function Home() {
         <div className={styles.proofInner}>
           <p>
             Apache-2.0 · Self-hosted · Works with HubSpot and Google Calendar
-            · Rules in YAML, kept in git
+            · Set up in the app, exported as YAML for review in git
           </p>
         </div>
       </section>
@@ -251,8 +252,9 @@ export default async function Home() {
               <div>
                 <h3 className={styles.siteStepTitle}>Set the rules once</h3>
                 <p className={styles.siteStepBody}>
-                  Done with whoever looks after your site. After that, forms,
-                  reps, and schedules are yours to change.
+                  Pick reps from your HubSpot owners, write the rules as
+                  sentences, try a test lead in the simulator, and apply.
+                  You can change any of it later on the same page.
                 </p>
                 <p className={styles.logChip}>
                   <code>Teams get a rep → Alice Chen · 31 ms</code>
@@ -267,13 +269,16 @@ export default async function Home() {
         <div className={styles.darkInner}>
           <div className={styles.darkText}>
             <h2 className={styles.darkTitle}>
-              Routing rules live in one YAML file.
+              Routing rules are written as sentences.
             </h2>
             <p className={styles.darkBody}>
-              Your rules sit in a single YAML file in your repo, changed the
-              way you change code. For every lead, Switchboard checks them
-              in order, top to bottom. The routing log then shows which rule
-              fired, which rep got the lead, and how long the decision took.
+              You write each rule on the Setup page as a sentence, try a test
+              lead in the simulator, and review the changes before you apply
+              them. For every lead, Switchboard checks the rules in order, top
+              to bottom. The routing log then shows which rule fired, which
+              rep got the lead, and how long the decision took. Underneath,
+              the rules are saved as YAML, which you can download to review
+              and keep in git.
             </p>
           </div>
           <div className={styles.codeStack}>

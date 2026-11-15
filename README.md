@@ -7,8 +7,9 @@ Switchboard is an open-source, self-hosted alternative to inbound routing
 tools like Chili Piper. A lead fills in your demo form. Your rules pick the rep
 using the form answers and HubSpot. As soon as the lead submits, the form
 turns into that rep's open times from their Google Calendar, and the lead
-books without leaving the page. You keep the rules in a YAML file in git,
-and you pay nothing per seat.
+books without leaving the page. You set up reps, teams, forms, and rules on
+the Setup page in the app, and you can download the whole setup as a YAML
+file to keep in git. You pay nothing per seat.
 
 [![CI](https://github.com/Preetish/switchboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Preetish/switchboard/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
@@ -74,8 +75,48 @@ gets `switchboard_submitted` and `switchboard_booked` events in the GTM
 
 ## Set it up for your team
 
-You describe your reps, teams, forms, and rules in one file and review
-changes to it like code:
+You set Switchboard up on the **Setup** page in the app. Sign in, then:
+
+1. Open `/integrations` and connect HubSpot once for the whole org.
+2. Open **Setup**. Start from a template (B2B SaaS demo, Territory split,
+   Paid campaign fast lane, or Blank) or from the setup you already have.
+3. Add reps by picking them from your HubSpot owners (or type an email), set
+   their working hours, and put them in teams with weights, weekly caps, and
+   pauses.
+4. Edit each form's fields and theme in the form builder: accent color,
+   background, corner radius, light or dark, layout, and font. A switch sets
+   the routed rep as the lead's HubSpot contact owner.
+5. Write the rules as sentences, such as "When Country is any of Germany,
+   Austria, Switzerland then route to team DACH, take turns", and drag them
+   into order. The last row catches every lead no rule matches.
+6. Try a test lead in the simulator beside the rules. It shows where the lead
+   goes and which rules it tried, without saving anything.
+7. Select **Save changes**, read the review of what changes (in words and as
+   a YAML diff), then select **Apply changes**. **Roll back last save** undoes
+   the last save.
+8. Back on `/integrations`, send each rep a link to connect their own Google
+   Calendar.
+
+<p align="center">
+  <img src="docs/images/5-setup.png" width="90%" alt="The Setup page: rules written as sentences, with the simulator beside them">
+</p>
+
+Switchboard checks the whole setup before it saves anything, and tells you
+where a problem is. The Setup page also shows each form's link, embed code,
+and a live preview of the saved form; see
+[Matching your site](docs/embed.md#matching-your-site).
+
+The Setup page editors appear once the instance has a form. With Docker, the
+demo gives you one to start from. The container loads the demo again on every
+start while `SEED_DEMO_DATA` is `true` (the compose default) and there is no
+`config/switchboard.yaml`, which replaces your Setup page changes. Set
+`SEED_DEMO_DATA=false` in `.env` once you start editing.
+
+### Keep the config in git instead
+
+Underneath, the setup is one `switchboard.yaml` file, and **Download YAML** on
+the Setup page exports it at any time. If you would rather review changes like
+code, keep that file in git and apply it:
 
 ```yaml
 # config/switchboard.yaml
@@ -114,18 +155,14 @@ If you make a mistake, Switchboard tells you where it is before any lead hits
 it, for example:
 `forms[0] (book-a-demo) rules rules[1] (DACH): team "dach" is not defined in teams`.
 
-Add a `theme` to match your site: accent color, corner radius, font, light or
-dark, and a borderless layout that blends into your page. The Setup page shows
-a live preview of each form. See [Matching your site](docs/embed.md#matching-your-site).
-
-Then open `/integrations`. You send each rep a link to connect their own
-Google Calendar, and you connect HubSpot once for the whole org.
+Applying the file replaces changes made on the Setup page, so if you use both,
+download the YAML after each save on the Setup page and commit it.
 
 ## Documentation
 
 | Guide | Covers |
 | --- | --- |
-| [Configuration](docs/configuration.md) | `switchboard.yaml`, rule operators, how reps are picked |
+| [Configuration](docs/configuration.md) | The Setup page, `switchboard.yaml`, rule operators, how reps are picked |
 | [Self-hosting](docs/self-hosting.md) | Deploying, environment variables, Google and HubSpot apps, HTTPS, upgrades |
 | [Embedding](docs/embed.md) | Putting the form on your site, matching your brand, tracking campaigns |
 | [Building your own form](docs/custom-form.md) | Using the API with your own markup |
