@@ -1,17 +1,12 @@
 "use client";
 
-import type { ApplySummary, ConfigInput } from "@switchboard/config";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import styles from "../admin.module.css";
 import AddRepForm, { NO_OWNER_WARNING, type OwnersState } from "./AddRepForm";
 import {
   DAYS,
-  buildConfig,
-  draftsFromConfig,
   hasOwnerWithEmail,
   newRep,
-  placeErrors,
   type HubspotOwner,
   type MemberDraft,
   type PlacedErrors,
@@ -20,8 +15,6 @@ import {
 } from "./reps-teams";
 
 export type CalendarStatus = "connected" | "expired" | "revoked";
-
-type SaveResult = { kind: "saved"; summary: ApplySummary } | { kind: "failed"; errors: PlacedErrors };
 
 const DAY_LABELS: Record<(typeof DAYS)[number], string> = {
   mon: "Mon",
@@ -39,43 +32,31 @@ function calendarLabel(status: CalendarStatus | undefined): string {
   return "No calendar";
 }
 
-function savedMessage(summary: ApplySummary): string {
-  const added = summary.reps.created;
-  return `Saved.${added > 0 ? ` Added ${added} rep${added === 1 ? "" : "s"}.` : ""} Changes apply to new leads.`;
-}
-
 /**
- * Edit reps and team memberships in place. Edits stay in this page until
- * Save changes, which sends the whole config (forms, rules, and theme as
- * loaded) to POST /api/admin/config/apply. A config with any problem is
- * not applied; its errors show next to the rep or team they name.
+ * Edit reps and team memberships in place. The drafts live in SetupEditor,
+ * which saves them with the rules in one config; the validator's errors show
+ * next to the rep or team they name.
  */
 export default function RepsTeamsEditor({
-  config,
+  reps,
+  teams,
+  setReps,
+  setTeams,
+  errors,
   calendars,
 }: {
-  /** The current config as getCurrentConfigPlan and toConfigObject read it. */
-  config: ConfigInput;
+  reps: RepDraft[];
+  teams: TeamDraft[];
+  setReps: Dispatch<SetStateAction<RepDraft[]>>;
+  setTeams: Dispatch<SetStateAction<TeamDraft[]>>;
+  /** From the last failed save. */
+  errors: PlacedErrors | null;
   /** Calendar status by lowercased rep email. */
   calendars: Record<string, CalendarStatus>;
 }) {
-  const router = useRouter();
-  const [base, setBase] = useState(config);
-  const [reps, setReps] = useState(() => draftsFromConfig(config).reps);
-  const [teams, setTeams] = useState(() => draftsFromConfig(config).teams);
   const [owners, setOwners] = useState<OwnersState>({ status: "loading" });
   const [timeZones, setTimeZones] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<SaveResult | null>(null);
   const nextId = useRef(0);
-
-  // After a save, the page data is refreshed: start over from what was saved.
-  if (config !== base) {
-    const drafts = draftsFromConfig(config);
-    setBase(config);
-    setReps(drafts.reps);
-    setTeams(drafts.teams);
-  }
 
   useEffect(() => {
     // Filled in after hydration: the server's zone list may differ from the browser's.
@@ -108,60 +89,18 @@ export default function RepsTeamsEditor({
   const updateMember = (teamKey: string, repId: string, change: Partial<MemberDraft>) =>
     updateTeam(teamKey, (members) => members.map((member) => (member.repId === repId ? { ...member, ...change } : member)));
 
-  const save = async () => {
-    setSaving(true);
-    setResult(null);
-    try {
-      const response = await fetch("/api/admin/config/apply", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(buildConfig(base, reps, teams)),
-      });
-      const payload = (await response.json().catch(() => null)) as (ApplySummary & { errors?: unknown }) | null;
-      if (response.ok && payload) {
-        setResult({ kind: "saved", summary: payload });
-        router.refresh();
-      } else {
-        const errors = Array.isArray(payload?.errors)
-          ? (payload.errors as string[])
-          : [`Saving failed (HTTP ${response.status}). Nothing was changed; try again.`];
-        setResult({ kind: "failed", errors: placeErrors(errors) });
-      }
-    } catch {
-      setResult({
-        kind: "failed",
-        errors: placeErrors(["The server couldn't be reached. Nothing was changed; check your connection and try again."]),
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const errors = result?.kind === "failed" ? result.errors : null;
   const repById = new Map(reps.map((rep) => [rep.id, rep]));
   const repEmails = new Set(reps.map((rep) => rep.email.trim().toLowerCase()));
   const ownerList = owners.status === "ready" ? owners.owners : null;
 
   return (
-    // Its own box, so the sticky save bar stays with the reps and teams.
-    <div>
+    <>
       <h2 className={styles.groupTitle}>Reps and teams</h2>
       <p className={styles.sectionBody}>
         Edit reps and who is on each team, then save. Applying{" "}
         <code className={styles.code}>switchboard.yaml</code> again replaces these changes, so
         download the YAML afterwards if you keep the file.
       </p>
-      {errors && errors.other.length > 0 ? (
-        <div className={styles.bannerError} role="alert">
-          These problems stopped the save:
-          <ul className={styles.errorList}>
-            {errors.other.map((error) => (
-              <li key={error}>{error}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
       <section className={styles.section} aria-labelledby="reps-heading">
         <h3 id="reps-heading" className={styles.sectionTitle}>
           Reps
@@ -313,20 +252,11 @@ export default function RepsTeamsEditor({
         />
       ))}
 
-      <div className={styles.saveBar}>
-        <button type="button" className={styles.button} onClick={save} disabled={saving}>
-          {saving ? "Saving…" : "Save changes"}
-        </button>
-        <span aria-live="polite" className={styles.muted}>
-          {result?.kind === "saved" ? savedMessage(result.summary) : null}
-          {result?.kind === "failed" ? "Nothing was saved. Fix the problems shown and save again." : null}
-        </span>
-      </div>
-    </div>
+    </>
   );
 }
 
-function FieldErrors({ errors }: { errors: string[] | undefined }) {
+export function FieldErrors({ errors }: { errors: string[] | undefined }) {
   if (!errors?.length) return null;
   return (
     <ul className={styles.fieldError}>

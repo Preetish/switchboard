@@ -18,6 +18,11 @@ Notable changes to Switchboard. The format follows
   with one button only when the whole config passes its checks. A new rep
   can be picked from your HubSpot owners so the email matches HubSpot;
   typing an email by hand still works.
+- Each form's rules are editable on the Setup page as sentences ("When
+  country is any of Germany, Austria then route to team DACH, take turns"),
+  reordered by dragging, with the fallback fixed as the last row. Rules the
+  sentence can't express, such as regular expressions, stay as written and
+  change only in `switchboard.yaml`.
 
 ## [0.2.1] — 2026-11-01
 

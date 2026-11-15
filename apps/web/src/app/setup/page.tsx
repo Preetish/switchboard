@@ -1,6 +1,6 @@
-import { mergeThemes, validateRuleSet, type RouteAction } from "@switchboard/core";
+import { mergeThemes } from "@switchboard/core";
 import { toConfigObject } from "@switchboard/config";
-import { forms, integrations, orgs, ruleSets, users } from "@switchboard/db";
+import { forms, integrations, orgs, users } from "@switchboard/db";
 import { and, asc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { adminSession } from "@/lib/auth";
@@ -11,23 +11,15 @@ import AdminHeader from "../AdminHeader";
 import styles from "../admin.module.css";
 import CopyButton from "../integrations/CopyButton";
 import PreviewFrame from "./PreviewFrame";
-import RepsTeamsEditor from "./RepsTeamsEditor";
+import SetupEditor from "./SetupEditor";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Setup · Switchboard" };
 
-function describeRoute(route: RouteAction): string {
-  if ("team" in route) {
-    return `team ${route.team} (${route.strategy === "existing_owner" ? "CRM owner, else round robin" : "round robin"})`;
-  }
-  if ("to" in route) return route.to;
-  return route.action === "self_serve_link" ? "self-serve" : "fallback queue";
-}
-
 /**
  * What switchboard.yaml set up: each form with its link, embed snippet, and
- * rules (read only; those change in the file), then the reps and teams,
- * which can be edited here and saved through the config apply endpoint.
+ * preview (read only; forms change in the file), then the reps, teams, and
+ * rules, which can be edited here and saved through the config apply endpoint.
  */
 export default async function SetupPage() {
   if (!(await adminSession())) redirect("/login");
@@ -40,9 +32,8 @@ export default async function SetupPage() {
 
   const formRows = org
     ? await db
-        .select({ form: forms, rules: ruleSets.rules, version: ruleSets.version })
+        .select({ form: forms })
         .from(forms)
-        .leftJoin(ruleSets, eq(forms.ruleSetId, ruleSets.id))
         .where(eq(forms.orgId, org.id))
         .orderBy(asc(forms.createdAt))
     : [];
@@ -66,9 +57,9 @@ export default async function SetupPage() {
         <div className={styles.container}>
           <h1 className={styles.title}>Setup</h1>
           <p className={styles.subtitle}>
-            Forms and rules from <code className={styles.code}>switchboard.yaml</code>. Edit the
-            file and run <code className={styles.code}>npm run config:apply</code> (or restart the
-            container) to change them. Reps and teams can also be edited below.
+            Forms from <code className={styles.code}>switchboard.yaml</code>. Edit the file and run{" "}
+            <code className={styles.code}>npm run config:apply</code> (or restart the container) to
+            change them. Reps, teams, and rules can also be edited below.
           </p>
           {formRows.length > 0 ? (
             <form action="/api/admin/config/export" method="get" className={styles.actions}>
@@ -86,10 +77,9 @@ export default async function SetupPage() {
           ) : null}
 
           {formRows.length > 0 ? <h2 className={styles.groupTitle}>Forms</h2> : null}
-          {formRows.map(({ form, rules, version }) => {
+          {formRows.map(({ form }) => {
             const url = `${base}/f/${form.slug}`;
             const snippet = `<div data-switchboard-form="${form.slug}"></div>\n<script src="${base}/embed.js" data-switchboard-consent="granted" defer></script>`;
-            const parsed = rules ? validateRuleSet(rules) : null;
             const scheme = mergeThemes(orgRow?.settings.theme, form.settings?.theme).colorScheme;
             return (
               <section key={form.id} className={styles.section} aria-labelledby={`form-${form.slug}`}>
@@ -116,33 +106,12 @@ export default async function SetupPage() {
                     </>
                   )}
                 </div>
-                <h4 className={styles.subheading}>
-                  Rules {version ? <span className={styles.muted}>· version {version}</span> : null}
-                </h4>
-                {parsed?.ok ? (
-                  <ol className={styles.ruleList}>
-                    {parsed.ruleSet.rules.map((rule) => (
-                      <li key={rule.name}>
-                        <strong>{rule.name}</strong>
-                        <span className={styles.muted}> → {describeRoute(rule.route)}</span>
-                      </li>
-                    ))}
-                    <li>
-                      <strong>Otherwise</strong>
-                      <span className={styles.muted}> → {describeRoute(parsed.ruleSet.fallback)}</span>
-                    </li>
-                  </ol>
-                ) : (
-                  <p className={styles.sectionBody}>
-                    {rules ? "These rules no longer validate; leads go to the fallback queue." : "No rules; every lead goes to the fallback queue."}
-                  </p>
-                )}
               </section>
             );
           })}
 
           {plan && plan.forms.length > 0 ? (
-            <RepsTeamsEditor config={toConfigObject(plan)} calendars={calendars} />
+            <SetupEditor config={toConfigObject(plan)} calendars={calendars} />
           ) : null}
         </div>
       </main>
