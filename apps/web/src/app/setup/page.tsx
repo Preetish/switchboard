@@ -60,9 +60,8 @@ export default async function SetupPage() {
         <div className={styles.containerWide}>
           <h1 className={styles.title}>Setup</h1>
           <p className={styles.subtitle}>
-            Forms from <code className={styles.code}>switchboard.yaml</code>. Edit the file and run{" "}
-            <code className={styles.code}>npm run config:apply</code> (or restart the container) to
-            change them, or edit reps, teams, forms, and rules below.
+            Edit reps, teams, forms, and rules below. Every change is validated before it applies,
+            and you can download the result as YAML at any time.
           </p>
           {formRows.length > 0 ? (
             <form action="/api/admin/config/export" method="get" className={styles.actions}>
