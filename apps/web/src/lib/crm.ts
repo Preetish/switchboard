@@ -68,7 +68,7 @@ export async function connectHubspot(
  * A valid access token (HubSpot tokens live ~30 minutes, so refreshing is
  * the common path). Null when the org is not connected or the refresh fails.
  */
-function getValidHubspotAccessToken(db: Database, orgId: string): Promise<string | null> {
+export function getValidHubspotAccessToken(db: Database, orgId: string): Promise<string | null> {
   const config = hubspotConfig();
   return getValidAccessToken(
     db,

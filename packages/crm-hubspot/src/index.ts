@@ -16,6 +16,7 @@ export {
   findContactByEmail,
   findOwnerByEmail,
   getOwner,
+  listOwners,
   logMeeting,
   upsertContact,
 } from "./api.js";

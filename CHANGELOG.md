@@ -13,6 +13,11 @@ Notable changes to Switchboard. The format follows
   Admins can also save a whole config as JSON to
   `POST /api/admin/config/apply`, which runs the same checks as
   `config:check` and applies it only when every check passes.
+- Reps and teams are editable on the Setup page (name, email, time zone,
+  working hours, team membership, weight, weekly cap, and pause) and saved
+  with one button only when the whole config passes its checks. A new rep
+  can be picked from your HubSpot owners so the email matches HubSpot;
+  typing an email by hand still works.
 
 ## [0.2.1] — 2026-11-01
 

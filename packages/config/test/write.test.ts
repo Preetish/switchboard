@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { loadConfig, loadConfigObject, serializeConfig } from "../src/index.js";
+import { loadConfig, loadConfigObject, serializeConfig, toConfigObject } from "../src/index.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const readFile = (file: string) => readFileSync(file, "utf8");
@@ -103,6 +103,18 @@ describe("serializeConfig", () => {
     expect(written.forms[0].rules.rules[0].name).toBe("Germany");
     expect(written.forms[1].rules).toBeUndefined();
     const again = loadConfigObject(written);
+    expect(again.ok && again.plan).toEqual(loaded.plan);
+  });
+});
+
+describe("toConfigObject", () => {
+  it("is what serializeConfig writes, and loads back to the same plan as JSON", () => {
+    const loaded = loadConfig(YAML, "/cfg/switchboard.yaml", readFile);
+    if (!loaded.ok) throw new Error(loaded.errors.join("\n"));
+    const config = toConfigObject(loaded.plan);
+    expect(config).toEqual(parse(serializeConfig(loaded.plan)));
+    // As the builder sends it back after editing nothing.
+    const again = loadConfigObject(JSON.parse(JSON.stringify(config)));
     expect(again.ok && again.plan).toEqual(loaded.plan);
   });
 });

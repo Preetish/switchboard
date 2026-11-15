@@ -302,3 +302,150 @@
   border: 0;
   color-scheme: normal;
 }
+
+/* Reps and teams editor (Setup page). */
+
+.tableScroll {
+  margin-top: var(--sb-space-4);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sb-text-sm);
+}
+
+.table th {
+  padding: var(--sb-space-2) var(--sb-space-3) var(--sb-space-2) 0;
+  border-bottom: 1px solid var(--sb-border);
+  color: var(--sb-text-muted);
+  font-weight: 600;
+  text-align: left;
+}
+
+.table td {
+  padding: var(--sb-space-3) var(--sb-space-3) var(--sb-space-3) 0;
+  border-bottom: 1px solid var(--sb-border);
+  vertical-align: top;
+}
+
+.cellStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-2);
+  min-width: 12rem;
+}
+
+.inlineLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-1);
+  font-size: var(--sb-text-sm);
+  color: var(--sb-text-muted);
+}
+
+.inputSmall {
+  composes: input;
+  padding: var(--sb-space-1) var(--sb-space-2);
+  font-size: var(--sb-text-sm);
+}
+
+.inputSmall:focus {
+  border-color: var(--sb-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sb-accent) 22%, transparent);
+  outline: none;
+}
+
+.inputNumber {
+  composes: inputSmall;
+  width: 4rem;
+}
+
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-1);
+}
+
+.dayChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sb-space-1);
+  padding: 0 var(--sb-space-2);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-sm);
+  font-size: var(--sb-text-sm);
+  cursor: pointer;
+}
+
+.dayChip:has(input:checked) {
+  border-color: var(--sb-accent);
+}
+
+.memberControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sb-space-3);
+}
+
+.inlineForm {
+  composes: actions;
+  align-items: flex-end;
+}
+
+.checkLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sb-space-1);
+  font-size: var(--sb-text-sm);
+  padding-bottom: var(--sb-space-1);
+}
+
+.membership + .membership {
+  padding-top: var(--sb-space-2);
+  border-top: 1px solid var(--sb-border);
+}
+
+.fieldError {
+  color: var(--sb-danger-text);
+  font-size: var(--sb-text-sm);
+}
+
+.warning {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sb-space-2);
+  font-size: var(--sb-text-sm);
+}
+
+.errorList {
+  margin-top: var(--sb-space-2);
+  padding-left: var(--sb-space-6);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--sb-space-3);
+  margin-top: var(--sb-space-3);
+}
+
+.saveBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-3);
+  margin-top: var(--sb-space-6);
+  padding: var(--sb-space-3) 0;
+  border-top: 1px solid var(--sb-border);
+  background: var(--sb-bg);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

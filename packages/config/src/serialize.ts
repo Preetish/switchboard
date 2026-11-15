@@ -24,9 +24,13 @@ function fromMember({ rep, weight, weeklyCapacity, active }: PlannedTeam["member
   return isDefault ? rep : { rep, weight, weeklyCapacity, active };
 }
 
-export function serializeConfig(plan: ConfigPlan): string {
+/**
+ * The plan as a config object (switchboard.yaml's shape), e.g. for the
+ * visual builder to edit and send to loadConfigObject.
+ */
+export function toConfigObject(plan: ConfigPlan): ConfigInput {
   const { hubspotProperties, theme, customCss } = plan.org.settings;
-  const config: ConfigInput = {
+  return {
     org: { name: plan.org.name, slug: plan.org.slug },
     ...(theme ? { theme } : {}),
     ...(customCss ? { customCss } : {}),
@@ -53,6 +57,10 @@ export function serializeConfig(plan: ConfigPlan): string {
       ...(form.ruleSet ? { rules: { rules: form.ruleSet.rules, fallback: form.ruleSet.fallback } } : {}),
     })),
   };
+}
+
+/** The plan as switchboard.yaml text. */
+export function serializeConfig(plan: ConfigPlan): string {
   // No anchors/aliases: shared objects are written out in full, as a person would.
-  return stringify(config, { aliasDuplicateObjects: false });
+  return stringify(toConfigObject(plan), { aliasDuplicateObjects: false });
 }
