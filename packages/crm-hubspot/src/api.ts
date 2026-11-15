@@ -173,6 +173,39 @@ export async function findOwnerByEmail(options: {
   return toOwner(payload?.results?.[0]);
 }
 
+/** HubSpot's largest page size for the Owners API. */
+const OWNERS_PAGE_SIZE = 100;
+
+/**
+ * Every active HubSpot owner that has an email, in HubSpot's order. Pages
+ * through the Owners API by following each page's `paging.next` cursor.
+ * Owners without an email are skipped: email is how reps are matched.
+ */
+export async function listOwners(options: {
+  accessToken: string;
+  timeoutMs?: number;
+}): Promise<Array<HubspotOwner & { email: string }>> {
+  const owners: Array<HubspotOwner & { email: string }> = [];
+  let after: string | undefined;
+  do {
+    const query = new URLSearchParams({ limit: String(OWNERS_PAGE_SIZE), ...(after ? { after } : {}) });
+    const payload = await apiRequest<{
+      results?: OwnerResponse[];
+      paging?: { next?: { after?: string } };
+    }>({
+      accessToken: options.accessToken,
+      timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      path: `/crm/v3/owners/?${query.toString()}`,
+    });
+    for (const result of payload?.results ?? []) {
+      const owner = toOwner(result);
+      if (owner?.email) owners.push({ ...owner, email: owner.email });
+    }
+    after = payload?.paging?.next?.after;
+  } while (after);
+  return owners;
+}
+
 export type UpsertContactInput = {
   accessToken: string;
   email: string;

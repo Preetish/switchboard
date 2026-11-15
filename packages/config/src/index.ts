@@ -9,5 +9,5 @@ export {
   type PlannedTeam,
   type ReadFile,
 } from "./load.js";
-export { serializeConfig } from "./serialize.js";
+export { serializeConfig, toConfigObject } from "./serialize.js";
 export { configSchema, type ConfigInput, type ParsedConfig } from "./schema.js";

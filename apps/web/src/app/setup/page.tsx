@@ -1,14 +1,17 @@
 import { mergeThemes, validateRuleSet, type RouteAction } from "@switchboard/core";
-import { forms, integrations, orgs, ruleSets, teamMembers, teams, users } from "@switchboard/db";
+import { toConfigObject } from "@switchboard/config";
+import { forms, integrations, orgs, ruleSets, users } from "@switchboard/db";
 import { and, asc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { adminSession } from "@/lib/auth";
+import { getCurrentConfigPlan } from "@/lib/config-admin";
 import { getDb } from "@/lib/db";
 import { appBaseUrl, findOrg } from "@/lib/integrations";
 import AdminHeader from "../AdminHeader";
 import styles from "../admin.module.css";
 import CopyButton from "../integrations/CopyButton";
 import PreviewFrame from "./PreviewFrame";
+import RepsTeamsEditor from "./RepsTeamsEditor";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Setup · Switchboard" };
@@ -22,9 +25,9 @@ function describeRoute(route: RouteAction): string {
 }
 
 /**
- * Read-only view of what switchboard.yaml set up: each form with its link,
- * embed snippet, and rules; each team with its members. Changes happen in
- * the file (reviewed like code), not here.
+ * What switchboard.yaml set up: each form with its link, embed snippet, and
+ * rules (read only; those change in the file), then the reps and teams,
+ * which can be edited here and saved through the config apply endpoint.
  */
 export default async function SetupPage() {
   if (!(await adminSession())) redirect("/login");
@@ -43,34 +46,18 @@ export default async function SetupPage() {
         .where(eq(forms.orgId, org.id))
         .orderBy(asc(forms.createdAt))
     : [];
-  const memberRows = org
+  const plan = org ? await getCurrentConfigPlan(db, org.id) : null;
+  const calendarRows = org
     ? await db
-        .select({
-          teamKey: teams.key,
-          teamName: teams.name,
-          repName: users.name,
-          repEmail: users.email,
-          weight: teamMembers.weight,
-          weeklyCapacity: teamMembers.weeklyCapacity,
-          active: teamMembers.active,
-          calendar: integrations.status,
-        })
-        .from(teams)
-        .innerJoin(teamMembers, eq(teamMembers.teamId, teams.id))
-        .innerJoin(users, eq(teamMembers.userId, users.id))
-        .leftJoin(
+        .select({ email: users.email, status: integrations.status })
+        .from(users)
+        .innerJoin(
           integrations,
           and(eq(integrations.userId, users.id), eq(integrations.provider, "google_calendar")),
         )
-        .where(eq(teams.orgId, org.id))
-        .orderBy(asc(teams.key), asc(users.name))
+        .where(eq(users.orgId, org.id))
     : [];
-  const teamsByKey = new Map<string, { name: string; members: typeof memberRows }>();
-  for (const row of memberRows) {
-    const team = teamsByKey.get(row.teamKey) ?? { name: row.teamName, members: [] };
-    team.members.push(row);
-    teamsByKey.set(row.teamKey, team);
-  }
+  const calendars = Object.fromEntries(calendarRows.map((row) => [row.email.toLowerCase(), row.status]));
 
   return (
     <>
@@ -79,9 +66,9 @@ export default async function SetupPage() {
         <div className={styles.container}>
           <h1 className={styles.title}>Setup</h1>
           <p className={styles.subtitle}>
-            Forms, rules, and teams from <code className={styles.code}>switchboard.yaml</code>. Edit
-            the file and run <code className={styles.code}>npm run config:apply</code> (or restart
-            the container) to change them.
+            Forms and rules from <code className={styles.code}>switchboard.yaml</code>. Edit the
+            file and run <code className={styles.code}>npm run config:apply</code> (or restart the
+            container) to change them. Reps and teams can also be edited below.
           </p>
           {formRows.length > 0 ? (
             <form action="/api/admin/config/export" method="get" className={styles.actions}>
@@ -154,34 +141,9 @@ export default async function SetupPage() {
             );
           })}
 
-          {teamsByKey.size > 0 ? <h2 className={styles.groupTitle}>Teams</h2> : null}
-          {[...teamsByKey.entries()].map(([key, team]) => (
-            <section key={key} className={styles.section} aria-labelledby={`team-${key}`}>
-              <h3 id={`team-${key}`} className={styles.sectionTitle}>
-                {team.name} <span className={styles.muted}>· {key}</span>
-              </h3>
-              <ul className={styles.list}>
-                {team.members.map((member) => (
-                  <li key={member.repEmail} className={styles.row}>
-                    <div className={styles.rowMain}>
-                      <div className={styles.rowName}>{member.repName}</div>
-                      <div className={styles.muted}>{member.repEmail}</div>
-                    </div>
-                    <div className={styles.muted}>
-                      {member.active ? `Weight ${member.weight}` : "Paused"}
-                      {member.weeklyCapacity > 0 ? ` · max ${member.weeklyCapacity}/week` : ""}
-                      {" · "}
-                      {member.calendar === "connected"
-                        ? "Calendar connected"
-                        : member.calendar === "revoked"
-                          ? "Calendar needs reconnecting"
-                          : "No calendar"}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+          {plan && plan.forms.length > 0 ? (
+            <RepsTeamsEditor config={toConfigObject(plan)} calendars={calendars} />
+          ) : null}
         </div>
       </main>
     </>

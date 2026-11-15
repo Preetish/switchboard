@@ -4,6 +4,7 @@ import {
   findContactByEmail,
   findOwnerByEmail,
   getOwner,
+  listOwners,
   logMeeting,
   upsertContact,
 } from "../src/index.js";
@@ -95,6 +96,42 @@ describe("findOwnerByEmail", () => {
     jsonFetch(200, { id: 77, email: "alice@acme.test" });
     const owner = await getOwner({ ...token, ownerId: "77" });
     expect(owner?.name).toBeNull();
+  });
+});
+
+describe("listOwners", () => {
+  it("pages through every owner and skips owners without an email", async () => {
+    const pages = [
+      {
+        results: [
+          { id: 1, email: "Ana@Acme.test", firstName: "Ana", lastName: "Ruiz" },
+          { id: 2, firstName: "No", lastName: "Email" },
+        ],
+        paging: { next: { after: "cursor-2", link: "https://api.hubapi.com/crm/v3/owners/?after=cursor-2" } },
+      },
+      { results: [{ id: 3, email: "ben@acme.test" }] },
+    ];
+    const stub = vi.fn(async () => new Response(JSON.stringify(pages.shift()), { status: 200 }));
+    vi.stubGlobal("fetch", stub);
+
+    const owners = await listOwners(token);
+    // HubSpot's order, and the email exactly as HubSpot has it.
+    expect(owners).toEqual([
+      { id: "1", email: "Ana@Acme.test", name: "Ana Ruiz" },
+      { id: "3", email: "ben@acme.test", name: null },
+    ]);
+    const urls = stub.mock.calls.map((call) => new URL((call as unknown as [string])[0]));
+    expect(urls).toHaveLength(2);
+    expect(urls[0]!.pathname).toBe("/crm/v3/owners/");
+    expect(urls[0]!.searchParams.get("limit")).toBe("100");
+    expect(urls[0]!.searchParams.has("after")).toBe(false);
+    expect(urls[1]!.searchParams.get("after")).toBe("cursor-2");
+    expect(urls[1]!.searchParams.get("limit")).toBe("100");
+  });
+
+  it("raises HubspotApiError when HubSpot refuses", async () => {
+    jsonFetch(403, { message: "missing scope" });
+    await expect(listOwners(token)).rejects.toThrow(HubspotApiError);
   });
 });
 
