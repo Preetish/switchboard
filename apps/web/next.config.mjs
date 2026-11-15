@@ -21,7 +21,7 @@ const baseHeaders = [
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   // Workspace packages ship TypeScript source, not build output.
-  transpilePackages: ["@switchboard/core", "@switchboard/db", "@switchboard/calendar-google", "@switchboard/crm-hubspot"],
+  transpilePackages: ["@switchboard/core", "@switchboard/db", "@switchboard/config", "@switchboard/calendar-google", "@switchboard/crm-hubspot"],
   // Keep the queue runtime as plain Node requires (ESM-only package with
   // dynamic adapter imports the bundler should not try to trace).
   serverExternalPackages: ["pg-boss"],

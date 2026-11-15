@@ -6,6 +6,14 @@ Notable changes to Switchboard. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The Setup page has a Download YAML button that exports the current reps,
+  teams, forms, and rules as a `switchboard.yaml` with rules written inline.
+  Admins can also save a whole config as JSON to
+  `POST /api/admin/config/apply`, which runs the same checks as
+  `config:check` and applies it only when every check passes.
+
 ## [0.2.1] — 2026-11-01
 
 ### Changed

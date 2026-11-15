@@ -60,6 +60,9 @@ export type LoadResult =
 /** Reads a file relative to the config's directory (injected for tests). */
 export type ReadFile = (absolutePath: string) => string;
 
+/** Turns a form's `rules: path/to/rules.yaml` into the parsed rule set, or says why it can't. */
+type ResolveRulesFile = (rulesPath: string) => { ok: true; value: unknown } | { ok: false; errors: string[] };
+
 function toWorkingHours(input: { days: string[]; hours: string }): WorkingHours {
   const [start, end] = input.hours.split("-") as [string, string];
   const minutes = (value: string) => {
@@ -86,6 +89,29 @@ export function loadConfig(text: string, configPath: string, readFile: ReadFile)
   } catch (error) {
     return { ok: false, errors: [`${configPath}: ${error instanceof Error ? error.message : String(error)}`] };
   }
+  const baseDir = path.dirname(configPath);
+  return buildPlan(raw, (rulesPath) => {
+    try {
+      return parseRuleSetYaml(readFile(path.resolve(baseDir, rulesPath)));
+    } catch {
+      return { ok: false, errors: [`file not found (paths are relative to ${configPath})`] };
+    }
+  });
+}
+
+/**
+ * Validate a config that is already parsed, e.g. JSON sent by the visual
+ * builder. Same checks and plan as loadConfig, but there is no file next to
+ * it, so rules must be written inline.
+ */
+export function loadConfigObject(raw: unknown): LoadResult {
+  return buildPlan(raw, () => ({
+    ok: false,
+    errors: ["rules must be inline when saving from the builder (a file path only works in switchboard.yaml)"],
+  }));
+}
+
+function buildPlan(raw: unknown, resolveRulesFile: ResolveRulesFile): LoadResult {
   const parsed = configSchema.safeParse(raw);
   if (!parsed.success) {
     return {
@@ -96,7 +122,6 @@ export function loadConfig(text: string, configPath: string, readFile: ReadFile)
   const config = parsed.data;
   const errors: string[] = [];
   const warnings: string[] = [];
-  const baseDir = path.dirname(configPath);
 
   // Reps
   const repEmails = new Set<string>();
@@ -149,19 +174,13 @@ export function loadConfig(text: string, configPath: string, readFile: ReadFile)
       let rulesValue: unknown = form.rules;
       let source = `${where} rules`;
       if (typeof form.rules === "string") {
-        const rulesPath = path.resolve(baseDir, form.rules);
         source = `${where} rules (${form.rules})`;
-        try {
-          const parsedRules = parseRuleSetYaml(readFile(rulesPath));
-          if (!parsedRules.ok) {
-            for (const error of parsedRules.errors) errors.push(`${source}: ${error}`);
-            rulesValue = undefined;
-          } else {
-            rulesValue = parsedRules.value;
-          }
-        } catch {
-          errors.push(`${source}: file not found (paths are relative to ${configPath})`);
+        const parsedRules = resolveRulesFile(form.rules);
+        if (!parsedRules.ok) {
+          for (const error of parsedRules.errors) errors.push(`${source}: ${error}`);
           rulesValue = undefined;
+        } else {
+          rulesValue = parsedRules.value;
         }
       }
       if (rulesValue !== undefined) {
