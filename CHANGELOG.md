@@ -28,6 +28,13 @@ Notable changes to Switchboard. The format follows
   where it goes and why, without saving anything or creating a lead. Save
   changes now opens a review of what changes, in words and as a YAML diff,
   before anything is applied, and Roll back undoes the last save.
+- Forms are editable on the Setup page: name, submit button label, self serve
+  URL, and the field list. Fields can be added, removed, and reordered, and
+  each field's label, key, type, required setting, help text, and dropdown
+  options can be changed. The default theme and each form's theme (accent
+  color, page background, corner radius, color scheme, layout, and font) are
+  editable too. These edits save with the same review and apply flow as reps,
+  teams, and rules. The form previews show the saved form, not unsaved edits.
 
 ## [0.2.1] — 2026-11-01
 

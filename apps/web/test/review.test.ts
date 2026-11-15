@@ -6,6 +6,11 @@ import {
 } from "@switchboard/config";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildConfig, draftsFromConfig, placeErrors } from "../src/app/setup/reps-teams";
+import {
+  buildFormsConfig,
+  formsDraftsFromConfig,
+  newField,
+} from "../src/app/setup/forms";
 import { describeChanges, diffLines } from "../src/app/setup/review";
 import { asLoadedPlan } from "../src/lib/config-admin";
 import {
@@ -216,6 +221,54 @@ describe("describeChanges", () => {
       "Added rule 2, Big: when Country exists, route to rep Ana Ruiz",
       "Removed rule 2, Paid",
       "Removed rule 3, Germany",
+    ]);
+  });
+
+  it("describes form, field, and theme edits", () => {
+    const { forms, theme } = formsDraftsFromConfig(BASE);
+    const demo = forms[0]!;
+    demo.submitLabel = "Request a demo";
+    theme.accent = "#0B5FFF";
+    demo.theme.layout = "plain";
+    const country = demo.fields[1]!;
+    country.type = "select";
+    country.options = ["Germany", "Austria"];
+    demo.fields = [country, demo.fields[0]!, newField("x", demo.fields)];
+    const after = buildFormsConfig(BASE, forms, theme);
+
+    expect(describeChanges(planOf(BASE), planOf(after))).toEqual([
+      { title: "Default theme", changes: ["Theme accent color set to #0B5FFF"] },
+      {
+        title: "Form Demo",
+        changes: [
+          "Submit label set to Request a demo",
+          "Field Country: type changed from Short text to Dropdown",
+          "Field Country: options are now Germany, Austria",
+          "Added field New field (Short text)",
+          "Fields reordered: Country, Work email, New field",
+          "Theme layout set to plain",
+        ],
+      },
+    ]);
+  });
+
+  it("reads a field removed and another added in its place as just that", () => {
+    const { forms, theme } = formsDraftsFromConfig(BASE);
+    const demo = forms[0]!;
+    demo.fields = [
+      demo.fields[0]!,
+      { ...newField("x", demo.fields), key: "role", label: "Role" },
+    ];
+    const after = buildFormsConfig(BASE, forms, theme);
+    // The Germany rule reads form.country, so keep the field it needs out of the rules.
+    after.forms[0]!.rules = undefined;
+    const before = { ...BASE, forms: [{ ...BASE.forms[0]!, rules: undefined }] };
+
+    expect(describeChanges(planOf(before), planOf(after))).toEqual([
+      {
+        title: "Form Demo",
+        changes: ["Added field Role (Short text)", "Removed field Country"],
+      },
     ]);
   });
 });
