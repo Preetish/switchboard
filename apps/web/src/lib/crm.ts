@@ -11,11 +11,14 @@ import {
   upsertContact,
   type HubspotOAuthConfig,
 } from "@switchboard/crm-hubspot";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import {
   bookings,
+  forms,
   orgs,
+  routingDecisions,
   submissions,
+  users,
   type Attribution,
   type Database,
 } from "@switchboard/db";
@@ -217,10 +220,55 @@ export function attributionToHubspotProperties(
 }
 
 /**
+ * `hubspot_owner_id` for a lead's contact: the HubSpot owner of the rep the
+ * lead was routed to, matched by email as the meeting log does. Empty when
+ * the lead wasn't routed to a rep, the rep has no HubSpot owner record, or
+ * the lookup fails (logged), so the contact keeps the owner it has: the
+ * owner is never cleared and a failed lookup never holds up the contact.
+ */
+async function routedRepOwnerProperty(
+  db: Database,
+  accessToken: string,
+  submissionId: string,
+): Promise<{ hubspot_owner_id?: string }> {
+  const [decision] = await db
+    .select({ outcome: routingDecisions.outcome })
+    .from(routingDecisions)
+    .where(eq(routingDecisions.submissionId, submissionId))
+    .orderBy(desc(routingDecisions.createdAt))
+    .limit(1);
+  const repId = decision?.outcome.userId;
+  if (!repId) return {};
+  const [rep] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, repId))
+    .limit(1);
+  if (!rep) return {};
+  try {
+    const owner = await findOwnerByEmail({
+      accessToken,
+      email: rep.email,
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+    });
+    return owner ? { hubspot_owner_id: owner.id } : {};
+  } catch (cause) {
+    log.error(
+      `HubSpot owner lookup failed for submission ${submissionId}; the contact keeps its owner: ${
+        cause instanceof Error ? cause.message : String(cause)
+      }`,
+    );
+    return {};
+  }
+}
+
+/**
  * Write a lead to HubSpot (create-or-update keyed on email, so retries never
- * create duplicate CRM records). Runs as a queued job: throws on failures
- * worth retrying (rate limits, HubSpot outages) and returns quietly when
- * there is nothing to do (no email, not connected, already synced).
+ * create duplicate CRM records). When the lead's form sets the contact
+ * owner, the same upsert also sets the routed rep as the owner. Runs as a
+ * queued job: throws on failures worth retrying (rate limits, HubSpot
+ * outages) and returns quietly when there is nothing to do (no email, not
+ * connected, already synced).
  */
 export async function syncLeadToCrm(db: Database, submissionId: string): Promise<void> {
   const [submission] = await db
@@ -231,14 +279,19 @@ export async function syncLeadToCrm(db: Database, submissionId: string): Promise
       attribution: submissions.attribution,
       crmSyncedAt: submissions.crmSyncedAt,
       orgSettings: orgs.settings,
+      formSettings: forms.settings,
     })
     .from(submissions)
     .innerJoin(orgs, eq(submissions.orgId, orgs.id))
+    .innerJoin(forms, eq(submissions.formId, forms.id))
     .where(eq(submissions.id, submissionId))
     .limit(1);
   if (!submission?.email || submission.crmSyncedAt) return;
   const accessToken = await getValidHubspotAccessToken(db, submission.orgId);
   if (!accessToken) return;
+  const owner = submission.formSettings.setHubspotOwner
+    ? await routedRepOwnerProperty(db, accessToken, submissionId)
+    : {};
   try {
     await upsertContact({
       accessToken,
@@ -249,6 +302,7 @@ export async function syncLeadToCrm(db: Database, submissionId: string): Promise
           submission.attribution,
           submission.orgSettings.hubspotProperties ?? {},
         ),
+        ...owner,
       },
       timeoutMs: DEFAULT_TIMEOUT_MS,
     });

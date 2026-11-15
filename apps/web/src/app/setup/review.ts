@@ -328,6 +328,11 @@ function formChanges(before: PlannedForm, after: PlannedForm): string[] {
   };
   setting("Submit label", before.settings.submitLabel, after.settings.submitLabel);
   setting("Self serve URL", before.settings.selfServeUrl, after.settings.selfServeUrl);
+  if (!before.settings.setHubspotOwner !== !after.settings.setHubspotOwner) {
+    changes.push(
+      `${after.settings.setHubspotOwner ? "Now sets" : "No longer sets"} the HubSpot contact owner to the routed rep`,
+    );
+  }
 
   // A field's key is what rules read, so it is the field's identity: a
   // changed key reads as one field removed and another added.

@@ -125,6 +125,31 @@ describe("saving forms", () => {
     });
   });
 
+  it("leaves the HubSpot contact owner switch off when the config doesn't set it", () => {
+    const { forms, theme } = draftsOf(BASE);
+    expect(forms.map((form) => form.setHubspotOwner)).toEqual([false, false]);
+    const saved = buildFormsConfig(BASE, forms, theme);
+    expect(saved.forms.every((form) => !("setHubspotOwner" in form))).toBe(true);
+    expect(loaded(saved).forms.map((form) => form.settings.setHubspotOwner)).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it("turns the HubSpot contact owner switch on and off per form", () => {
+    const { forms, theme } = draftsOf(BASE);
+    forms[1]!.setHubspotOwner = true;
+    const on = buildFormsConfig(BASE, forms, theme);
+    expect(on.forms[0]).not.toHaveProperty("setHubspotOwner");
+    expect(on.forms[1]).toMatchObject({ setHubspotOwner: true });
+    expect(loaded(on).forms[1]!.settings.setHubspotOwner).toBe(true);
+    expect(draftsOf(on).forms[1]!.setHubspotOwner).toBe(true);
+
+    const back = draftsOf(on);
+    back.forms[1]!.setHubspotOwner = false;
+    expect(buildFormsConfig(on, back.forms, back.theme)).toEqual(BASE);
+  });
+
   it("adds a field with a fresh key at the end", () => {
     const { forms, theme } = draftsOf(BASE);
     const contact = forms[1]!;
@@ -309,6 +334,13 @@ describe("placeFormErrors", () => {
     expect(placed.forms.get(0)!.form).toEqual([expect.stringMatching(/^selfServeUrl: /)]);
     expect(placed.forms.get(1)!.form).toEqual([expect.stringMatching(/^fields: /)]);
     expect(placed.other).toEqual(["org.name: Too small"]);
+    const owner = placeFormErrors(
+      ["forms[1].setHubspotOwner: Invalid input: expected boolean, received string"],
+      drafts.forms,
+    );
+    expect(owner.forms.get(1)!.form).toEqual([
+      "setHubspotOwner: Invalid input: expected boolean, received string",
+    ]);
 
     // Theme values are checked once the config's shape is right.
     const themed = errorsFor(({ forms, theme }) => {

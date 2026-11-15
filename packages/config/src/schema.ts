@@ -56,6 +56,8 @@ const form = z.strictObject({
   theme: z.record(z.string(), z.unknown()).optional(),
   /** Extra CSS for this form's page, after the top-level customCss. */
   customCss: z.string().optional(),
+  /** Set the lead's HubSpot contact owner to the rep they're routed to. */
+  setHubspotOwner: z.boolean().default(false),
   /** A path to a rule file (relative to this file) or the rule set inline. */
   rules: z.union([z.string().min(1), z.record(z.string(), z.unknown())]).optional(),
 });

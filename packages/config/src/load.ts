@@ -219,6 +219,7 @@ function buildPlan(raw: unknown, resolveRulesFile: ResolveRulesFile): LoadResult
       ...(form.selfServeUrl ? { selfServeUrl: form.selfServeUrl } : {}),
       ...(formTheme.ok && Object.keys(formTheme.theme).length > 0 ? { theme: formTheme.theme } : {}),
       ...(formCss ? { customCss: formCss } : {}),
+      ...(form.setHubspotOwner ? { setHubspotOwner: true } : {}),
     };
     return {
       slug: form.slug,

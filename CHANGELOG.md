@@ -41,6 +41,12 @@ Notable changes to Switchboard. The format follows
   that already has reps, teams, rules, or forms. Nothing is applied until you
   swap each placeholder for a real rep (a HubSpot owner, or typed by hand) and
   save through the usual review.
+- Each form on the Setup page has a switch to set the HubSpot contact owner to
+  the routed rep (`setHubspotOwner` in `switchboard.yaml`). It is off unless
+  you turn it on, and forms started from a template have it on. When it is on
+  and a lead is routed to a rep who is a HubSpot owner, that rep becomes the
+  owner of the lead's contact. Otherwise the contact keeps its current owner,
+  and the lead is never held up.
 
 ## [0.2.1] — 2026-11-01
 

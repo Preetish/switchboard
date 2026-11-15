@@ -30,7 +30,7 @@ export type OrgSettings = {
   customCss?: string;
 };
 
-/** Per-form presentation settings (from switchboard.yaml). */
+/** Per-form presentation and HubSpot settings (from switchboard.yaml). */
 export type FormSettings = {
   /** Submit button label; defaults to "Continue". */
   submitLabel?: string;
@@ -40,6 +40,11 @@ export type FormSettings = {
   theme?: Theme;
   /** Extra admin-written CSS for this form, after the org's. */
   customCss?: string;
+  /**
+   * Write the routed rep onto the lead's HubSpot contact as its owner
+   * (`hubspot_owner_id`). Absent means off.
+   */
+  setHubspotOwner?: boolean;
 };
 
 export type DecisionOutcome = {

@@ -16,10 +16,11 @@ import { FieldErrors } from "./RepsTeamsEditor";
 import { move } from "./rules";
 
 /**
- * Each form's name, submit label, self serve URL, fields, and theme, and the
- * default theme every form starts from. The drafts live in SetupEditor,
- * which saves them with the reps, teams, and rules in one config; the
- * validator's errors show next to the form, field, or theme they name.
+ * Each form's name, submit label, self serve URL, HubSpot contact owner
+ * switch, fields, and theme, and the default theme every form starts from.
+ * The drafts live in SetupEditor, which saves them with the reps, teams, and
+ * rules in one config; the validator's errors show next to the form, field,
+ * or theme they name.
  */
 export default function FormBuilder({
   forms,
@@ -128,6 +129,31 @@ export default function FormBuilder({
               </label>
             </div>
             <FieldErrors errors={formErrors?.form.length ? formErrors.form : undefined} />
+
+            <fieldset className={styles.fieldset}>
+              <legend className={styles.legend}>HubSpot</legend>
+              <label className={styles.checkLabel}>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={form.setHubspotOwner}
+                  aria-describedby={`owner-help-${form.slug}`}
+                  onChange={(event) =>
+                    updateForm(formIndex, (f) => ({
+                      ...f,
+                      setHubspotOwner: event.target.checked,
+                    }))
+                  }
+                />
+                Set the HubSpot contact owner to the routed rep
+              </label>
+              <p id={`owner-help-${form.slug}`} className={styles.muted}>
+                When a lead from this form goes to a rep, that rep becomes the owner of
+                the lead&apos;s contact in HubSpot. Leads that go to self serve, the
+                fallback queue, or a rep who isn&apos;t a HubSpot user keep their current
+                owner.
+              </p>
+            </fieldset>
 
             <h4 className={styles.subheading}>Fields</h4>
             <ol className={styles.ruleRows}>
