@@ -244,11 +244,66 @@
   font-weight: 600;
 }
 
-.ruleList {
-  margin-top: var(--sb-space-2);
-  padding-left: var(--sb-space-6);
+.ruleRows {
+  list-style: none;
+  margin-top: var(--sb-space-4);
+  border-top: 1px solid var(--sb-border);
+}
+
+.ruleRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-2);
+  padding: var(--sb-space-3) 0;
+  border-bottom: 1px solid var(--sb-border);
+}
+
+.ruleRowDragging {
+  composes: ruleRow;
+  opacity: 0.6;
+}
+
+.ruleHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-2);
+}
+
+.ruleHeader .rowActions {
+  margin-left: auto;
+}
+
+.dragHandle {
+  cursor: grab;
+  padding: 0 var(--sb-space-1);
+  color: var(--sb-text-muted);
+  user-select: none;
+}
+
+.sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-2);
   font-size: var(--sb-text-sm);
-  line-height: 1.8;
+}
+
+/* Controls sit inline in the sentence, sized to their content. */
+.sentence .inputSmall,
+.ruleHeader .inputSmall {
+  width: auto;
+  max-width: 100%;
+}
+
+/* Long field labels (a consent sentence) would stretch every source picker. */
+.sentence select.inputSmall {
+  max-width: 16rem;
+}
+
+.advanced {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .link {
