@@ -259,7 +259,8 @@ function isPlaceholderEmail(email: string): boolean {
  * reps, teams, and forms are kept. The form takes the place of `base`'s
  * first form and keeps its link (slug), submit label, self serve URL, theme,
  * and custom CSS, so a live link or embed keeps working; the template sets
- * its name, fields, and rules.
+ * its name, fields, and rules, and turns on setting the HubSpot contact
+ * owner to the routed rep.
  */
 export function configFromTemplate(
   id: TemplateId,
@@ -291,6 +292,7 @@ export function configFromTemplate(
         ...(first ?? { slug: "book-a-demo" }),
         name: content.formName,
         fields: content.fields,
+        setHubspotOwner: true,
         rules: { rules: content.rules, fallback: content.fallback },
       },
     ],

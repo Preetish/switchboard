@@ -122,6 +122,7 @@ forms:
     selfServeUrl: https://acme.com/signup  # where self-serve leads go
     theme: { accent: "#E4002B" }           # optional; overrides the top-level theme
     customCss: ".sb-title { font-weight: 600 }"  # optional
+    setHubspotOwner: true                  # optional; default false (see below)
     fields: [...]
     rules: rules/book-a-demo.yaml          # a file (relative to this one) or inline
 ```
@@ -146,6 +147,14 @@ Types: `text` (≤1,000 characters), `textarea` (≤5,000), `email` (≤254),
 Keys are letters, digits, and underscores, starting with a letter. The first
 `email` field is the lead's address for CRM lookups, confirmations, and
 deletion requests. Disposable addresses are rejected.
+
+### Contact owner
+
+With `setHubspotOwner: true` and HubSpot connected, a lead routed to a rep
+has that rep set as the owner of their HubSpot contact, in the same update
+that writes the contact. The rep is matched to a HubSpot owner by email. A
+lead that goes to self serve or the fallback queue, or a rep with no HubSpot
+owner record, leaves the contact's owner as it is.
 
 ## Rules
 

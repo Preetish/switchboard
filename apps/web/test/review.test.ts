@@ -252,6 +252,26 @@ describe("describeChanges", () => {
     ]);
   });
 
+  it("says when a form starts or stops setting the HubSpot contact owner", () => {
+    const { forms, theme } = formsDraftsFromConfig(BASE);
+    forms[0]!.setHubspotOwner = true;
+    const on = buildFormsConfig(BASE, forms, theme);
+    const change = (before: ConfigInput, after: ConfigInput) =>
+      describeChanges(planOf(before), planOf(after));
+    expect(change(BASE, on)).toEqual([
+      {
+        title: "Form Demo",
+        changes: ["Now sets the HubSpot contact owner to the routed rep"],
+      },
+    ]);
+    expect(change(on, BASE)).toEqual([
+      {
+        title: "Form Demo",
+        changes: ["No longer sets the HubSpot contact owner to the routed rep"],
+      },
+    ]);
+  });
+
   it("reads a field removed and another added in its place as just that", () => {
     const { forms, theme } = formsDraftsFromConfig(BASE);
     const demo = forms[0]!;

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadConfig } from "../src/index.js";
+import { loadConfig, serializeConfig } from "../src/index.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const readFile = (file: string) => readFileSync(file, "utf8");
@@ -162,6 +162,36 @@ describe("attribution in config", () => {
       "/cfg/rules/demo.yaml": RULES,
     });
     expect(!result.ok && result.errors.join()).toMatch(/HubSpot property names are lowercase/);
+  });
+});
+
+describe("setHubspotOwner", () => {
+  it("is off when absent, so existing configs are unchanged", () => {
+    const result = load(MINIMAL, { "/cfg/rules/demo.yaml": RULES });
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    expect(result.plan.forms[0]!.settings).toEqual({});
+    expect(serializeConfig(result.plan)).not.toMatch(/setHubspotOwner/);
+  });
+
+  it("is stored per form when on, and written back to the file", () => {
+    const yaml = MINIMAL.replace(
+      "    rules: rules/demo.yaml",
+      "    rules: rules/demo.yaml\n    setHubspotOwner: true",
+    );
+    const result = load(yaml, { "/cfg/rules/demo.yaml": RULES });
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    expect(result.plan.forms[0]!.settings).toEqual({ setHubspotOwner: true });
+    expect(serializeConfig(result.plan)).toMatch(/setHubspotOwner: true/);
+  });
+
+  it("rejects a value that isn't true or false, at the form", () => {
+    const yaml = MINIMAL.replace(
+      "    rules: rules/demo.yaml",
+      "    rules: rules/demo.yaml\n    setHubspotOwner: sometimes",
+    );
+    const result = load(yaml, { "/cfg/rules/demo.yaml": RULES });
+    if (result.ok) throw new Error("expected errors");
+    expect(result.errors).toEqual([expect.stringMatching(/^forms\[0\]\.setHubspotOwner: /)]);
   });
 });
 

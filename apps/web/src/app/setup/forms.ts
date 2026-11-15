@@ -3,10 +3,10 @@ import type { ColorScheme, FormField, FormFieldType, Layout } from "@switchboard
 
 /**
  * The form builder's state, and the way back to the config object. Each
- * form's name, submit label, self serve URL, fields, and theme change here,
- * and the org's default theme; everything else in a form (slug, rules,
- * custom CSS) is passed through untouched, so saving without edits applies
- * the same plan.
+ * form's name, submit label, self serve URL, HubSpot contact owner switch,
+ * fields, and theme change here, and the org's default theme; everything
+ * else in a form (slug, rules, custom CSS) is passed through untouched, so
+ * saving without edits applies the same plan.
  *
  * Fields carry exactly what the field schema has (packages/core/src/forms):
  * key, label, type, required, options (select only), and help text. Select
@@ -57,6 +57,8 @@ export type FormDraft = {
   name: string;
   submitLabel: string;
   selfServeUrl: string;
+  /** Set the HubSpot contact owner to the routed rep. */
+  setHubspotOwner: boolean;
   fields: FieldDraft[];
   theme: ThemeDraft;
 };
@@ -115,6 +117,7 @@ export function formsDraftsFromConfig(config: ConfigInput): {
       name: form.name,
       submitLabel: form.submitLabel ?? "",
       selfServeUrl: form.selfServeUrl ?? "",
+      setHubspotOwner: form.setHubspotOwner ?? false,
       theme: themeDraft(form.theme),
       fields: (form.fields as FormField[]).map((field, i) => ({
         id: `field-${formIndex}-${i}`,
@@ -161,7 +164,13 @@ export function buildFormsConfig(
     forms: config.forms.map((form, i): FormInput => {
       const draft = forms[i];
       if (!draft) return form;
-      const { submitLabel: _label, selfServeUrl: _url, theme: _theme, ...kept } = form;
+      const {
+        submitLabel: _label,
+        selfServeUrl: _url,
+        setHubspotOwner: _owner,
+        theme: _theme,
+        ...kept
+      } = form;
       const submitLabel = draft.submitLabel.trim();
       const selfServeUrl = draft.selfServeUrl.trim();
       const formTheme = themeFromDraft(draft.theme);
@@ -170,6 +179,7 @@ export function buildFormsConfig(
         name: draft.name.trim(),
         ...(submitLabel ? { submitLabel } : {}),
         ...(selfServeUrl ? { selfServeUrl } : {}),
+        ...(draft.setHubspotOwner ? { setHubspotOwner: true } : {}),
         ...(formTheme ? { theme: formTheme } : {}),
         fields: draft.fields.map(fieldFromDraft),
       };
@@ -199,7 +209,7 @@ export function changeType(field: FieldDraft, type: FormFieldType): FieldDraft {
 }
 
 export type FormErrors = {
-  /** Name, submit label, self serve URL, or the field list as a whole. */
+  /** Name, submit label, self serve URL, owner switch, or the field list as a whole. */
   form: string[];
   /** By field draft id. */
   fields: Map<string, string[]>;
@@ -215,7 +225,13 @@ export type PlacedFormErrors = {
   other: string[];
 };
 
-const FORM_SETTINGS = new Set(["name", "submitLabel", "selfServeUrl", "fields"]);
+const FORM_SETTINGS = new Set([
+  "name",
+  "submitLabel",
+  "selfServeUrl",
+  "setHubspotOwner",
+  "fields",
+]);
 
 /**
  * Sort the validator's errors to the form, field, or theme they name, using

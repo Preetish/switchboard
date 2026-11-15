@@ -53,6 +53,7 @@ export function toConfigObject(plan: ConfigPlan): ConfigInput {
       ...(form.settings.selfServeUrl ? { selfServeUrl: form.settings.selfServeUrl } : {}),
       ...(form.settings.theme ? { theme: form.settings.theme } : {}),
       ...(form.settings.customCss ? { customCss: form.settings.customCss } : {}),
+      ...(form.settings.setHubspotOwner ? { setHubspotOwner: true } : {}),
       fields: form.fields,
       ...(form.ruleSet ? { rules: { rules: form.ruleSet.rules, fallback: form.ruleSet.fallback } } : {}),
     })),

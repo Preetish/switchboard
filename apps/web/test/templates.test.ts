@@ -92,6 +92,18 @@ describe("templates", () => {
   );
 
   it.each(TEMPLATES)(
+    "$name starts its form with the HubSpot contact owner switch on",
+    ({ id }) => {
+      expect(BASE.forms[0]).not.toHaveProperty("setHubspotOwner");
+      expect(configFromTemplate(id, BASE).forms[0]!.setHubspotOwner).toBe(true);
+      expect(draftsFromTemplate(id, BASE).forms[0]!.setHubspotOwner).toBe(true);
+      expect(loaded(configFromTemplate(id, BASE)).forms[0]!.settings.setHubspotOwner).toBe(
+        true,
+      );
+    },
+  );
+
+  it.each(TEMPLATES)(
     "$name loads into the editors and saves back unchanged",
     ({ id }) => {
       const drafts = draftsFromTemplate(id, BASE, "Europe/Berlin");
