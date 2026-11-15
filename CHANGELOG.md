@@ -23,6 +23,11 @@ Notable changes to Switchboard. The format follows
   reordered by dragging, with the fallback fixed as the last row. Rules the
   sentence can't express, such as regular expressions, stay as written and
   change only in `switchboard.yaml`.
+- A simulator beside the rules on the Setup page routes a test lead (form
+  answers, HubSpot owner, and UTM fields) through the rules as edited and says
+  where it goes and why, without saving anything or creating a lead. Save
+  changes now opens a review of what changes, in words and as a YAML diff,
+  before anything is applied, and Roll back undoes the last save.
 
 ## [0.2.1] — 2026-11-01
 

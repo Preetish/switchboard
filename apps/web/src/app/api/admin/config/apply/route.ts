@@ -2,12 +2,9 @@ import { applyConfig, loadConfigObject } from "@switchboard/config";
 import { NextResponse } from "next/server";
 import { adminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { readJsonBody } from "@/lib/http";
+import { MAX_CONFIG_BYTES, readJsonBody } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
-
-/** A whole config (reps, fields, rules, CSS) is far bigger than a lead submission. */
-const MAX_CONFIG_BYTES = 1024 * 1024;
 
 /**
  * Save a config from the visual builder: the body is the config as a JSON
