@@ -1,10 +1,18 @@
 "use client";
 
 import type { ApplySummary, ConfigInput, ConfigPlan } from "@switchboard/config";
-import type { FormField } from "@switchboard/core/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import styles from "../admin.module.css";
+import FormBuilder from "./FormBuilder";
+import {
+  buildFormsConfig,
+  fieldFromDraft,
+  formsDraftsFromConfig,
+  placeFormErrors,
+  type FormDraft,
+  type PlacedFormErrors,
+} from "./forms";
 import RepsTeamsEditor, { type CalendarStatus } from "./RepsTeamsEditor";
 import ReviewPanel from "./ReviewPanel";
 import { describeChanges, diffLines, type ChangeGroup, type DiffLine } from "./review";
@@ -24,7 +32,11 @@ import {
   type PlacedRuleErrors,
 } from "./rules";
 
-type SaveErrors = { repsTeams: PlacedErrors; rules: PlacedRuleErrors };
+type SaveErrors = {
+  repsTeams: PlacedErrors;
+  rules: PlacedRuleErrors;
+  forms: PlacedFormErrors;
+};
 type SaveResult =
   | { kind: "saved"; summary: ApplySummary }
   | { kind: "rolled-back" }
@@ -33,6 +45,7 @@ type SaveResult =
 type Review = {
   config: ConfigInput;
   sentRules: (FormRulesDraft | null)[];
+  sentForms: FormDraft[];
   groups: ChangeGroup[];
   warnings: string[];
   diff: DiffLine[];
@@ -94,13 +107,14 @@ async function postConfig<T>(
 }
 
 /**
- * The Setup page's editors (reps and teams, and each form's rules, with the
- * simulator beside the rules) and the one Save changes flow: the whole
- * config (forms, theme, and everything not edited here as loaded) is checked
- * by POST /api/admin/config/check, the review screen shows what changes,
- * and Apply changes sends it to POST /api/admin/config/apply. A config with
- * any problem is not applied; its errors show next to the rep, team, or rule
- * they name, and the rest in a list at the top. After a save, Roll back
+ * The Setup page's editors (reps and teams, each form's fields and theme,
+ * and each form's rules, with the simulator beside the rules) and the one
+ * Save changes flow: the whole config (with everything not edited here as
+ * loaded) is checked by POST /api/admin/config/check, the review screen
+ * shows what changes, and Apply changes sends it to
+ * POST /api/admin/config/apply. A config with any problem is not applied;
+ * its errors show next to the rep, team, form, field, theme, or rule they
+ * name, and the rest in a list at the top. After a save, Roll back
  * last save applies the config as it was before it, the same way.
  */
 export default function SetupEditor({
@@ -122,6 +136,8 @@ export default function SetupEditor({
   const [reps, setReps] = useState(() => draftsFromConfig(config).reps);
   const [teams, setTeams] = useState(() => draftsFromConfig(config).teams);
   const [ruleForms, setRuleForms] = useState(() => rulesDraftsFromConfig(config));
+  const [forms, setForms] = useState(() => formsDraftsFromConfig(config).forms);
+  const [orgTheme, setOrgTheme] = useState(() => formsDraftsFromConfig(config).theme);
   const [busy, setBusy] = useState<"checking" | "applying" | "rolling-back" | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [result, setResult] = useState<SaveResult | null>(null);
@@ -146,20 +162,49 @@ export default function SetupEditor({
     setReps(drafts.reps);
     setTeams(drafts.teams);
     setRuleForms(rulesDraftsFromConfig(config));
+    const formDrafts = formsDraftsFromConfig(config);
+    setForms(formDrafts.forms);
+    setOrgTheme(formDrafts.theme);
   }
 
-  const draftConfig = () => buildRulesConfig(buildConfig(base, reps, teams), ruleForms);
+  // Rules read the forms' fields as edited, so new fields can be used right away.
+  const draftFields = forms.map((form) => form.fields.map(fieldFromDraft));
+  const withDraftFields = (drafts: (FormRulesDraft | null)[]) =>
+    drafts.map((rules, i) =>
+      rules && forms[i]
+        ? { ...rules, name: forms[i].name, fields: draftFields[i]! }
+        : rules,
+    );
+  const liveRuleForms = withDraftFields(ruleForms);
+  const setLiveRuleForms: Dispatch<SetStateAction<(FormRulesDraft | null)[]>> = (
+    update,
+  ) =>
+    setRuleForms((current) =>
+      typeof update === "function" ? update(withDraftFields(current)) : update,
+    );
 
-  // Errors name rules by position, so place them against the drafts that were sent.
-  const failed = (errors: string[], sentRules: (FormRulesDraft | null)[]) => {
+  const draftConfig = () =>
+    buildRulesConfig(
+      buildFormsConfig(buildConfig(base, reps, teams), forms, orgTheme),
+      liveRuleForms,
+    );
+
+  // Errors name rules and fields by position, so place them against the drafts that were sent.
+  const failed = (
+    errors: string[],
+    sentRules: (FormRulesDraft | null)[],
+    sentForms: FormDraft[],
+  ) => {
     const repsTeams = placeErrors(errors);
     const rules = placeRuleErrors(repsTeams.other, sentRules);
-    setResult({ kind: "failed", errors: { repsTeams, rules } });
+    const formErrors = placeFormErrors(rules.other, sentForms);
+    setResult({ kind: "failed", errors: { repsTeams, rules, forms: formErrors } });
   };
 
   /** Save changes: check the whole draft, then show the review screen. */
   const save = async () => {
-    const sentRules = ruleForms;
+    const sentRules = liveRuleForms;
+    const sentForms = forms;
     const draft = draftConfig();
     setBusy("checking");
     setResult(null);
@@ -169,10 +214,11 @@ export default function SetupEditor({
       warnings: string[];
     }>("/api/admin/config/check", draft, "Checking");
     setBusy(null);
-    if (!checked.ok) return failed(checked.errors, sentRules);
+    if (!checked.ok) return failed(checked.errors, sentRules, sentForms);
     setReview({
       config: draft,
       sentRules,
+      sentForms,
       groups: describeChanges(plan, checked.body.plan),
       warnings: checked.body.warnings,
       diff: diffLines(yaml, checked.body.yaml),
@@ -191,7 +237,7 @@ export default function SetupEditor({
     );
     setBusy(null);
     setReview(null);
-    if (!applied.ok) return failed(applied.errors, review.sentRules);
+    if (!applied.ok) return failed(applied.errors, review.sentRules, review.sentForms);
     const next = { config: base, appliedYaml: review.yaml };
     setRollback(next);
     storeRollback(next);
@@ -209,7 +255,7 @@ export default function SetupEditor({
       "Rolling back",
     );
     setBusy(null);
-    if (!applied.ok) return failed(applied.errors, []);
+    if (!applied.ok) return failed(applied.errors, [], []);
     setRollback(null);
     storeRollback(null);
     setResult({ kind: "rolled-back" });
@@ -221,11 +267,11 @@ export default function SetupEditor({
   return (
     // Its own box, so the sticky save bar stays with the editors.
     <div>
-      {errors && errors.rules.other.length > 0 ? (
+      {errors && errors.forms.other.length > 0 ? (
         <div className={styles.bannerError} role="alert">
           These problems stopped the save:
           <ul className={styles.errorList}>
-            {errors.rules.other.map((error) => (
+            {errors.forms.other.map((error) => (
               <li key={error}>{error}</li>
             ))}
           </ul>
@@ -253,21 +299,28 @@ export default function SetupEditor({
           errors={errors?.repsTeams ?? null}
           calendars={calendars}
         />
+        <FormBuilder
+          forms={forms}
+          setForms={setForms}
+          theme={orgTheme}
+          setTheme={setOrgTheme}
+          errors={errors?.forms ?? null}
+        />
         <div className={styles.rulesLayout}>
           <div>
             <RuleBuilder
-              forms={ruleForms}
-              setForms={setRuleForms}
+              forms={liveRuleForms}
+              setForms={setLiveRuleForms}
               reps={reps}
               teams={teams}
               errors={errors?.rules ?? null}
             />
           </div>
           <Simulator
-            forms={base.forms.map((form) => ({
+            forms={forms.map((form, i) => ({
               slug: form.slug,
               name: form.name,
-              fields: form.fields as FormField[],
+              fields: draftFields[i]!,
             }))}
             draftConfig={draftConfig}
           />

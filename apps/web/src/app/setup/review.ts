@@ -1,12 +1,14 @@
-import type { ConfigPlan } from "@switchboard/config";
+import type { ConfigPlan, PlannedForm } from "@switchboard/config";
 import type {
   FormField,
   RouteAction,
   Rule,
   RuleSet,
+  Theme,
   WhenClause,
   WorkingHours,
 } from "@switchboard/core";
+import { FIELD_TYPE_LABELS } from "./forms";
 import {
   ANY_LEAD,
   EMAIL_TYPE,
@@ -253,26 +255,134 @@ function ruleChanges(
   return changes;
 }
 
-/** Everything the Setup page doesn't edit: org, theme, CSS, forms' fields and settings. */
+const THEME_LABELS: [string, string][] = [
+  ["accent", "accent color"],
+  ["background", "page background"],
+  ["radius", "corner radius"],
+  ["colorScheme", "color scheme"],
+  ["layout", "layout"],
+  ["font.family", "font"],
+  ["font.stylesheet", "font stylesheet"],
+];
+
+function themeChanges(before: Theme | undefined, after: Theme | undefined): string[] {
+  const value = (theme: Theme | undefined, key: string): string | undefined => {
+    const found = key
+      .split(".")
+      .reduce<unknown>(
+        (node, part) =>
+          typeof node === "object" && node !== null
+            ? (node as Record<string, unknown>)[part]
+            : undefined,
+        theme,
+      );
+    return found === undefined ? undefined : String(found);
+  };
+  const changes: string[] = [];
+  for (const [key, label] of THEME_LABELS) {
+    const was = value(before, key);
+    const now = value(after, key);
+    if (was === now) continue;
+    if (was === undefined) changes.push(`Theme ${label} set to ${now}`);
+    else if (now === undefined) changes.push(`Theme ${label} ${was} removed`);
+    else changes.push(`Theme ${label} changed from ${was} to ${now}`);
+  }
+  return changes;
+}
+
+function fieldChanges(before: FormField, after: FormField): string[] {
+  const changes: string[] = [];
+  const label = `Field ${after.label}`;
+  if (before.label !== after.label)
+    changes.push(`Field ${before.label} renamed to ${after.label}`);
+  if (before.type !== after.type) {
+    changes.push(
+      `${label}: type changed from ${FIELD_TYPE_LABELS[before.type]} to ${FIELD_TYPE_LABELS[after.type]}`,
+    );
+  }
+  if (before.required !== after.required) {
+    changes.push(`${label}: now ${after.required ? "required" : "optional"}`);
+  }
+  if (!same(before.options, after.options) && after.options) {
+    changes.push(`${label}: options are now ${after.options.join(", ")}`);
+  }
+  if ((before.helpText ?? "") !== (after.helpText ?? "")) {
+    changes.push(
+      after.helpText
+        ? `${label}: help text is now "${after.helpText}"`
+        : `${label}: help text removed`,
+    );
+  }
+  return changes;
+}
+
+/** A form's name, settings, fields, and theme; its rules are their own group. */
+function formChanges(before: PlannedForm, after: PlannedForm): string[] {
+  const changes: string[] = [];
+  if (before.name !== after.name)
+    changes.push(`Renamed from ${before.name} to ${after.name}`);
+  const setting = (label: string, was: string | undefined, now: string | undefined) => {
+    if (was === now) return;
+    if (!now) changes.push(`${label} ${was} removed`);
+    else changes.push(`${label} ${was ? `changed from ${was} to` : "set to"} ${now}`);
+  };
+  setting("Submit label", before.settings.submitLabel, after.settings.submitLabel);
+  setting("Self serve URL", before.settings.selfServeUrl, after.settings.selfServeUrl);
+
+  // A field's key is what rules read, so it is the field's identity: a
+  // changed key reads as one field removed and another added.
+  const oldByKey = new Map(before.fields.map((field) => [field.key, field]));
+  const pairs = after.fields.map((field) => oldByKey.get(field.key));
+  after.fields.forEach((field, i) => {
+    const old = pairs[i];
+    if (!old)
+      changes.push(`Added field ${field.label} (${FIELD_TYPE_LABELS[field.type]})`);
+    else changes.push(...fieldChanges(old, field));
+  });
+  for (const field of before.fields) {
+    if (!pairs.includes(field)) changes.push(`Removed field ${field.label}`);
+  }
+  const order = pairs
+    .filter((old) => old !== undefined)
+    .map((old) => before.fields.indexOf(old));
+  if (order.some((index, i) => i > 0 && index < order[i - 1]!)) {
+    changes.push(
+      `Fields reordered: ${after.fields.map((field) => field.label).join(", ")}`,
+    );
+  }
+  changes.push(...themeChanges(before.settings.theme, after.settings.theme));
+  return changes;
+}
+
+/** Everything the Setup page doesn't edit: org name and slug, HubSpot, custom CSS. */
 function rest(plan: ConfigPlan) {
   return {
-    org: plan.org,
-    forms: plan.forms.map((form) => ({ ...form, ruleSet: undefined })),
+    org: { ...plan.org, settings: { ...plan.org.settings, theme: undefined } },
+    forms: plan.forms.map((form) => ({
+      slug: form.slug,
+      customCss: form.settings.customCss,
+    })),
   };
 }
 
 /**
  * What saving `after` over `before` changes, grouped as the Setup page is:
- * reps, teams, then each form's rules. Empty when nothing changes.
+ * reps, teams, the default theme, then each form and its rules. Empty when
+ * nothing changes.
  */
 export function describeChanges(before: ConfigPlan, after: ConfigPlan): ChangeGroup[] {
   const groups: ChangeGroup[] = [
     { title: "Reps", changes: repChanges(before, after) },
     { title: "Teams", changes: teamChanges(before, after) },
+    {
+      title: "Default theme",
+      changes: themeChanges(before.org.settings.theme, after.org.settings.theme),
+    },
   ];
   for (const form of after.forms) {
     const old = before.forms.find((candidate) => candidate.slug === form.slug);
     if (!old) continue;
+    groups.push({ title: `Form ${old.name}`, changes: formChanges(old, form) });
     groups.push({
       title: `Rules for ${form.name}`,
       changes: ruleChanges(

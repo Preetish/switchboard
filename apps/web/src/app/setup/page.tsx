@@ -18,8 +18,8 @@ export const metadata = { title: "Setup · Switchboard" };
 
 /**
  * What switchboard.yaml set up: each form with its link, embed snippet, and
- * preview (read only; forms change in the file), then the reps, teams, and
- * rules, which can be edited here, tried in the simulator, reviewed, and
+ * preview of the saved form, then the reps, teams, forms (fields and theme),
+ * and rules, which can be edited here, tried in the simulator, reviewed, and
  * saved through the config apply endpoint.
  */
 export default async function SetupPage() {
@@ -62,7 +62,7 @@ export default async function SetupPage() {
           <p className={styles.subtitle}>
             Forms from <code className={styles.code}>switchboard.yaml</code>. Edit the file and run{" "}
             <code className={styles.code}>npm run config:apply</code> (or restart the container) to
-            change them. Reps, teams, and rules can also be edited below.
+            change them, or edit reps, teams, forms, and rules below.
           </p>
           {formRows.length > 0 ? (
             <form action="/api/admin/config/export" method="get" className={styles.actions}>
@@ -99,6 +99,7 @@ export default async function SetupPage() {
                   <CopyButton value={snippet} label="Copy embed code" />
                 </div>
                 <h4 className={styles.subheading}>Preview</h4>
+                <p className={styles.muted}>The saved form. Save changes to see edits here.</p>
                 <div className={styles.previews}>
                   {scheme === "light" || scheme === "dark" ? (
                     <PreviewFrame slug={form.slug} scheme={null} label={scheme === "light" ? "Light" : "Dark"} />

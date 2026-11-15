@@ -417,6 +417,25 @@
   width: 4rem;
 }
 
+/* Setup: a color swatch picker beside its hex value. */
+.colorRow {
+  display: flex;
+  gap: var(--sb-space-2);
+}
+
+.colorRow .inputSmall {
+  flex: 1;
+  min-width: 0;
+}
+
+.colorInput {
+  composes: input;
+  flex: none;
+  width: var(--sb-space-12);
+  padding: var(--sb-space-1);
+  cursor: pointer;
+}
+
 .days {
   display: flex;
   flex-wrap: wrap;
