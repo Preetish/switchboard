@@ -83,6 +83,13 @@ export default async function SetupPage() {
             the file and run <code className={styles.code}>npm run config:apply</code> (or restart
             the container) to change them.
           </p>
+          {formRows.length > 0 ? (
+            <form action="/api/admin/config/export" method="get" className={styles.actions}>
+              <button type="submit" className={styles.buttonSecondary}>
+                Download YAML
+              </button>
+            </form>
+          ) : null}
 
           {formRows.length === 0 ? (
             <p className={styles.bannerError}>
