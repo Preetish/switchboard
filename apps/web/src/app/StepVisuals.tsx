@@ -27,7 +27,7 @@ export function QualifyVisual() {
 export function RouteVisual() {
   return (
     <div className={styles.visual} aria-hidden="true">
-      <div className={styles.avatars}>
+      <div className={`${styles.avatars} ${styles.d1}`}>
         <span className={`${styles.avatar} ${styles.scan1}`}>BM</span>
         <span className={`${styles.avatar} ${styles.picked}`}>AC</span>
         <span className={`${styles.avatar} ${styles.scan2}`}>CW</span>

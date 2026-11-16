@@ -21,13 +21,9 @@ const NODES = [
 ];
 
 const RULE_ROWS = [
-  { name: "Existing owner wins", note: "No owner found", state: "skip" },
-  {
-    name: "Solo company goes self-serve",
-    note: "400 employees, does not apply",
-    state: "skip",
-  },
-  { name: "DACH region", note: "Canada, does not apply", state: "skip" },
+  { name: "Existing owner wins", note: "No owner", state: "skip" },
+  { name: "Solo goes self-serve", note: "400 employees", state: "skip" },
+  { name: "DACH region", note: "Canada", state: "skip" },
   { name: "Teams get a rep", note: "Matched", state: "match" },
 ] as const;
 
@@ -146,24 +142,36 @@ function Detail({ stage }: { stage: number }) {
 export default function RoutingStory() {
   const [stage, setStage] = useState(0);
   const [runId, setRunId] = useState(0);
+  const [playing, setPlaying] = useState(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const selectStage = useCallback((index: number) => {
+    setPlaying(false);
+    setStage(index);
+  }, []);
+
   const replay = useCallback(() => {
+    setPlaying(true);
     setStage(0);
     setRunId((n) => n + 1);
   }, []);
 
   useEffect(() => {
+    if (!playing) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setStage(LAST);
+      setPlaying(false);
       return;
     }
-    if (stage >= LAST) return;
+    if (stage >= LAST) {
+      setPlaying(false);
+      return;
+    }
     timer.current = setTimeout(() => setStage((s) => s + 1), STAGE_MS);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [stage, runId]);
+  }, [playing, stage, runId]);
 
   return (
     <div className={styles.canvas}>
@@ -176,30 +184,44 @@ export default function RoutingStory() {
           {NODES.map((node, i) => {
             // The last stage is the outcome, so it shows as done, not pending.
             const done = i < stage || (stage === LAST && i === LAST);
+            const active = i === stage;
             return (
-              <li
-                key={node.title}
-                className={`${styles.node} ${
-                  done
-                    ? styles.nodeDone
-                    : i === stage
-                      ? styles.nodeActive
-                      : styles.nodeTodo
-                }`}
-              >
-                <span className={styles.nodeDot} aria-hidden="true">
-                  {done ? "✓" : ""}
-                </span>
-                <span className={styles.nodeText}>
-                  <span className={styles.nodeTitle}>{node.title}</span>
-                  <span className={styles.nodeSub}>{node.sub}</span>
-                </span>
+              <li key={node.title}>
+                <button
+                  type="button"
+                  aria-current={active ? "step" : undefined}
+                  className={`${styles.node} ${done ? styles.nodeDone : ""} ${
+                    active ? styles.nodeActive : !done ? styles.nodeTodo : ""
+                  }`}
+                  onClick={() => selectStage(i)}
+                >
+                  <span className={styles.nodeDot} aria-hidden="true">
+                    {done ? "✓" : ""}
+                  </span>
+                  <span className={styles.nodeText}>
+                    <span className={styles.nodeTitle}>{node.title}</span>
+                    <span className={styles.nodeSub}>{node.sub}</span>
+                  </span>
+                </button>
               </li>
             );
           })}
         </ol>
-        <div className={styles.detail} key={`${runId}-${stage}`}>
-          <Detail stage={stage} />
+        <div className={styles.detail}>
+          {NODES.map((node, i) => {
+            const active = i === stage;
+            return (
+              <div
+                key={active ? `${node.title}-${runId}` : node.title}
+                className={`${styles.detailPanel} ${
+                  active ? styles.detailPanelActive : styles.detailPanelHidden
+                }`}
+                aria-hidden={!active}
+              >
+                <Detail stage={i} />
+              </div>
+            );
+          })}
         </div>
       </div>
       <div className={styles.canvasFoot}>
@@ -212,7 +234,7 @@ export default function RoutingStory() {
               aria-selected={i === stage}
               aria-label={`Stage ${i + 1}: ${node.title}`}
               className={`${styles.dot} ${i === stage ? styles.dotActive : ""}`}
-              onClick={() => setStage(i)}
+              onClick={() => selectStage(i)}
             />
           ))}
         </div>
