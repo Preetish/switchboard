@@ -536,6 +536,7 @@
 /* ---- live demo form section ---- */
 
 .trySection {
+  scroll-margin-top: 5.5rem;
   border-top: 1px solid var(--sb-gray-200);
   background: var(--sb-surface);
 }
@@ -549,16 +550,6 @@
   max-width: 76rem;
   margin: 0 auto;
   padding: clamp(5.5rem, 10vw, 8.5rem) var(--sb-space-6);
-}
-
-.sectionKicker {
-  display: inline-block;
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sb-accent);
-  margin-bottom: var(--sb-space-2);
 }
 
 .tryTitle {
@@ -578,6 +569,7 @@
 }
 
 .formPanel {
+  scroll-margin-top: 5.5rem;
   padding: 0;
   background: transparent;
   border: 0;
