@@ -1,10 +1,11 @@
+import Image from "next/image";
 import styles from "./StepVisuals.module.css";
 
 /**
- * The three How-it-works visuals, in the same canvas language as the
- * hero's routing story. CSS animations that StepsSequence plays once per
- * step, in order; the base state of every element is the finished,
- * readable state, which is what no-JS and reduced-motion visitors see.
+ * The three How-it-works visuals, framed as crisp obsidian miniature product
+ * stages inside the light editorial step cards. StepsSequence plays each once
+ * in order; the base state is the finished, readable state for no-JS and
+ * reduced-motion visitors.
  */
 
 export function QualifyVisual() {
@@ -28,9 +29,33 @@ export function RouteVisual() {
   return (
     <div className={styles.visual} aria-hidden="true">
       <div className={`${styles.avatars} ${styles.d1}`}>
-        <span className={`${styles.avatar} ${styles.scan1}`}>BM</span>
-        <span className={`${styles.avatar} ${styles.picked}`}>AC</span>
-        <span className={`${styles.avatar} ${styles.scan2}`}>CW</span>
+        <span className={`${styles.avatarRing} ${styles.scan1}`}>
+          <Image
+            src="/reps/benito.jpg"
+            alt=""
+            width={44}
+            height={44}
+            className={styles.avatarImg}
+          />
+        </span>
+        <span className={`${styles.avatarRing} ${styles.picked}`}>
+          <Image
+            src="/reps/alice.jpg"
+            alt=""
+            width={44}
+            height={44}
+            className={styles.avatarImg}
+          />
+        </span>
+        <span className={`${styles.avatarRing} ${styles.scan2}`}>
+          <Image
+            src="/reps/claire.jpg"
+            alt=""
+            width={44}
+            height={44}
+            className={styles.avatarImg}
+          />
+        </span>
       </div>
       <p className={`${styles.pickLabel} ${styles.d6}`}>
         Alice Chen · Enterprise team

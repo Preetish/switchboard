@@ -66,27 +66,27 @@ How every Switchboard surface should look, behave, and be built. The tokens in
 ## The public home page
 
 - The instance home page (`/`) is a marketing surface, not a product
-  surface. It is dark by design in both OS schemes (page gray-950,
-  raised surfaces gray-900, hairlines gray-800); product surfaces keep
-  following the OS. It may use the display face (`--sb-font-display`,
-  Instrument Sans) for headlines and pill-shaped calls to action; a
-  grid of jack dots may texture its dark surfaces as decoration.
-  Inter, Geist, Space Grotesk, and Roboto are not used anywhere: they
-  read as generated defaults, not choices.
+  surface. It pairs a high-contrast editorial light canvas (`--sb-gray-50`
+  and `--sb-surface` with `--sb-gray-200` hairlines) with deep obsidian
+  interactive product stages (`--sb-gray-950` / `--sb-gray-900` with
+  subtle warm ambient lighting, luminous top-edge highlights, and jack-dot
+  texture); product surfaces keep following the OS scheme. It uses the
+  display face (`--sb-font-display`, Instrument Sans) for headlines and
+  pill-shaped calls to action. Inter, Geist, Space Grotesk, and Roboto are
+  not used anywhere: they read as generated defaults, not choices.
 - Header, footer, and every section on the home page share one content
-  column (same max-width and side padding). Hairlines may span the
-  full width; content may not start at a different margin.
+  column (`76rem` max-width and matching side padding). Hairlines and
+  banded product stages may span the full width.
 - Home page copy is plain and factual: complete sentences, concrete
   nouns, claims the product can back. No slogans, no sentence
   fragments for drama, and no metaphor a first-time visitor has to
   decode before the headline makes sense.
-- Everything else in this standard still applies: tokens only,
-  hairlines over shadows, no decorative animation.
-- Its visuals are the product at work: a staged replay of one routing
-  decision in the hero, a small looping animation in each step, and
-  the live form, embedded with the same snippet customers use, in its
-  own section. Animation demonstrates; it never decorates, and
-  reduced motion gets the finished state.
+- Its visuals are the product at work: an interactive SVG patch-cable
+  routing hero with preset lead scenarios and clickable time slots,
+  animated step visuals, a live rule simulator synced with the routing log
+  and YAML config, an interactive embed theme previewer, and the live
+  embedded form when a workspace form is present. Animation demonstrates
+  and respects `prefers-reduced-motion`.
 
 ## Testing the standard
 

@@ -3,15 +3,16 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 /**
- * Plays the How-it-works visuals one step at a time instead of looping all
- * three at once. A step plays once when it is on screen and the step before
- * it has finished, so a desktop row runs 1 → 2 → 3 and a phone column plays
- * each step as it scrolls in. Without JS, or with reduced motion, nothing is
- * marked and every visual shows its finished state.
+ * Plays the How-it-works visuals in a crisp left-to-right cascade once they
+ * scroll into view (instead of keeping later cards blank for 5+ seconds).
+ * Without JS or with reduced motion, nothing is marked and every visual shows
+ * its finished state immediately.
  */
 
-// How long each step's animation runs (its last element lands before this).
-const STEP_MS = [2600, 2900, 3300];
+// Delay before triggering the next step in the cascade, and total play window
+// before clearing the playing attribute back to the clean finished state.
+const CASCADE_MS = 650;
+const FINISH_MS = [1600, 1900, 1900];
 
 export default function StepsSequence({
   className,
@@ -31,24 +32,27 @@ export default function StepsSequence({
     steps.forEach((step) => (step.dataset.stepState = "waiting"));
 
     const visible = new Set<number>();
+    const started = new Set<number>();
     const timers: number[] = [];
     let next = 0;
-    let running = false;
 
-    const advance = () => {
+    const kickOff = () => {
       const i = next;
       const step = steps[i];
-      if (running || !step || !visible.has(i)) return;
-      running = true;
+      if (!step || started.has(i) || !visible.has(i)) return;
+      started.add(i);
       step.dataset.stepState = "playing";
+      next = i + 1;
+
       timers.push(
         window.setTimeout(() => {
           delete step.dataset.stepState;
-          running = false;
-          next = i + 1;
-          advance();
-        }, STEP_MS[i] ?? 3000),
+        }, FINISH_MS[i] ?? 1900),
       );
+
+      if (next < steps.length) {
+        timers.push(window.setTimeout(kickOff, CASCADE_MS));
+      }
     };
 
     const observer = new IntersectionObserver(
@@ -56,11 +60,10 @@ export default function StepsSequence({
         for (const entry of entries) {
           const i = steps.indexOf(entry.target as HTMLElement);
           if (entry.isIntersecting) visible.add(i);
-          else visible.delete(i);
         }
-        advance();
+        kickOff();
       },
-      { threshold: 0.6 },
+      { threshold: 0.25 },
     );
     steps.forEach((step) => observer.observe(step));
 

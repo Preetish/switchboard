@@ -1,0 +1,194 @@
+/* Interactive embed theme customizer sitting on the light editorial section. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-4);
+  padding: var(--sb-space-6);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-gray-200);
+  border-radius: 1.25rem;
+  box-shadow: 0 12px 32px oklch(0 0 0 / 0.05);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-3);
+}
+
+.toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--sb-gray-100);
+  border: 1px solid var(--sb-gray-200);
+  border-radius: var(--sb-radius-full);
+}
+
+.toggleBtn {
+  padding: var(--sb-space-1) var(--sb-space-3);
+  border: none;
+  border-radius: var(--sb-radius-full);
+  background: transparent;
+  color: var(--sb-gray-600);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--sb-duration-fast) var(--sb-ease-out),
+    color var(--sb-duration-fast) var(--sb-ease-out);
+}
+
+.toggleActive {
+  background: var(--sb-surface);
+  color: var(--sb-gray-950);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.08);
+}
+
+.swatches {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sb-space-2);
+}
+
+.swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--sb-radius-full);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform var(--sb-duration-fast) var(--sb-ease-out);
+}
+
+.swatchActive {
+  outline: 2px solid var(--sb-gray-900);
+  outline-offset: 2px;
+}
+
+.toggleBtn:focus-visible,
+.swatch:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 2px;
+}
+
+/* ---- preview canvas ---- */
+
+.previewFrame {
+  padding: var(--sb-space-6);
+  border-radius: var(--sb-radius-lg);
+  transition:
+    background-color var(--sb-duration-base) var(--sb-ease-out),
+    border-color var(--sb-duration-base) var(--sb-ease-out);
+}
+
+.frameLight {
+  background: var(--sb-gray-100);
+  border: 1px solid var(--sb-gray-200);
+  --p-card: var(--sb-surface);
+  --p-border: var(--sb-gray-200);
+  --p-text: var(--sb-gray-950);
+  --p-muted: var(--sb-gray-600);
+  --p-input: var(--sb-gray-50);
+}
+
+.frameDark {
+  background: var(--sb-gray-950);
+  border: 1px solid var(--sb-gray-800);
+  --p-card: var(--sb-gray-900);
+  --p-border: var(--sb-gray-800);
+  --p-text: var(--sb-gray-50);
+  --p-muted: var(--sb-gray-400);
+  --p-input: var(--sb-gray-950);
+}
+
+.previewCard {
+  background: var(--p-card);
+  border: 1px solid var(--p-border);
+  border-radius: var(--preview-radius);
+  padding: var(--sb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-4);
+  transition: border-radius var(--sb-duration-base) var(--sb-ease-out);
+}
+
+.previewHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-3);
+}
+
+.previewAvatar {
+  display: block;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--sb-radius-full);
+  object-fit: cover;
+  flex: none;
+}
+
+.previewTitle {
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+  color: var(--p-text);
+}
+
+.previewSub {
+  font-size: 0.78rem;
+  color: var(--p-muted);
+}
+
+.fakeFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-2);
+}
+
+.fakeInput {
+  padding: var(--sb-space-2) var(--sb-space-3);
+  background: var(--p-input);
+  border: 1px solid var(--p-border);
+  border-radius: var(--preview-radius);
+  font-family: var(--sb-font-mono);
+  font-size: 0.8125rem;
+  color: var(--p-text);
+}
+
+.fakeSlots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+}
+
+.fakeSlot {
+  padding: var(--sb-space-1) var(--sb-space-3);
+  border-radius: var(--preview-btn-radius);
+  border: 1px solid var(--p-border);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--p-muted);
+}
+
+.fakeSlotPicked {
+  background: var(--preview-accent);
+  border-color: var(--preview-accent);
+  color: var(--sb-text-on-accent);
+  font-weight: 600;
+}
+
+.fakeSubmit {
+  text-align: center;
+  padding: var(--sb-space-2) var(--sb-space-4);
+  border-radius: var(--preview-btn-radius);
+  background: var(--preview-accent);
+  color: var(--sb-text-on-accent);
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+  transition:
+    background-color var(--sb-duration-fast) var(--sb-ease-out),
+    border-radius var(--sb-duration-base) var(--sb-ease-out);
+}

@@ -5,9 +5,12 @@ import Script from "next/script";
 import { forms } from "@switchboard/db";
 import { getDb } from "@/lib/db";
 import { appBaseUrl, findOrg } from "@/lib/integrations";
+import InteractivePlayground from "./InteractivePlayground";
 import RoutingStory from "./RoutingStory";
+import ScrollStatement from "./ScrollStatement";
 import StepsSequence from "./StepsSequence";
 import { BookVisual, QualifyVisual, RouteVisual } from "./StepVisuals";
+import ThemePreview from "./ThemePreview";
 import styles from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +33,6 @@ export function generateMetadata(): Metadata {
   };
   return {
     metadataBase: new URL(appBaseUrl()),
-    // Instances stay out of search results unless the operator opts the home
-    // page in; forms and admin pages keep the layout's noindex either way.
     ...(process.env.HOME_PAGE_INDEXABLE === "true"
       ? { robots: { index: true, follow: true } }
       : {}),
@@ -51,11 +52,6 @@ export function generateMetadata(): Metadata {
   };
 }
 
-/**
- * Display face for this page's headlines only (docs/design.md, "The
- * public home page"). Self-hosted by next/font at build time; the token
- * falls back to the system grotesque when the font is unavailable.
- */
 const displayFont = Instrument_Sans({
   subsets: ["latin"],
   variable: "--sb-font-display-src",
@@ -79,39 +75,6 @@ const STEPS = [
     visual: <BookVisual />,
   },
 ];
-
-const LOG_ROWS = [
-  {
-    lead: "jane@globex.com",
-    rule: "Teams get a rep",
-    rep: "Alice Chen",
-    latency: "31 ms",
-  },
-  {
-    lead: "lena@acme.de",
-    rule: "DACH region",
-    rep: "Lukas Weber",
-    latency: "28 ms",
-  },
-  {
-    lead: "sam@gmail.com",
-    rule: "Solo self-serve",
-    rep: "Self-serve",
-    latency: "14 ms",
-  },
-];
-
-const YAML_EXCERPT = `teams:
-  - key: dach
-    members: [lukas@acme.com]
-
-rules:
-  - name: DACH region
-    when:
-      form.country: { in: [Germany, Austria, Switzerland] }
-    route: { team: dach, strategy: round_robin }`;
-
-
 
 /** The first form, so a fresh instance has an obvious "try it" link. */
 async function firstForm(): Promise<{ slug: string; name: string } | null> {
@@ -139,68 +102,118 @@ function analyticsScript() {
   return <Script src={src} data-website-id={websiteId} strategy="afterInteractive" />;
 }
 
+function BrandMark() {
+  return (
+    <svg
+      className={styles.brandIcon}
+      width="26"
+      height="26"
+      viewBox="0 0 32 32"
+      aria-hidden="true"
+    >
+      <rect width="32" height="32" rx="8" fill="#DF500C" />
+      <path
+        d="M22 9H14.5C9 9 9 16 16 16C23 16 23 23 17.5 23H10"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="23" cy="9" r="2.6" fill="#fff" />
+      <circle cx="9" cy="23" r="2.6" fill="#fff" />
+    </svg>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+    </svg>
+  );
+}
+
 export default async function Home() {
   const form = await firstForm();
+
   return (
-    <main className={`${styles.page} ${displayFont.variable}`}>
-      <header className={styles.topbar}>
-        <div className={styles.barInner}>
-          <p className={styles.wordmark}>Switchboard</p>
-          <nav className={styles.topnav}>
+    <main id="top" className={`${styles.page} ${displayFont.variable}`}>
+      {/* Floating sticky glass navbar */}
+      <header className={styles.topbarWrap}>
+        <div className={styles.topbar}>
+          <a href="#top" className={styles.brand}>
+            <BrandMark />
+            <span className={styles.wordmark}>Switchboard</span>
+          </a>
+
+          <nav className={styles.navLinks} aria-label="Primary">
+            <a href="#how-it-works">How it works</a>
+            <a href="#playground">Playground</a>
+            <a href="#embed">Embed</a>
+            <a href="#self-host">Self-host</a>
+          </nav>
+
+          <div className={styles.navRight}>
             <a
               className={styles.navIconLink}
               href="https://github.com/Preetish/switchboard"
               rel="noreferrer"
               aria-label="GitHub"
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-              </svg>
+              <GitHubIcon />
             </a>
-            {form ? (
-              <a className={styles.navCta} href="#live-form">
-                Try the demo
-              </a>
-            ) : null}
-          </nav>
+            <a
+              className={styles.navCta}
+              href={form ? "#live-form" : "#playground"}
+            >
+              {form ? "Try the demo" : "Try playground"}
+            </a>
+          </div>
         </div>
       </header>
 
+      {/* Hero: Centered editorial headline + full-width interactive SVG Switchboard */}
       <section className={styles.hero}>
-        <div className={styles.heroText}>
+        <div className={styles.heroHeader}>
           <h1 className={styles.title}>
-            Inbound routing that ends in a booked meeting.
+            <span className={styles.titleLine}>Inbound routing that</span>{" "}
+            <span className={styles.titleAccent}>ends in a booked meeting</span>
           </h1>
           <p className={styles.lede}>
-            Switchboard is open-source lead routing software. A lead submits
-            your form, your rules route them to the right rep, and the
-            meeting is booked before they leave the page.
+            Open-source lead routing software. Match every form submission to
+            the right rep&apos;s calendar instantly.
           </p>
           <div className={styles.actions}>
-            {form ? (
-              <a className={styles.primary} href="#live-form">
-                See it work
-              </a>
-            ) : null}
+            <a
+              className={styles.primary}
+              href={form ? "#live-form" : "#playground"}
+            >
+              {form ? "Try the live demo" : "Try the live router"}
+            </a>
             <a
               className={styles.secondary}
               href="https://github.com/Preetish/switchboard"
               rel="noreferrer"
             >
-              GitHub
+              <GitHubIcon />
+              <span>View on GitHub</span>
             </a>
           </div>
         </div>
 
-        <RoutingStory />
+        <div className={styles.heroStageWrap}>
+          <RoutingStory />
+        </div>
       </section>
 
+      {/* Visual trust & integration strip */}
       <section className={styles.proof}>
         <div className={styles.proofInner}>
           <ul className={styles.proofList} role="list">
@@ -212,7 +225,7 @@ export default async function Home() {
                 viewBox="0 0 16 16"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.5"
+                strokeWidth="1.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden="true"
@@ -230,7 +243,7 @@ export default async function Home() {
                 viewBox="0 0 16 16"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.5"
+                strokeWidth="1.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden="true"
@@ -250,7 +263,7 @@ export default async function Home() {
                 viewBox="0 0 16 16"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.5"
+                strokeWidth="1.6"
                 strokeLinecap="round"
                 aria-hidden="true"
               >
@@ -270,7 +283,7 @@ export default async function Home() {
                 viewBox="0 0 16 16"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.5"
+                strokeWidth="1.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden="true"
@@ -285,20 +298,14 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className={styles.statement}>
-        <p>
-          <span className={styles.titleGrey}>
-            Leads go cold in the gap between the form and the first reply.{" "}
-          </span>
-          Switchboard removes the gap: the reply is a calendar, shown before
-          the lead leaves the page.
-        </p>
-      </section>
+      {/* Editorial contrast statement with scroll-linked ink illumination */}
+      <ScrollStatement />
 
-      <section className={styles.stepsSection}>
+      {/* 3-Step animated cards (Qualify -> Route -> Book) */}
+      <section id="how-it-works" className={styles.stepsSection}>
         <StepsSequence className={styles.steps}>
           {STEPS.map((step) => (
-            <li key={step.title} className={styles.step}>
+            <li key={step.title} className={`${styles.step} ${styles.reveal}`}>
               {step.visual}
               <h2 className={styles.stepTitle}>{step.title}</h2>
               <p className={styles.stepBody}>{step.body}</p>
@@ -307,9 +314,29 @@ export default async function Home() {
         </StepsSequence>
       </section>
 
-      <section className={styles.siteSection}>
+      {/* Obsidian Interactive Playground Band */}
+      <section id="playground" className={styles.darkBand}>
+        <div className={styles.darkInner}>
+          <div className={styles.darkIntro}>
+            <span className={styles.darkEyebrow}>Interactive playground</span>
+            <h2 className={styles.darkIntroTitle}>
+              Routing rules
+              <br />
+              written as sentences.
+            </h2>
+            <p className={styles.darkIntroBody}>
+              Switchboard checks your rules top to bottom on every lead. You can
+              try any combination below to see who gets the lead.
+            </p>
+          </div>
+          <InteractivePlayground />
+        </div>
+      </section>
+
+      {/* Light Editorial Setup & Interactive Embed Theme Preview */}
+      <section id="embed" className={styles.siteSection}>
         <div className={styles.siteInner}>
-          <div>
+          <div className={styles.siteLeft}>
             <h2 className={styles.siteTitle}>
               On your site,
               <br />
@@ -319,164 +346,68 @@ export default async function Home() {
               Switchboard works with the site you already have, or any page
               that can hold a snippet.
             </p>
-          </div>
-          <ol className={styles.siteSteps}>
-            <li className={styles.siteStep}>
-              <span className={styles.stepNumber}>1</span>
-              <div>
-                <h3 className={styles.siteStepTitle}>Add the form</h3>
-                <p className={styles.siteStepBody}>
-                  One snippet where your form goes, or a link to your hosted
-                  form page.
-                </p>
-                <p className={styles.chips}>
-                  <span className={styles.chip}>Webflow</span>
-                  <span className={styles.chip}>Framer</span>
-                  <span className={styles.chip}>WordPress</span>
-                  <span className={styles.chip}>Contentful</span>
-                </p>
-              </div>
-            </li>
-            <li className={styles.siteStep}>
-              <span className={styles.stepNumber}>2</span>
-              <div>
-                <h3 className={styles.siteStepTitle}>Connect your tools</h3>
-                <p className={styles.siteStepBody}>
-                  Two sign-ins. No keys to copy, nothing to paste into
-                  settings.
-                </p>
-                <p className={styles.chips}>
-                  <span className={styles.connectPill}>✓ HubSpot</span>
-                  <span className={styles.connectPill}>✓ Google Calendar</span>
-                </p>
-              </div>
-            </li>
-            <li className={styles.siteStep}>
-              <span className={styles.stepNumber}>3</span>
-              <div>
-                <h3 className={styles.siteStepTitle}>Set the rules once</h3>
-                <p className={styles.siteStepBody}>
-                  Pick reps from your HubSpot owners, write the rules as
-                  sentences, try a test lead in the simulator, and apply.
-                  You can change any of it later on the same page.
-                </p>
-                <p className={styles.logChip}>
-                  <code>Teams get a rep → Alice Chen · 31 ms</code>
-                </p>
-              </div>
-            </li>
-          </ol>
-        </div>
-      </section>
 
-      <section className={styles.darkBand}>
-        <div className={styles.darkInner}>
-          <div className={styles.darkIntro}>
-            <h2 className={styles.darkIntroTitle}>
-              Routing rules
-              <br />
-              written as sentences.
-            </h2>
-            <p className={styles.darkIntroBody}>
-              Switchboard checks your rules top to bottom on every lead. Test
-              changes safely, audit every match, and export your setup anytime.
-            </p>
+            <ol className={styles.siteSteps}>
+              <li className={styles.siteStep}>
+                <span className={styles.stepNumber}>1</span>
+                <div>
+                  <h3 className={styles.siteStepTitle}>Add the form</h3>
+                  <p className={styles.siteStepBody}>
+                    One snippet where your form goes, or a link to your hosted
+                    form page.
+                  </p>
+                  <p className={styles.chips}>
+                    <span className={styles.chip}>Webflow</span>
+                    <span className={styles.chip}>Framer</span>
+                    <span className={styles.chip}>WordPress</span>
+                    <span className={styles.chip}>Contentful</span>
+                  </p>
+                </div>
+              </li>
+              <li className={styles.siteStep}>
+                <span className={styles.stepNumber}>2</span>
+                <div>
+                  <h3 className={styles.siteStepTitle}>Connect your tools</h3>
+                  <p className={styles.siteStepBody}>
+                    Two sign-ins. No keys to copy, nothing to paste into
+                    settings.
+                  </p>
+                  <p className={styles.chips}>
+                    <span className={styles.connectPill}>✓ HubSpot</span>
+                    <span className={styles.connectPill}>✓ Google Calendar</span>
+                  </p>
+                </div>
+              </li>
+              <li className={styles.siteStep}>
+                <span className={styles.stepNumber}>3</span>
+                <div>
+                  <h3 className={styles.siteStepTitle}>Set the rules once</h3>
+                  <p className={styles.siteStepBody}>
+                    Pick reps from your HubSpot owners, write the rules on the
+                    Setup page, try a test lead in the simulator, and apply.
+                  </p>
+                </div>
+              </li>
+            </ol>
           </div>
 
-          <div className={styles.darkRow}>
-            <div className={styles.darkText}>
-              <h3 className={styles.darkTitle}>Test before applying.</h3>
-              <p className={styles.darkBody}>
-                Try any lead in the simulator and review the diff before your
-                changes go live.
-              </p>
-            </div>
-            <div className={styles.codePanel}>
-              <div className={styles.panelHead}>
-                <span className={styles.panelTitle}>Simulator</span>
-                <span className={styles.panelMeta}>No changes saved</span>
-              </div>
-              <div className={styles.simInputs}>
-                <span className={styles.simChip}>lena@globex.example</span>
-                <span className={styles.simChip}>1,200 employees</span>
-                <span className={styles.simChip}>Germany</span>
-              </div>
-              <div className={styles.simResult}>
-                <p className={styles.simMatch}>✓ Matched: DACH region</p>
-                <p className={styles.simMeta}>
-                  Assigned to Lukas Weber · DACH team · 28 ms
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`${styles.darkRow} ${styles.darkRowFlip}`}>
-            <div className={styles.darkText}>
-              <h3 className={styles.darkTitle}>Full routing log.</h3>
-              <p className={styles.darkBody}>
-                See which rule fired, which rep got the lead, and how long the
-                decision took.
-              </p>
-            </div>
-            <div className={styles.codePanel}>
-              <div className={styles.tableWrap}>
-                <table className={styles.logTable}>
-                  <caption className={styles.visuallyHidden}>
-                    Sample routing log entries
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Lead</th>
-                      <th scope="col">Rule</th>
-                      <th scope="col">Rep</th>
-                      <th scope="col">Decision time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {LOG_ROWS.map((row) => (
-                      <tr key={row.lead}>
-                        <td>{row.lead}</td>
-                        <td>{row.rule}</td>
-                        <td>{row.rep}</td>
-                        <td className={styles.logMono}>{row.latency}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.darkRow}>
-            <div className={styles.darkText}>
-              <h3 className={styles.darkTitle}>
-                Back up or move your setup anytime.
-              </h3>
-              <p className={styles.darkBody}>
-                Download your reps, teams, and rules as one readable file.
-              </p>
-            </div>
-            <div className={styles.codePanel}>
-              <div className={styles.panelHead}>
-                <span className={styles.panelTitle}>switchboard.yaml</span>
-              </div>
-              <pre className={styles.yamlCode}>
-                <code>{YAML_EXCERPT}</code>
-              </pre>
-            </div>
+          <div className={styles.siteRight}>
+            <ThemePreview />
           </div>
         </div>
       </section>
 
+      {/* Live Demo Form (shown automatically when Postgres has a form) */}
       {form ? (
         <section className={styles.trySection}>
           <div className={styles.tryInner}>
             <div>
+              <span className={styles.sectionKicker}>Live demo workspace</span>
               <h2 className={styles.tryTitle}>Try the demo</h2>
               <p className={styles.tryBody}>
-                This form is live, connected to the demo workspace. Fill it
-                in and submit, and you will be routed to a rep and shown
-                their calendar, exactly as a lead on your site would be.
+                This form is live, connected to the demo workspace. Fill it in
+                and submit, and you will be routed to a rep and shown their
+                calendar, exactly as a lead on your site would be.
               </p>
             </div>
             <div className={styles.formPanel} id="live-form">
@@ -487,25 +418,48 @@ export default async function Home() {
         </section>
       ) : null}
 
-      <section className={styles.hostSection}>
-        <h2 className={styles.hostTitle}>Yours to run.</h2>
-        <p className={styles.hostBody}>
-          Switchboard is open source under Apache-2.0, running on
-          infrastructure you control. Your rules, your data, your servers.
-          No per-seat pricing, no lock-in.
-        </p>
-        <a
-          className={styles.hostLink}
-          href="https://github.com/Preetish/switchboard"
-          rel="noreferrer"
-        >
-          Read the self-host guide
-        </a>
+      {/* Framed Obsidian Self-Host CTA Stage */}
+      <section id="self-host" className={styles.hostWrap}>
+        <div className={`${styles.hostCard} ${styles.reveal}`}>
+          <div className={styles.hostGlow} aria-hidden="true" />
+          <div className={styles.hostContent}>
+            <h2 className={styles.hostTitle}>Yours to run.</h2>
+            <p className={styles.hostBody}>
+              Switchboard is open source under Apache-2.0, running on
+              infrastructure you control. Your rules, your data, your servers.
+              No per-seat pricing, no lock-in.
+            </p>
+            <div className={styles.hostActions}>
+              <a
+                className={styles.primary}
+                href="https://github.com/Preetish/switchboard#try-it-locally"
+                rel="noreferrer"
+              >
+                Read the self-host guide
+              </a>
+            </div>
+          </div>
+          <div className={styles.terminalCard}>
+            <div className={styles.terminalHead}>
+              <span className={styles.termDot} aria-hidden="true" />
+              <span className={styles.termDot} aria-hidden="true" />
+              <span className={styles.termDot} aria-hidden="true" />
+              <span className={styles.termTitle}>Quick start</span>
+            </div>
+            <pre className={styles.terminalPre}>
+              <code>{`git clone https://github.com/Preetish/switchboard\ncd switchboard\ndocker compose up`}</code>
+            </pre>
+          </div>
+        </div>
       </section>
 
+      {/* Clean Editorial Footer */}
       <footer className={styles.footer}>
-        <div className={styles.barInner}>
-          <p className={styles.wordmark}>Switchboard</p>
+        <div className={styles.footerInner}>
+          <div className={styles.brand}>
+            <BrandMark />
+            <span className={styles.wordmark}>Switchboard</span>
+          </div>
           <p className={styles.footerLine}>
             Apache-2.0 · Runs on your servers ·{" "}
             <a href="https://github.com/Preetish/switchboard" rel="noreferrer">

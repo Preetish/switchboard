@@ -1,0 +1,41 @@
+/* Dedicated full-breathing-room editorial statement section (Solidroad-style).
+   Base state is fully readable (for SSR and reduced-motion); when motion is
+   allowed, ScrollStatement drives compositor `opacity` smoothly per word as
+   the visitor scrolls through the dedicated section. */
+
+.statement {
+  width: 100%;
+  min-block-size: clamp(22rem, 56svh, 36rem);
+  display: grid;
+  place-items: center;
+  padding: clamp(4.5rem, 10vh, 7rem) var(--sb-space-6);
+  background: oklch(0.985 0.007 90);
+}
+
+.copy {
+  width: 100%;
+  max-width: 58rem;
+  font-family: var(--sb-font-display);
+  font-size: clamp(1.85rem, 4vw, 3.35rem);
+  font-weight: 500;
+  line-height: 1.24;
+  letter-spacing: -0.028em;
+  color: var(--sb-gray-950);
+}
+
+.word {
+  display: inline;
+  color: var(--sb-gray-950);
+  will-change: opacity;
+}
+
+.wordMutedStatic {
+  opacity: 0.45;
+}
+
+@media (max-width: 48rem) {
+  .statement {
+    min-block-size: 0;
+    padding: var(--sb-space-12) var(--sb-space-4);
+  }
+}
