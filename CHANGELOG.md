@@ -58,6 +58,10 @@ Notable changes to Switchboard. The format follows
   demo replaces Setup page changes. The Setup page screenshot now shows the
   rule builder beside the simulator, and `scripts/screenshots.mjs` works with
   the form's country dropdown again.
+- The home page demo section no longer carries the "Live demo workspace"
+  kicker, and the section and its form now offset anchor jumps for the
+  floating navbar like the other sections, so the heading and the form are
+  no longer hidden underneath it.
 
 ## [0.2.1] — 2026-11-01
 

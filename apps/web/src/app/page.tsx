@@ -402,7 +402,6 @@ export default async function Home() {
         <section className={styles.trySection}>
           <div className={styles.tryInner}>
             <div>
-              <span className={styles.sectionKicker}>Live demo workspace</span>
               <h2 className={styles.tryTitle}>Try the demo</h2>
               <p className={styles.tryBody}>
                 This form is live, connected to the demo workspace. Fill it in
