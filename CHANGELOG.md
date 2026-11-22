@@ -50,6 +50,9 @@ Notable changes to Switchboard. The format follows
 
 ### Changed
 
+- The demo form now asks for a Company name between Work email and Company
+  size, and a submission's company value is written to the HubSpot contact's
+  `company` property when HubSpot is connected.
 - The home page, the README, and the docs now describe setting Switchboard up
   on the Setup page: connect HubSpot, pick reps, write rules as sentences,
   try a test lead in the simulator, and apply. They describe

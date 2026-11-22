@@ -14,6 +14,7 @@ async function fillForm(page: Page, email: string, size: string) {
   await expect(page.getByRole("heading", { name: "Book a demo" })).toBeVisible();
   await page.getByLabel("Full name").fill("Priya Shah");
   await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Company", { exact: true }).fill("Globex");
   await page.getByLabel("Company size").fill(size);
   await page.getByLabel("Country").click();
   await page.getByRole("option", { name: "United States", exact: true }).click();

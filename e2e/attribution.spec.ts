@@ -39,6 +39,7 @@ test("the embed passes landing-page attribution through and reports conversions"
   const form = page.frameLocator("iframe[title='Book a meeting']");
   await form.getByLabel("Full name").fill("Priya Shah");
   await form.getByLabel("Work email").fill(`priya-${Date.now()}@globex.test`);
+  await form.getByLabel("Company", { exact: true }).fill("Globex");
   await form.getByLabel("Company size").fill("1200");
   await form.getByLabel("Country").click();
   await form.getByRole("option", { name: "United States", exact: true }).click();
@@ -79,6 +80,7 @@ test("a direct link to the hosted form keeps its UTMs", async ({ page }) => {
   await page.goto("/f/book-a-demo?utm_source=newsletter&utm_medium=email&utm_campaign=october");
   await page.getByLabel("Full name").fill("Sam Lee");
   await page.getByLabel("Work email").fill(`sam-${Date.now()}@initech.test`);
+  await page.getByLabel("Company", { exact: true }).fill("Initech");
   await page.getByLabel("Company size").fill("40");
   await page.getByLabel("Country").click();
   await page.getByRole("option", { name: "United States", exact: true }).click();

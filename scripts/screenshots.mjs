@@ -23,6 +23,7 @@ const shot = (name, locator) =>
 await page.goto(`${base}/f/book-a-demo`);
 await page.getByLabel("Full name").fill("Priya Shah");
 await page.getByLabel("Work email").fill("priya@globex.example");
+await page.getByLabel("Company", { exact: true }).fill("Globex");
 await page.getByLabel("Company size").fill("1200");
 await page.getByLabel("Country").click();
 await page.getByRole("option", { name: "United States", exact: true }).click();
@@ -48,6 +49,7 @@ if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
   await page.goto(`${base}/setup`);
   const simulator = page.getByRole("region", { name: "Simulator" });
   await simulator.getByLabel("Work email").fill("lena@globex.example");
+  await simulator.getByLabel("Company", { exact: true }).fill("Globex");
   await simulator.getByLabel("Company size").fill("1200");
   await simulator.getByLabel("Country").selectOption("Germany");
   await page.evaluate(() => document.activeElement?.blur());
