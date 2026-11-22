@@ -45,6 +45,7 @@ forms:
     fields:
       - { key: name, label: Full name, type: text, required: true }
       - { key: email, label: Work email, type: email, required: true }
+      - { key: company, label: Company, type: text, required: true }
       - key: company_size
         label: Company size
         type: number
